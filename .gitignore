@@ -16,11 +16,11 @@ dist/
 
 build/
  
-# Env
+#   Env
 
-.env
+#  .env
 
-.env.local
+#  .env.local
  
 # Logs
 

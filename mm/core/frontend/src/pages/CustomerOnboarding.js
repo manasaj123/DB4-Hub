@@ -15,7 +15,7 @@ export default function CustomerOnboarding() {
   }, []);
 
   const fetchCustomers = async () => {
-    const res = await axios.get("http://localhost:5000/api/customers");
+    const res = await axios.get("http://localhost:5001/api/customers");
     setCustomers(res.data);
   };
 
@@ -84,7 +84,7 @@ export default function CustomerOnboarding() {
       !contact
     ) return;
 
-    await axios.post("http://localhost:5000/api/customers", {
+    await axios.post("http://localhost:5001/api/customers", {
       name: customerName,
       address,
       contact,

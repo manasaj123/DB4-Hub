@@ -32,14 +32,12 @@ export default function QCLotsPage() {
       margin: 0
     },
     statsRow: {
-      display: "flex",
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
       gap: "16px",
-      marginBottom: "20px",
-      flexWrap: "wrap"
+      marginBottom: "20px"
     },
     statCard: {
-      flex: "1",
-      minWidth: "150px",
       padding: "16px",
       backgroundColor: "#ffffff",
       borderRadius: "8px",
@@ -152,10 +150,11 @@ export default function QCLotsPage() {
     }
   };
 
-  // Calculate stats
+  // Calculate stats - including ACCEPTED_WITH_DEVIATION
   const totalLots = lots.length;
   const pendingLots = lots.filter(l => l.status === "PENDING").length;
   const acceptedLots = lots.filter(l => l.status === "ACCEPTED").length;
+  const acceptedWithDeviationLots = lots.filter(l => l.status === "ACCEPTED_WITH_DEVIATION").length;
   const rejectedLots = lots.filter(l => l.status === "REJECTED").length;
 
   return (
@@ -188,6 +187,10 @@ export default function QCLotsPage() {
         <div style={styles.statCard}>
           <div style={{...styles.statValue, color: "#059669"}}>{acceptedLots}</div>
           <div style={styles.statLabel}>Accepted</div>
+        </div>
+        <div style={styles.statCard}>
+          <div style={{...styles.statValue, color: "#8b5cf6"}}>{acceptedWithDeviationLots}</div>
+          <div style={styles.statLabel}>Accepted w/ Deviation</div>
         </div>
         <div style={styles.statCard}>
           <div style={{...styles.statValue, color: "#dc2626"}}>{rejectedLots}</div>

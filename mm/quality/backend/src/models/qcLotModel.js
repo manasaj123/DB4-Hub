@@ -3,26 +3,27 @@ import db from "../config/db.js";
 
 export const QCLot = {
   async create(header) {
-    const [res] = await db.query(
-      `INSERT INTO qc_lots
-       (batch_id, material_id, vendor_id, location_id,
-        stage, source_type, source_id, status, planned_date, inspected_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        header.batch_id,
-        header.material_id,
-        header.vendor_id,
-        header.location_id,
-        header.stage,         // 'FIELD' | 'WAREHOUSE'
-        header.source_type,   // 'GRN' | 'FIELD'
-        header.source_id,     // grn_id or other
-        header.status || "PENDING",
-        header.planned_date || null,
-        null
-      ]
-    );
-    return res.insertId;
-  },
+  const [res] = await db.query(
+    `INSERT INTO qc_lots
+     (batch_id, material_id, material_name, vendor_id, location_id,
+      stage, source_type, source_id, status, planned_date, inspected_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      header.batch_id,
+      header.material_id,
+      header.material_name,
+      header.vendor_id,
+      header.location_id,
+      header.stage,
+      header.source_type,
+      header.source_id,
+      header.status || "PENDING",
+      header.planned_date || null,
+      null
+    ]
+  );
+  return res.insertId;
+},
 
   async findById(id) {
     const [rows] = await db.query(

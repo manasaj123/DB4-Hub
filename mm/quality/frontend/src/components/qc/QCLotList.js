@@ -77,6 +77,7 @@ export default function QCLotList({ lots, onRefresh }) {
           <tr>
             <th style={styles.th}>Lot ID</th>
             <th style={styles.th}>Material ID</th>
+            <th style={styles.th}>Material Name</th>
             <th style={styles.th}>Vendor ID</th>
             <th style={styles.th}>Batch ID</th>
             <th style={styles.th}>Location</th>
@@ -89,8 +90,9 @@ export default function QCLotList({ lots, onRefresh }) {
         <tbody>
           {lots.map(l => (
             <tr key={l.id}>
-              <td style={styles.td}><strong>#{l.id}</strong></td>
+              <td style={styles.td}><strong>{l.id}</strong></td>
               <td style={styles.td}>{l.material_id || "-"}</td>
+              <td style={styles.td}>{l.material_name || "-"}</td>
               <td style={styles.td}>{l.vendor_id || "-"}</td>
               <td style={styles.td}>{l.batch_id || "-"}</td>
               <td style={styles.td}>{l.location_id || "-"}</td>

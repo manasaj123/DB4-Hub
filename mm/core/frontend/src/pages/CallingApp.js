@@ -19,7 +19,7 @@ export default function CallingApp() {
   // ✅ Fetch + normalize collections
   const fetchCollections = useCallback(async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/collections");
+      const res = await axios.get("http://localhost:5001/api/collections");
 
       const normalized = res.data.map((c) => ({
         id: c.id,
@@ -54,7 +54,7 @@ export default function CallingApp() {
   const markCompleted = async (id) => {
     setLoading(true);
     try {
-      await axios.patch(`http://localhost:5000/api/collections/${id}`, {
+      await axios.patch(`http://localhost:5001/api/collections/${id}`, {
         status: "Completed",
       });
 

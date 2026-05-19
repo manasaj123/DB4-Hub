@@ -8,7 +8,7 @@ export default function WeeklyMarket() {
   const fetchWeeklyMarket = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:5000/api/stock/weekly");
+      const res = await axios.get("http://localhost:5001/api/stock/weekly");
       setWeeklyData(res.data);
     } catch (err) {
       console.error(

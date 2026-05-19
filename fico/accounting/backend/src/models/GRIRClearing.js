@@ -11,13 +11,17 @@ module.exports = (sequelize, DataTypes) => {
     },
     invoiceNumber: {
       type: DataTypes.STRING(50),
-      allowNull: false
+      allowNull: true
     },
-    amount: { // PO/GR amount
+    vendorName: {
+      type: DataTypes.STRING(160),
+      allowNull: true
+    },
+    amount: {
       type: DataTypes.DECIMAL(15, 2),
       allowNull: false
     },
-    clearedAmount: { // Invoice matched amount
+    clearedAmount: {
       type: DataTypes.DECIMAL(15, 2),
       defaultValue: 0
     },
@@ -37,8 +41,9 @@ module.exports = (sequelize, DataTypes) => {
     invoiceDate: {
       type: DataTypes.DATEONLY
     },
-    vendorName: {
-      type: DataTypes.STRING(160)
+    narration: {  // New field added
+      type: DataTypes.TEXT,
+      allowNull: true
     },
     createdBy: {
       type: DataTypes.INTEGER.UNSIGNED,

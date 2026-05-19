@@ -4,6 +4,7 @@ export default function QCLotForm({ onSave, initialData }) {
   const [form, setForm] = useState(initialData || {
     batch_id: "",
     material_id: "",
+    material_name: "", // New field
     vendor_id: "",
     location_id: "",
     stage: "WAREHOUSE",
@@ -75,6 +76,7 @@ export default function QCLotForm({ onSave, initialData }) {
   const validate = () => {
     const newErrors = {};
     if (!form.material_id.trim()) newErrors.material_id = "Material ID is required";
+    if (!form.material_name.trim()) newErrors.material_name = "Material Name is required";
     if (!form.batch_id.trim()) newErrors.batch_id = "Batch ID is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -116,6 +118,20 @@ export default function QCLotForm({ onSave, initialData }) {
             placeholder="Enter material ID"
           />
           {errors.material_id && <span style={styles.errorText}>{errors.material_id}</span>}
+        </div>
+
+        <div style={styles.field}>
+          <span style={styles.label}>
+            Material Name <span style={styles.required}>*</span>
+          </span>
+          <input
+            style={errors.material_name ? styles.inputError : styles.input}
+            name="material_name"
+            value={form.material_name}
+            onChange={handleChange}
+            placeholder="Enter material name"
+          />
+          {errors.material_name && <span style={styles.errorText}>{errors.material_name}</span>}
         </div>
 
         <div style={styles.field}>

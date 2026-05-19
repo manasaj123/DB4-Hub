@@ -22,22 +22,22 @@ export default function Collection() {
   }, []);
 
   const fetchFarmers = async () => {
-    const res = await axios.get("http://localhost:5000/api/farmers");
+    const res = await axios.get("http://localhost:5001/api/farmers");
     setFarmers(res.data);
   };
 
   const fetchCustomers = async () => {
-    const res = await axios.get("http://localhost:5000/api/customers");
+    const res = await axios.get("http://localhost:5001/api/customers");
     setCustomers(res.data);
   };
 
   const fetchMaterials = async () => {
-    const res = await axios.get("http://localhost:5000/api/materials");
+    const res = await axios.get("http://localhost:5001/api/materials");
     setMaterials(res.data);
   };
 
   const fetchCollections = async () => {
-    const res = await axios.get("http://localhost:5000/api/collections");
+    const res = await axios.get("http://localhost:5001/api/collections");
     setCollections(res.data);
   };
 
@@ -103,7 +103,7 @@ export default function Collection() {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/collections", {
+      await axios.post("http://localhost:5001/api/collections", {
   partyType,
   partyId,
   materialId,

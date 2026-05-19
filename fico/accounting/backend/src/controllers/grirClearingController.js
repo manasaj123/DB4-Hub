@@ -1,29 +1,98 @@
 const db = require('../config/db');
 const { GRIRClearing, Ledger } = db;
 
-// controllers/grirClearingController.js
 exports.createGrirEntry = async (req, res, next) => {
   try {
     const {
       poNumber,
       invoiceNumber,
+      vendorName,
       amount,
       clearedAmount,
       status,
       grDate,
       invoiceDate,
-      vendorName
+      narration  // Added narration field
     } = req.body;
 
+    // Check if same PO and Invoice combination already exists
+    const existingEntry = await GRIRClearing.findOne({
+      where: {
+        poNumber: poNumber,
+        invoiceNumber: invoiceNumber || vendorName || 'N/A',
+        vendorName: vendorName || invoiceNumber || 'N/A'
+      }
+    });
+
+    if (existingEntry) {
+      // Calculate remaining balance
+      const totalCleared = Number(existingEntry.clearedAmount) + Number(clearedAmount);
+      const pendingAmount = Number(existingEntry.amount) - totalCleared;
+      
+      // Determine new status
+      let newStatus = 'PARTIAL';
+      if (pendingAmount === 0) {
+        newStatus = 'CLEARED';
+      } else if (totalCleared === 0) {
+        newStatus = 'PENDING';
+      }
+
+      // Update existing entry
+      await existingEntry.update({
+        clearedAmount: totalCleared,
+        status: newStatus,
+        invoiceDate: invoiceDate || existingEntry.invoiceDate,
+        narration: narration || existingEntry.narration
+      });
+
+      const GRIR_ACCOUNT = '210004';
+      const AP_ACCOUNT = '200001';
+      const displayName = vendorName || invoiceNumber || 'N/A';
+
+      // Add clearing entries for the new amount only
+      if (clearedAmount > 0) {
+        await Ledger.bulkCreate([
+          {
+            date: invoiceDate || existingEntry.invoiceDate,
+            accountCode: GRIR_ACCOUNT,
+            description: `Additional IR clearing for PO ${poNumber} - ${displayName}`,
+            debit: clearedAmount,
+            credit: 0,
+            referenceType: 'GRIR',
+            referenceNumber: existingEntry.id,
+            grirId: existingEntry.id
+          },
+          {
+            date: invoiceDate || existingEntry.invoiceDate,
+            accountCode: AP_ACCOUNT,
+            description: `Additional AP Booking - ${displayName} vs PO ${poNumber}`,
+            debit: 0,
+            credit: clearedAmount,
+            referenceType: 'GRIR',
+            referenceNumber: existingEntry.id,
+            grirId: existingEntry.id
+          }
+        ]);
+      }
+
+      return res.json({
+        message: 'Additional amount cleared against existing entry',
+        entry: existingEntry,
+        remainingBalance: pendingAmount
+      });
+    }
+
+    // If no existing entry, create new one
     const entry = await GRIRClearing.create({
       poNumber,
-      invoiceNumber,
+      invoiceNumber: invoiceNumber || vendorName || 'N/A',
+      vendorName: vendorName || invoiceNumber || 'N/A',
       amount,
       clearedAmount,
       status,
       grDate,
       invoiceDate,
-      vendorName,
+      narration,  // Added narration field
       createdBy: req.user.id
     });
 
@@ -31,12 +100,13 @@ exports.createGrirEntry = async (req, res, next) => {
     const INVENTORY_ACCOUNT = '120001';
     const AP_ACCOUNT = '200001';
 
-    // GR Entry (Goods Receipt)
+    const displayName = vendorName || invoiceNumber || 'N/A';
+
     await db.Ledger.bulkCreate([
       {
-        date: grDate, // MUST be present
+        date: grDate,
         accountCode: INVENTORY_ACCOUNT,
-        description: `GR for PO ${poNumber}`,
+        description: `GR for PO ${poNumber} - ${displayName}`,
         debit: amount,
         credit: 0,
         referenceType: 'GRIR',
@@ -44,9 +114,9 @@ exports.createGrirEntry = async (req, res, next) => {
         grirId: entry.id
       },
       {
-        date: grDate, // MUST be present
+        date: grDate,
         accountCode: GRIR_ACCOUNT,
-        description: `GR/IR for PO ${poNumber}`,
+        description: `GR/IR for PO ${poNumber} - ${displayName}`,
         debit: 0,
         credit: amount,
         referenceType: 'GRIR',
@@ -58,9 +128,9 @@ exports.createGrirEntry = async (req, res, next) => {
     if (clearedAmount > 0) {
       await db.Ledger.bulkCreate([
         {
-          date: invoiceDate, // MUST be present
+          date: invoiceDate,
           accountCode: GRIR_ACCOUNT,
-          description: `IR clearing for PO ${poNumber}`,
+          description: `IR clearing for PO ${poNumber} - ${displayName}`,
           debit: clearedAmount,
           credit: 0,
           referenceType: 'GRIR',
@@ -68,9 +138,9 @@ exports.createGrirEntry = async (req, res, next) => {
           grirId: entry.id
         },
         {
-          date: invoiceDate, // MUST be present
+          date: invoiceDate,
           accountCode: AP_ACCOUNT,
-          description: `Vendor invoice ${invoiceNumber} vs PO ${poNumber}`,
+          description: `Vendor ${displayName} vs PO ${poNumber}`,
           debit: 0,
           credit: clearedAmount,
           referenceType: 'GRIR',
@@ -86,7 +156,6 @@ exports.createGrirEntry = async (req, res, next) => {
   }
 };
 
-// controllers/grirClearingController.js
 exports.listGrirEntries = async (req, res) => {
   try {
     const entries = await GRIRClearing.findAll({
@@ -94,7 +163,7 @@ exports.listGrirEntries = async (req, res) => {
     });
     res.json(entries);
   } catch (err) {
-    console.error('GRIR list error:', err);   // add this
+    console.error('GRIR list error:', err);
     res.status(500).json({ message: err.message });
   }
 };

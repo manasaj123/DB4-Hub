@@ -15,7 +15,7 @@ export default function MaterialManagement() {
 
   const fetchMaterials = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/materials");
+      const res = await axios.get("http://localhost:5001/api/materials");
       setMaterials(res.data);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -96,7 +96,7 @@ export default function MaterialManagement() {
     setLoading(true);
 
     try {
-      await axios.post("http://localhost:5000/api/materials", {
+      await axios.post("http://localhost:5001/api/materials", {
         name,
         qty: Number(qty),
         unit,
