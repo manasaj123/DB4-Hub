@@ -96,12 +96,12 @@ const Quota = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.purchasingGroup) {
+    if (!formData.purchasingGroup.trim()) {
       alert("Enter Purchasing Group");
       return;
     }
 
-    if (!formData.plant) {
+    if (!formData.plant.trim()) {
       alert("Enter Plant");
       return;
     }

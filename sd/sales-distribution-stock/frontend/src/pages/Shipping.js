@@ -97,6 +97,18 @@ const Shipping = () => {
       loadData();
     } catch (err) {
       console.error("Error saving shipping config", err);
+
+      if (err.response?.data?.errors) {
+        const errors = err.response.data.errors;
+
+        const firstError = Object.values(errors)[0];
+
+        alert(firstError);
+      } else if (err.response?.data?.message) {
+        alert(err.response.data.message);
+      } else {
+        alert("Something went wrong");
+      }
     }
   };
 

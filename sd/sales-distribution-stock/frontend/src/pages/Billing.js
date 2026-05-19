@@ -121,6 +121,8 @@ const Billing = () => {
       loadData();
     } catch (err) {
       console.error("Error saving billing", err);
+
+      alert(err.response?.data?.message || "Error saving billing");
     }
   };
   const handleEdit = (b) => {
@@ -359,7 +361,7 @@ const Billing = () => {
           <label>Total Amount</label>
           <input
             type="number"
-            min="0"
+            min="0.01"
             step="0.01"
             name="totalAmount"
             value={formData.totalAmount}

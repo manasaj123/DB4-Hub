@@ -79,9 +79,9 @@ const Credit = () => {
 
     if (
       formData.riskCategory &&
-      !/^[a-zA-Z0-9]+$/.test(formData.riskCategory)
+      !["A", "B", "C"].includes(formData.riskCategory.toUpperCase())
     ) {
-      alert("Risk category: no special characters allowed");
+      alert("Risk category must be A (Low), B (Medium), or C (High)");
       return;
     }
 

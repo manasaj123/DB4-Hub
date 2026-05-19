@@ -41,12 +41,12 @@ exports.createQuota = asyncHandler(async (req, res) => {
 
   // Required validation
   if (
-    !purchasingGroup ||
-    !plant ||
-    !materialGroup ||
+    !purchasingGroup?.trim() ||
+    !plant?.trim() ||
+    !materialGroup?.trim() ||
     !validFrom ||
     !validTo ||
-    !quotaUsage
+    quotaUsage === ""
   ) {
     return res.status(400).json({
       message: "Required fields are missing",
@@ -90,8 +90,13 @@ exports.createQuota = asyncHandler(async (req, res) => {
   // Duplicate purchasing group
   const existingQuota = await db.Quota.findOne({
     where: {
-      purchasingGroup,
-      isDeleted: false,
+      [Op.and]: [
+        where(
+          fn("LOWER", col("purchasingGroup")),
+          purchasingGroup.toLowerCase(),
+        ),
+        { isDeleted: false },
+      ],
     },
   });
 
@@ -140,12 +145,12 @@ exports.updateQuota = asyncHandler(async (req, res) => {
 
   // Required validation
   if (
-    !purchasingGroup ||
-    !plant ||
-    !materialGroup ||
+    !purchasingGroup?.trim() ||
+    !plant?.trim() ||
+    !materialGroup?.trim() ||
     !validFrom ||
     !validTo ||
-    !quotaUsage
+    quotaUsage === ""
   ) {
     return res.status(400).json({
       message: "Required fields are missing",
@@ -189,11 +194,18 @@ exports.updateQuota = asyncHandler(async (req, res) => {
   // Duplicate validation
   const existingQuota = await db.Quota.findOne({
     where: {
-      purchasingGroup,
-      isDeleted: false,
-      id: {
-        [Op.ne]: quota.id,
-      },
+      [Op.and]: [
+        where(
+          fn("LOWER", col("purchasingGroup")),
+          purchasingGroup.toLowerCase(),
+        ),
+        { isDeleted: false },
+        {
+          id: {
+            [Op.ne]: quota.id,
+          },
+        },
+      ],
     },
   });
 

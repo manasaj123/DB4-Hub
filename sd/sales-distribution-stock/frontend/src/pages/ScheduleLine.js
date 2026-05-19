@@ -1,5 +1,5 @@
 // frontend/src/pages/ScheduleLine.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   getScheduleLines,
   getDeletedScheduleLines,
@@ -7,14 +7,14 @@ import {
   updateScheduleLine,
   softDeleteScheduleLine,
   restoreScheduleLine,
-} from '../services/scheduleLineService';
+} from "../services/scheduleLineService";
 
 const initialForm = {
-  scheduleLineCategory: '',
-  description: '',
-  requirementRelevant: '',
-  availabilityCheck: '',
-  movementType: '',
+  scheduleLineCategory: "",
+  description: "",
+  requirementRelevant: "",
+  availabilityCheck: "",
+  movementType: "",
 };
 
 const ScheduleLine = () => {
@@ -36,7 +36,7 @@ const ScheduleLine = () => {
       setLines(activeRes.data);
       setDeletedLines(deletedRes.data);
     } catch (err) {
-      console.error('Error loading schedule lines', err);
+      console.error("Error loading schedule lines", err);
     } finally {
       setLoading(false);
     }
@@ -46,15 +46,73 @@ const ScheduleLine = () => {
     loadData();
   }, []);
 
-  const handleChange = e => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const alphaNumericFields = [
+    "scheduleLineCategory",
+    "requirementRelevant",
+    "availabilityCheck",
+    "deliveryBlock",
+    "movementType",
+    "orderType",
+    "itemCategory",
+    "mvtIssValSlt",
+    "specIssValSlt",
+  ];
+
+  const alphaNumericSpaceFields = ["description"];
+
+  const validateAlphaNumeric = (value) => {
+    return /^[a-zA-Z0-9]*$/.test(value);
   };
 
-  const handleSubmit = async e => {
+  const validateAlphaNumericSpace = (value) => {
+    return /^[a-zA-Z0-9\s]*$/.test(value);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    if (alphaNumericFields.includes(name) && !validateAlphaNumeric(value)) {
+      return;
+    }
+
+    if (
+      alphaNumericSpaceFields.includes(name) &&
+      !validateAlphaNumericSpace(value)
+    ) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.scheduleLineCategory) {
-      alert('Enter schedule line category');
+      alert("Enter schedule line category");
+      return;
+    }
+
+    const requiredFields = {
+      scheduleLineCategory: "Schedule Line Category",
+      description: "Description",
+    };
+
+    for (const [field, label] of Object.entries(requiredFields)) {
+      if (!formData[field]?.trim()) {
+        alert(`${label} is required`);
+        return;
+      }
+    }
+
+    // Y/N validation
+    if (
+      formData.requirementRelevant &&
+      !["Y", "N"].includes(formData.requirementRelevant.trim().toUpperCase())
+    ) {
+      alert("Requirement Relevant must be Y or N");
       return;
     }
 
@@ -70,18 +128,28 @@ const ScheduleLine = () => {
       setEditingId(null);
       loadData();
     } catch (err) {
-      console.error('Error saving schedule line', err);
+      console.error("Error saving schedule line", err);
+
+      if (err.response?.data?.errors) {
+        const backendErrors = Object.values(err.response.data.errors).join(
+          "\n",
+        );
+
+        alert(backendErrors);
+      } else {
+        alert("Failed to save schedule line");
+      }
     }
   };
 
-  const handleEdit = row => {
+  const handleEdit = (row) => {
     setEditingId(row.id);
     setFormData({
-      scheduleLineCategory: row.scheduleLineCategory || '',
-      description: row.description || '',
-      requirementRelevant: row.requirementRelevant || '',
-      availabilityCheck: row.availabilityCheck || '',
-      movementType: row.movementType || '',
+      scheduleLineCategory: row.scheduleLineCategory || "",
+      description: row.description || "",
+      requirementRelevant: row.requirementRelevant || "",
+      availabilityCheck: row.availabilityCheck || "",
+      movementType: row.movementType || "",
     });
   };
 
@@ -90,22 +158,22 @@ const ScheduleLine = () => {
     setFormData(initialForm);
   };
 
-  const handleSoftDelete = async id => {
-    if (!window.confirm('Move this schedule line to recycle bin?')) return;
+  const handleSoftDelete = async (id) => {
+    if (!window.confirm("Move this schedule line to recycle bin?")) return;
     try {
       await softDeleteScheduleLine(id);
       loadData();
     } catch (err) {
-      console.error('Error deleting schedule line', err);
+      console.error("Error deleting schedule line", err);
     }
   };
 
-  const handleRestore = async id => {
+  const handleRestore = async (id) => {
     try {
       await restoreScheduleLine(id);
       loadData();
     } catch (err) {
-      console.error('Error restoring schedule line', err);
+      console.error("Error restoring schedule line", err);
     }
   };
 
@@ -256,6 +324,7 @@ const ScheduleLine = () => {
               onChange={handleChange}
               required
               disabled={!!editingId}
+              maxLength={3}
             />
           </div>
           <div className="form-field">
@@ -264,6 +333,7 @@ const ScheduleLine = () => {
               name="description"
               value={formData.description}
               onChange={handleChange}
+              maxLength={100}
             />
           </div>
           <div className="form-field">
@@ -273,6 +343,7 @@ const ScheduleLine = () => {
               value={formData.requirementRelevant}
               onChange={handleChange}
               placeholder="Y / N"
+              maxLength={1}
             />
           </div>
         </div>
@@ -285,6 +356,7 @@ const ScheduleLine = () => {
               value={formData.availabilityCheck}
               onChange={handleChange}
               placeholder="e.g. 01, 02"
+              maxLength={2}
             />
           </div>
           <div className="form-field">
@@ -294,6 +366,7 @@ const ScheduleLine = () => {
               value={formData.movementType}
               onChange={handleChange}
               placeholder="e.g. 601"
+              maxLength={4}
             />
           </div>
           <div className="form-field">
@@ -303,7 +376,7 @@ const ScheduleLine = () => {
 
         <div className="form-actions">
           <button type="submit">
-            {editingId ? 'Update Schedule Line' : 'Create Schedule Line'}
+            {editingId ? "Update Schedule Line" : "Create Schedule Line"}
           </button>
           {editingId && (
             <button type="button" onClick={handleCancelEdit}>
@@ -314,9 +387,11 @@ const ScheduleLine = () => {
       </form>
 
       <div className="list-header">
-        <h3>{showDeleted ? 'Recycle Bin' : 'Active Schedule Line Categories'}</h3>
-        <button onClick={() => setShowDeleted(v => !v)}>
-          {showDeleted ? 'Show Active' : 'Show Recycle Bin'}
+        <h3>
+          {showDeleted ? "Recycle Bin" : "Active Schedule Line Categories"}
+        </h3>
+        <button onClick={() => setShowDeleted((v) => !v)}>
+          {showDeleted ? "Show Active" : "Show Recycle Bin"}
         </button>
       </div>
 
@@ -337,7 +412,7 @@ const ScheduleLine = () => {
             </tr>
           </thead>
           <tbody>
-            {currentList.map(row => (
+            {currentList.map((row) => (
               <tr key={row.id}>
                 <td>{row.scheduleLineCategory}</td>
                 <td>{row.description}</td>

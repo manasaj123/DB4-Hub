@@ -59,16 +59,32 @@ const SalesDocumentConfig = () => {
     loadData();
   }, []);
 
+  // const alphaNumericFields = [
+  //   "documentType",
+  //   "creditGroup",
+  //   "transactionGroup",
+  //   "deliveryType",
+  //   "screenSequence",
+  // ];
+
   const alphaNumericFields = [
     "documentType",
     "creditGroup",
     "transactionGroup",
     "deliveryType",
     "screenSequence",
+    "incompletionProcedure",
+    "docPricingProcedure",
+    "deliveryBlock",
+    "shippingConditions",
+    "shipCostInfoProfile",
+    "delvBillingType",
+    "orderRelBillingType",
+    "intercompanyBillingType",
   ];
 
   const validateAlphaNumeric = (value) => {
-    return /^[a-zA-Z0-9\s\-\/().]*$/.test(value);
+    return /^[a-zA-Z0-9\s]*$/.test(value);
   };
 
   const handleChange = (e) => {
@@ -163,6 +179,16 @@ const SalesDocumentConfig = () => {
       loadData();
     } catch (err) {
       console.error("Error saving sales document config", err);
+
+      if (err.response?.data?.errors) {
+        const backendErrors = Object.values(err.response.data.errors).join(
+          "\n",
+        );
+
+        alert(backendErrors);
+      } else {
+        alert("Failed to save sales document config");
+      }
     }
   };
 
@@ -407,6 +433,7 @@ const SalesDocumentConfig = () => {
                   onChange={handleChange}
                   required
                   disabled={!!editingId}
+                  maxLength={4}
                 />
               </div>
               <div className="form-row">
@@ -416,6 +443,7 @@ const SalesDocumentConfig = () => {
                   value={formData.description}
                   onChange={handleChange}
                   required
+                  maxLength={100}
                 />
               </div>
             </div>
@@ -468,6 +496,7 @@ const SalesDocumentConfig = () => {
                   name="creditGroup"
                   value={formData.creditGroup}
                   onChange={handleChange}
+                  maxLength={4}
                 />
               </div>
               <div className="form-row">
@@ -476,6 +505,7 @@ const SalesDocumentConfig = () => {
                   name="screenSequence"
                   value={formData.screenSequence}
                   onChange={handleChange}
+                  maxLength={10}
                 />
               </div>
               <div className="form-row">
@@ -484,6 +514,7 @@ const SalesDocumentConfig = () => {
                   name="incompletionProcedure"
                   value={formData.incompletionProcedure}
                   onChange={handleChange}
+                  maxLength={10}
                 />
               </div>
               <div className="form-row">
@@ -492,6 +523,7 @@ const SalesDocumentConfig = () => {
                   name="transactionGroup"
                   value={formData.transactionGroup}
                   onChange={handleChange}
+                  maxLength={10}
                 />
               </div>
               <div className="form-row">
@@ -500,6 +532,7 @@ const SalesDocumentConfig = () => {
                   name="docPricingProcedure"
                   value={formData.docPricingProcedure}
                   onChange={handleChange}
+                  maxLength={10}
                 />
               </div>
             </div>
@@ -524,6 +557,7 @@ const SalesDocumentConfig = () => {
                   name="deliveryBlock"
                   value={formData.deliveryBlock}
                   onChange={handleChange}
+                  maxLength={4}
                 />
               </div>
               <div className="form-row">
@@ -532,6 +566,7 @@ const SalesDocumentConfig = () => {
                   name="shippingConditions"
                   value={formData.shippingConditions}
                   onChange={handleChange}
+                  maxLength={4}
                 />
               </div>
               <div className="form-row">
@@ -540,6 +575,7 @@ const SalesDocumentConfig = () => {
                   name="shipCostInfoProfile"
                   value={formData.shipCostInfoProfile}
                   onChange={handleChange}
+                  maxLength={10}
                 />
               </div>
             </div>
@@ -552,6 +588,7 @@ const SalesDocumentConfig = () => {
                   name="delvBillingType"
                   value={formData.delvBillingType}
                   onChange={handleChange}
+                  maxLength={4}
                 />
               </div>
               <div className="form-row">
@@ -560,6 +597,7 @@ const SalesDocumentConfig = () => {
                   name="orderRelBillingType"
                   value={formData.orderRelBillingType}
                   onChange={handleChange}
+                  maxLength={4}
                 />
               </div>
               <div className="form-row">
@@ -568,6 +606,7 @@ const SalesDocumentConfig = () => {
                   name="intercompanyBillingType"
                   value={formData.intercompanyBillingType}
                   onChange={handleChange}
+                  maxLength={4}
                 />
               </div>
             </div>

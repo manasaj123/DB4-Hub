@@ -85,15 +85,29 @@ exports.createCredit = asyncHandler(async (req, res) => {
   }
 
   // no special characters
-  if (riskCategory && !/^[A-Z0-9]+$/.test(riskCategory)) {
+  if (riskCategory && !["A", "B", "C"].includes(riskCategory)) {
     return res.status(400).json({
-      message: "Invalid risk category",
+      message: "Risk category must be A (Low), B (Medium), or C (High)",
     });
   }
 
   if (creditGroup && !/^[A-Z0-9]+$/.test(creditGroup)) {
     return res.status(400).json({
       message: "Invalid credit group",
+    });
+  }
+
+  // duplicate customer credit check
+  const existing = await db.Credit.findOne({
+    where: {
+      customerId,
+      isDeleted: false,
+    },
+  });
+
+  if (existing) {
+    return res.status(400).json({
+      message: "Credit record already exists for this customer",
     });
   }
 
@@ -118,7 +132,8 @@ exports.updateCredit = asyncHandler(async (req, res) => {
     });
   }
 
-  let { creditLimit, currency, riskCategory, creditGroup } = req.body;
+  let { customerId, creditLimit, currency, riskCategory, creditGroup } =
+    req.body;
 
   currency = currency?.toUpperCase();
   riskCategory = riskCategory?.toUpperCase();
@@ -154,9 +169,9 @@ exports.updateCredit = asyncHandler(async (req, res) => {
     });
   }
 
-  if (riskCategory && !/^[A-Z0-9]+$/.test(riskCategory)) {
+  if (riskCategory && !["A", "B", "C"].includes(riskCategory)) {
     return res.status(400).json({
-      message: "Invalid risk category",
+      message: "Risk category must be A (Low), B (Medium), or C (High)",
     });
   }
 
@@ -164,6 +179,25 @@ exports.updateCredit = asyncHandler(async (req, res) => {
     return res.status(400).json({
       message: "Invalid credit group",
     });
+  }
+
+  // duplicate customer credit check
+  if (customerId) {
+    const existing = await db.Credit.findOne({
+      where: {
+        customerId,
+        isDeleted: false,
+        id: {
+          [db.Sequelize.Op.ne]: req.params.id,
+        },
+      },
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        message: "Credit record already exists for this customer",
+      });
+    }
   }
 
   await rec.update({

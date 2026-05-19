@@ -79,6 +79,8 @@ const SalesOrders = () => {
     loadData();
   }, []);
 
+  const [errors, setErrors] = useState({});
+
   // =========================
   // VALIDATIONS
   // =========================
@@ -88,8 +90,12 @@ const SalesOrders = () => {
   // numbers
   // space
   // - / ( )
+  // const validateAlphaNumeric = (value) => {
+  //   return /^[a-zA-Z0-9\s\-\/().]*$/.test(value);
+  // };
+
   const validateAlphaNumeric = (value) => {
-    return /^[a-zA-Z0-9\s\-\/().]*$/.test(value);
+    return /^[a-zA-Z0-9]*$/.test(value);
   };
 
   const validateMaxLength = (value, max) => {
@@ -98,6 +104,11 @@ const SalesOrders = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
 
     // fields needing validation
     const validatedFields = [
@@ -197,6 +208,8 @@ const SalesOrders = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    setErrors({});
+
     if (!formData.orderType.trim()) {
       alert("Order Type is required");
       return;
@@ -261,7 +274,11 @@ const SalesOrders = () => {
 
       loadData();
     } catch (err) {
-      console.error("Error saving sales order", err);
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors);
+      } else {
+        console.error("Error saving sales order", err);
+      }
     }
   };
 
@@ -542,6 +559,30 @@ const SalesOrders = () => {
       <h2>Creation of Sales Order</h2>
 
       <form className="form-card" onSubmit={handleSubmit}>
+
+        {/* Common Error Display */}
+        {/* {Object.keys(errors).length > 0 && (
+          <div
+            style={{
+              background: "#fee2e2",
+              border: "1px solid #ef4444",
+              color: "#b91c1c",
+              padding: "10px",
+              borderRadius: "4px",
+              marginBottom: "14px",
+              fontSize: "13px",
+            }}
+          >
+            <ul style={{ margin: 0, paddingLeft: "18px" }}>
+              {Object.values(errors).map((err, index) => (
+                <li key={index}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )} */}
+
+        {/* <div className="form-grid-2"></div> */}
+
         <div className="form-grid-2">
           <div className="form-row">
             <label>Order Type</label>

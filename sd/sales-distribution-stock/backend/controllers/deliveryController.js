@@ -34,6 +34,13 @@ exports.getDeliveryById = asyncHandler(async (req, res) => {
 
 // POST /api/deliveries
 exports.createDelivery = asyncHandler(async (req, res) => {
+  req.body.shippingPoint = (req.body.shippingPoint || "").trim().toUpperCase();
+
+  req.body.warehouse = (req.body.warehouse || "").trim().toUpperCase();
+
+  req.body.plant = (req.body.plant || "").trim().toUpperCase();
+
+  req.body.deliveryGroup = (req.body.deliveryGroup || "").trim().toUpperCase();
   const {
     shippingPoint,
     salesOrderId,
@@ -45,9 +52,15 @@ exports.createDelivery = asyncHandler(async (req, res) => {
 
   const alphaNumRegex = /^[A-Za-z0-9\s-]+$/;
 
-  if (!shippingPoint || !alphaNumRegex.test(shippingPoint)) {
+  if (!shippingPoint || !shippingPoint.trim()) {
     return res.status(400).json({
-      message: "Invalid Shipping Point",
+      message: "Shipping Point is required",
+    });
+  }
+
+  if (!alphaNumRegex.test(shippingPoint)) {
+    return res.status(400).json({
+      message: "Shipping Point contains invalid characters",
     });
   }
 
@@ -57,15 +70,27 @@ exports.createDelivery = asyncHandler(async (req, res) => {
     });
   }
 
-  if (!warehouse || !alphaNumRegex.test(warehouse)) {
+  if (!warehouse || !warehouse.trim()) {
     return res.status(400).json({
-      message: "Invalid Warehouse",
+      message: "Warehouse is required",
     });
   }
 
-  if (!plant || !alphaNumRegex.test(plant)) {
+  if (!alphaNumRegex.test(warehouse)) {
     return res.status(400).json({
-      message: "Invalid Plant",
+      message: "Warehouse contains invalid characters",
+    });
+  }
+
+  if (!plant || !plant.trim()) {
+    return res.status(400).json({
+      message: "Plant is required",
+    });
+  }
+
+  if (!alphaNumRegex.test(plant)) {
+    return res.status(400).json({
+      message: "Plant contains invalid characters",
     });
   }
 
@@ -89,17 +114,13 @@ exports.createDelivery = asyncHandler(async (req, res) => {
   const existing = await db.Delivery.findOne({
     where: {
       salesOrderId,
-      shippingPoint,
-      warehouse,
-      plant,
-      postGoodsIssueDate,
       isDeleted: false,
     },
   });
 
   if (existing) {
     return res.status(400).json({
-      message: "Duplicate delivery already exists",
+      message: "Delivery already exists for this Sales Order",
     });
   }
 
@@ -110,6 +131,13 @@ exports.createDelivery = asyncHandler(async (req, res) => {
 
 // PUT /api/deliveries/:id
 exports.updateDelivery = asyncHandler(async (req, res) => {
+  req.body.shippingPoint = (req.body.shippingPoint || "").trim().toUpperCase();
+
+  req.body.warehouse = (req.body.warehouse || "").trim().toUpperCase();
+
+  req.body.plant = (req.body.plant || "").trim().toUpperCase();
+
+  req.body.deliveryGroup = (req.body.deliveryGroup || "").trim().toUpperCase();
   const delivery = await db.Delivery.findByPk(req.params.id);
 
   if (!delivery) {
@@ -136,6 +164,12 @@ exports.updateDelivery = asyncHandler(async (req, res) => {
     });
   }
 
+  if (!alphaNumRegex.test(shippingPoint)) {
+    return res.status(400).json({
+      message: "Shipping Point contains invalid characters",
+    });
+  }
+
   if (!salesOrderId) {
     return res.status(400).json({
       message: "Sales Order is required",
@@ -148,8 +182,25 @@ exports.updateDelivery = asyncHandler(async (req, res) => {
     });
   }
 
+  if (deliveryGroup && !alphaNumRegex.test(deliveryGroup)) {
+    return res.status(400).json({
+      message: "Invalid Delivery Group",
+    });
+  }
+  if (!alphaNumRegex.test(plant)) {
+    return res.status(400).json({
+      message: "Plant contains invalid characters",
+    });
+  }
+
   // Special character validation
-  if (warehouse && !alphaNumRegex.test(warehouse)) {
+  if (!warehouse || !warehouse.trim()) {
+    return res.status(400).json({
+      message: "Warehouse is required",
+    });
+  }
+
+  if (!alphaNumRegex.test(warehouse)) {
     return res.status(400).json({
       message: "Warehouse contains invalid characters",
     });
@@ -170,10 +221,6 @@ exports.updateDelivery = asyncHandler(async (req, res) => {
   const existing = await db.Delivery.findOne({
     where: {
       salesOrderId,
-      shippingPoint,
-      warehouse,
-      plant,
-      postGoodsIssueDate,
       isDeleted: false,
       id: {
         [db.Sequelize.Op.ne]: req.params.id,
@@ -183,7 +230,7 @@ exports.updateDelivery = asyncHandler(async (req, res) => {
 
   if (existing) {
     return res.status(400).json({
-      message: "Duplicate delivery already exists",
+      message: "Delivery already exists for this Sales Order",
     });
   }
 

@@ -1,7 +1,63 @@
 // backend/controllers/routeController.js
 const asyncHandler = require("../middleware/asyncHandler");
 const db = require("../models");
+const { Op } = require("sequelize");
 
+const validateRoute = (data) => {
+  const errors = {};
+
+  const alphaNumRegex = /^[A-Za-z0-9]+$/;
+  const alphaNumSpaceRegex = /^[A-Za-z0-9\s-]+$/;
+
+  // Route Code
+  if (!data.routeCode || !data.routeCode.trim()) {
+    errors.routeCode = "Route Code is required";
+  } else {
+    if (!alphaNumRegex.test(data.routeCode)) {
+      errors.routeCode = "Route Code must be alphanumeric only";
+    }
+
+    if (data.routeCode.length > 10) {
+      errors.routeCode = "Route Code cannot exceed 10 characters";
+    }
+  }
+
+  // Description
+  if (!data.description || !data.description.trim()) {
+    errors.description = "Description is required";
+  } else {
+    if (!alphaNumSpaceRegex.test(data.description)) {
+      errors.description = "Description contains invalid characters";
+    }
+
+    if (data.description.length > 100) {
+      errors.description = "Description cannot exceed 100 characters";
+    }
+  }
+
+  return errors;
+};
+
+const validateStages = (stages) => {
+  const errors = {};
+
+  if (!Array.isArray(stages) || stages.length === 0) {
+    errors.stages = "At least one stage is required";
+    return errors;
+  }
+
+  stages.forEach((s, index) => {
+    if (
+      s.transitTime &&
+      (!/^\d+$/.test(String(s.transitTime)) || Number(s.transitTime) < 0)
+    ) {
+      errors[`stage_${index}_transitTime`] =
+        "Transit Time must be positive numeric";
+    }
+  });
+
+  return errors;
+};
 // GET /api/routes
 exports.getRoutes = asyncHandler(async (req, res) => {
   const list = await db.Route.findAll({ where: { isDeleted: false } });
@@ -26,29 +82,34 @@ exports.getRouteById = asyncHandler(async (req, res) => {
 
 // POST /api/routes
 exports.createRoute = asyncHandler(async (req, res) => {
-  const { routeCode, description } = req.body;
+  req.body.routeCode = (req.body.routeCode || "").trim().toUpperCase();
 
-  const alphaNumRegex = /^[A-Za-z0-9\s-]+$/;
+  req.body.description = (req.body.description || "").trim();
 
-  if (!routeCode || !alphaNumRegex.test(routeCode)) {
-    return res.status(400).json({
-      message: "Invalid Route Code",
-    });
-  }
+  const errors = validateRoute(req.body);
 
-  if (!description || !alphaNumRegex.test(description)) {
-    return res.status(400).json({
-      message: "Invalid Description",
-    });
+  const parsedStages = JSON.parse(req.body.stagesJson || "[]");
+
+  const stageErrors = validateStages(parsedStages);
+
+  Object.assign(errors, stageErrors);
+
+  if (Object.keys(errors).length > 0) {
+    return res.status(400).json({ errors });
   }
 
   const existing = await db.Route.findOne({
-    where: { routeCode },
+    where: {
+      routeCode: req.body.routeCode,
+      isDeleted: false,
+    },
   });
 
   if (existing) {
     return res.status(400).json({
-      message: "Route Code already exists",
+      errors: {
+        routeCode: "Route Code already exists",
+      },
     });
   }
 
@@ -56,7 +117,6 @@ exports.createRoute = asyncHandler(async (req, res) => {
 
   res.status(201).json(route);
 });
-
 // PUT /api/routes/:id
 exports.updateRoute = asyncHandler(async (req, res) => {
   const route = await db.Route.findByPk(req.params.id);
@@ -67,13 +127,37 @@ exports.updateRoute = asyncHandler(async (req, res) => {
     });
   }
 
-  const { description } = req.body;
+  req.body.routeCode = (req.body.routeCode || "").trim().toUpperCase();
 
-  const alphaNumRegex = /^[A-Za-z0-9\s-]+$/;
+  req.body.description = (req.body.description || "").trim();
 
-  if (!description || !alphaNumRegex.test(description)) {
+  const errors = validateRoute(req.body);
+
+  const parsedStages = JSON.parse(req.body.stagesJson || "[]");
+
+  const stageErrors = validateStages(parsedStages);
+
+  Object.assign(errors, stageErrors);
+
+  if (Object.keys(errors).length > 0) {
+    return res.status(400).json({ errors });
+  }
+
+  const existing = await db.Route.findOne({
+    where: {
+      routeCode: req.body.routeCode,
+      isDeleted: false,
+      id: {
+        [Op.ne]: req.params.id,
+      },
+    },
+  });
+
+  if (existing) {
     return res.status(400).json({
-      message: "Invalid Description",
+      errors: {
+        routeCode: "Route Code already exists",
+      },
     });
   }
 

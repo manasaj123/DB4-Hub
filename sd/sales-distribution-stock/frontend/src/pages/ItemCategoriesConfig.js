@@ -49,7 +49,7 @@ const ItemCategoriesConfig = () => {
 
   const alphaNumericFields = [
     "salesDocumentType",
-    // "itemCategoryGroup",
+    "itemCategoryGroup",
     "itemUsage",
     "itemCategoryHighLevelItem",
     "defaultItemCategory",
@@ -58,7 +58,8 @@ const ItemCategoriesConfig = () => {
 
   // no special characters except - / ( ) .
   const validateAlphaNumeric = (value) => {
-    return /^[a-zA-Z0-9\s\-\/().]*$/.test(value);
+    // return /^[a-zA-Z0-9\s\-\/().]*$/.test(value);
+    return /^[a-zA-Z0-9]*$/.test(value);
   };
 
   const handleChange = (e) => {
@@ -80,10 +81,7 @@ const ItemCategoriesConfig = () => {
     const requiredFields = {
       salesDocumentType: "Sales Document Type",
       itemCategoryGroup: "Item Category Group",
-      itemUsage: "Item Usage",
-      itemCategoryHighLevelItem: "High-Level Item Category",
       defaultItemCategory: "Default Item Category",
-      manualItemCategory: "Manual Item Category",
     };
 
     for (const [field, label] of Object.entries(requiredFields)) {
@@ -91,6 +89,16 @@ const ItemCategoriesConfig = () => {
         alert(`${label} is required`);
         return;
       }
+    }
+
+    // valid category group
+    const validGroups = ["HIGH", "MID", "LOW"];
+
+    if (
+      !validGroups.includes(formData.itemCategoryGroup.trim().toUpperCase())
+    ) {
+      alert("Item Category Group must be HIGH, MID or LOW");
+      return;
     }
 
     const payload = { ...formData };
@@ -106,6 +114,16 @@ const ItemCategoriesConfig = () => {
       loadData();
     } catch (err) {
       console.error("Error saving item categories config", err);
+
+      if (err.response?.data?.errors) {
+        const backendErrors = Object.values(err.response.data.errors).join(
+          "\n",
+        );
+
+        alert(backendErrors);
+      } else {
+        alert("Failed to save item categories config");
+      }
     }
   };
 
@@ -313,7 +331,7 @@ const ItemCategoriesConfig = () => {
               onChange={handleChange}
               placeholder="item usage"
               maxLength={10}
-              required
+       
             />
           </div>
         </div>
@@ -327,7 +345,7 @@ const ItemCategoriesConfig = () => {
               onChange={handleChange}
               placeholder="itemcat-hgl-vitm"
               maxLength={10}
-              required
+          
             />
           </div>
           <div className="form-field">
@@ -349,7 +367,7 @@ const ItemCategoriesConfig = () => {
               onChange={handleChange}
               placeholder="manualitemcat"
               maxLength={4}
-              required
+        
             />
           </div>
         </div>

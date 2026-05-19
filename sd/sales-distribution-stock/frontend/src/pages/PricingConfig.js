@@ -43,17 +43,30 @@ const PricingConfig = () => {
     loadData();
   }, []);
 
-  const alphaNumericFields = ["pricingProcedure", "description"];
+  const [errors, setErrors] = useState({});
+
+  const alphaNumericFields = ["pricingProcedure"];
+  const alphaNumericSpaceFields = ["description"];
 
   const validateAlphaNumeric = (value) => {
-    return /^[a-zA-Z0-9\s\-\/().]*$/.test(value);
+    return /^[a-zA-Z0-9]*$/.test(value);
+  };
+
+  const validateAlphaNumericSpace = (value) => {
+    return /^[a-zA-Z0-9\s]*$/.test(value);
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // no special characters
     if (alphaNumericFields.includes(name) && !validateAlphaNumeric(value)) {
+      return;
+    }
+
+    if (
+      alphaNumericSpaceFields.includes(name) &&
+      !validateAlphaNumericSpace(value)
+    ) {
       return;
     }
 
@@ -109,7 +122,11 @@ const PricingConfig = () => {
       setEditingId(null);
       loadData();
     } catch (err) {
-      console.error("Error saving pricing config", err);
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors);
+      } else {
+        console.error("Error saving pricing config", err);
+      }
     }
   };
 
@@ -282,6 +299,11 @@ const PricingConfig = () => {
             disabled={!!editingId}
             maxLength={10}
           />
+          {errors.pricingProcedure && (
+            <div style={{ color: "red", fontSize: "12px" }}>
+              {errors.pricingProcedure}
+            </div>
+          )}
         </div>
         <div className="form-row">
           <label>Description</label>
@@ -293,6 +315,11 @@ const PricingConfig = () => {
             maxLength={100}
             style={{ width: "350px" }}
           />
+          {errors.description && (
+            <div style={{ color: "red", fontSize: "12px" }}>
+              {errors.description}
+            </div>
+          )}
         </div>
 
         <div className="form-actions">

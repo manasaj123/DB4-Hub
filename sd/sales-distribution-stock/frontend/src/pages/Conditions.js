@@ -59,6 +59,7 @@ const Conditions = () => {
     loadData();
   }, []);
 
+  const [errors, setErrors] = useState({});
   const alphaNumericFields = ["conditionType", "salesOrg"];
 
   const validateAlphaNumeric = (value) => {
@@ -75,6 +76,12 @@ const Conditions = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // clear field error while typing
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
 
     // normal text validation
     if (alphaNumericFields.includes(name) && !validateAlphaNumeric(value)) {
@@ -106,6 +113,7 @@ const Conditions = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
 
     const requiredFields = {
       conditionType: "Condition Type",
@@ -123,6 +131,17 @@ const Conditions = () => {
         alert(`${label} is required`);
         return;
       }
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const validFromDate = new Date(formData.validFrom);
+    const validToDate = new Date(formData.validTo);
+
+    if (validFromDate < today) {
+      alert("Valid From date cannot be in the past");
+      return;
     }
 
     if (
@@ -174,7 +193,11 @@ const Conditions = () => {
       setEditingId(null);
       loadData();
     } catch (err) {
-      console.error("Error saving condition", err);
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors);
+      } else {
+        console.error("Error saving condition", err);
+      }
     }
   };
 
@@ -383,6 +406,11 @@ const Conditions = () => {
               maxLength={4}
               required
             />
+            {errors.conditionType && (
+              <div style={{ color: "red", fontSize: "12px" }}>
+                {errors.conditionType}
+              </div>
+            )}
           </div>
 
           <div className="form-row">
@@ -427,6 +455,11 @@ const Conditions = () => {
               maxLength={10}
               required
             />
+            {errors.salesOrg && (
+              <div style={{ color: "red", fontSize: "12px" }}>
+                {errors.salesOrg}
+              </div>
+            )}
           </div>
 
           <div className="form-row">
@@ -438,6 +471,11 @@ const Conditions = () => {
               maxLength={10}
               required
             />
+            {errors.distributionChannel && (
+              <div style={{ color: "red", fontSize: "12px" }}>
+                {errors.distributionChannel}
+              </div>
+            )}
           </div>
 
           <div className="form-row">
@@ -451,6 +489,11 @@ const Conditions = () => {
               onChange={handleChange}
               required
             />
+            {errors.price && (
+              <div style={{ color: "red", fontSize: "12px" }}>
+                {errors.price}
+              </div>
+            )}
           </div>
 
           <div className="form-row">
@@ -462,6 +505,11 @@ const Conditions = () => {
               maxLength={3}
               required
             />
+            {errors.currency && (
+              <div style={{ color: "red", fontSize: "12px" }}>
+                {errors.currency}
+              </div>
+            )}
           </div>
 
           <div className="form-row">
@@ -484,6 +532,11 @@ const Conditions = () => {
               onChange={handleChange}
               required
             />
+            {errors.validTo && (
+              <div style={{ color: "red", fontSize: "12px" }}>
+                {errors.validTo}
+              </div>
+            )}
           </div>
         </div>
 

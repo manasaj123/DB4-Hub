@@ -51,7 +51,9 @@ exports.createAgreement = asyncHandler(async (req, res) => {
   }
 
   // Vendor validation
-  const vendorRegex = /^[a-zA-Z\s\-().]+$/;
+  // const vendorRegex = /^[a-zA-Z\s\-().]+$/;
+
+  const vendorRegex = /^[a-zA-Z0-9\s\-().]+$/;
 
   if (!vendorRegex.test(vendorName)) {
     return res.status(400).json({
@@ -132,9 +134,9 @@ exports.updateAgreement = asyncHandler(async (req, res) => {
   }
 
   // Vendor validation
-  const alphaNumericRegex = /^[a-zA-Z0-9\s\-\/().]+$/;
+  const vendorRegex = /^[a-zA-Z0-9\s\-().]+$/;
 
-  if (!alphaNumericRegex.test(vendorName)) {
+  if (!vendorRegex.test(vendorName)) {
     return res.status(400).json({
       message: "Invalid Vendor Name",
     });
@@ -179,9 +181,9 @@ exports.updateAgreement = asyncHandler(async (req, res) => {
   await agr.update({
     vendorName: vendorName.trim(),
     contractType: contractType.toUpperCase(),
-    purchasingOrg,
-    purchasingGroup,
-    plant,
+    purchasingOrg: purchasingOrg.toUpperCase(),
+    purchasingGroup: purchasingGroup.toUpperCase(),
+    plant: plant.toUpperCase(),
     agreementDate,
   });
 

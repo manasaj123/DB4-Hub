@@ -48,13 +48,12 @@ const Agreement = () => {
   }, []);
 
   const validateAlphaNumeric = (value) => {
-    return /^[a-zA-Z0-9\s\-\/().]*$/.test(value);
+    return /^[a-zA-Z0-9\s\-().]*$/.test(value);
   };
 
   const validateVendorName = (value) => {
-    return /^[a-zA-Z\s\-().]*$/.test(value);
+    return /^[a-zA-Z0-9\s\-().]*$/.test(value);
   };
-
   const validateMaxLength = (value, max) => {
     return value.length <= max;
   };

@@ -34,6 +34,9 @@ exports.getPickingById = asyncHandler(async (req, res) => {
 
 // POST /api/pickings
 exports.createPicking = asyncHandler(async (req, res) => {
+  req.body.warehouse = (req.body.warehouse || "").trim().toUpperCase();
+
+  req.body.plant = (req.body.plant || "").trim().toUpperCase();
   const { deliveryId, warehouse, plant, pickingStatus, packingStatus } =
     req.body;
 
@@ -48,8 +51,10 @@ exports.createPicking = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Warehouse is required" });
   }
 
-  if (!plant) {
-    return res.status(400).json({ message: "Plant is required" });
+  if (!plant || !plant.trim()) {
+    return res.status(400).json({
+      message: "Plant is required",
+    });
   }
 
   // 2. Special character check
@@ -76,7 +81,8 @@ exports.createPicking = asyncHandler(async (req, res) => {
   // 3. Business rule: Packing before Picking
   if (pickingStatus === "PICKED" && packingStatus !== "PACKED") {
     return res.status(400).json({
-      message: "Cannot PICKED before PACKED is completed",
+      // message: "Cannot PICKED before PACKED is completed",
+      message: "Packing must be completed before Picking",
     });
   }
 
@@ -101,6 +107,9 @@ exports.createPicking = asyncHandler(async (req, res) => {
 
 // PUT /api/pickings/:id
 exports.updatePicking = asyncHandler(async (req, res) => {
+  req.body.warehouse = (req.body.warehouse || "").trim().toUpperCase();
+
+  req.body.plant = (req.body.plant || "").trim().toUpperCase();
   const rec = await db.Picking.findByPk(req.params.id);
   if (!rec) {
     return res.status(404).json({ message: "Picking record not found" });
@@ -116,8 +125,10 @@ exports.updatePicking = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Delivery is required" });
   }
 
-  if (!warehouse) {
-    return res.status(400).json({ message: "Warehouse is required" });
+  if (!warehouse || !warehouse.trim()) {
+    return res.status(400).json({
+      message: "Warehouse is required",
+    });
   }
 
   if (!plant?.trim()) {

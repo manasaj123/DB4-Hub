@@ -142,10 +142,21 @@ const Inquiry = () => {
   // };
 
   const addItem = () => {
-    if (!itemForm.materialId || !itemForm.quantity || !itemForm.uom) {
-      alert("Fill material, quantity and UoM");
+    if (!itemForm.materialId) {
+      alert("Select material");
       return;
     }
+
+    if (!itemForm.quantity || Number(itemForm.quantity) <= 0) {
+      alert("Enter valid quantity");
+      return;
+    }
+
+    if (!itemForm.uom) {
+      alert("Select UoM");
+      return;
+    }
+
     setItems((prev) => [...prev, { ...itemForm }]);
     setItemForm(initialItem);
   };
@@ -188,6 +199,16 @@ const Inquiry = () => {
       loadData();
     } catch (err) {
       console.error("Error saving inquiry", err);
+
+      if (err.response?.data?.errors) {
+        const backendErrors = Object.values(err.response.data.errors).join(
+          "\n",
+        );
+
+        alert(backendErrors);
+      } else {
+        alert("Failed to save inquiry");
+      }
     }
   };
 
@@ -517,11 +538,7 @@ const Inquiry = () => {
             value={itemForm.quantity}
             onChange={handleItemChange}
           />
-          <select
-            name="uom"
-            value={itemForm.uom}
-            onChange={handleItemChange}
-          >
+          <select name="uom" value={itemForm.uom} onChange={handleItemChange}>
             <option value="">Select UoM</option>
             <option value="KG">KG</option>
             <option value="LITERS">LITERS</option>

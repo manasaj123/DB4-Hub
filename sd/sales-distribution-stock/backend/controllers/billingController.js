@@ -44,8 +44,9 @@ exports.createBilling = asyncHandler(async (req, res) => {
   } = req.body;
 
   // normalize case (fix case sensitivity requirement)
-  billingType = billingType?.toUpperCase();
-  documentNumber = documentNumber?.toUpperCase();
+  billingType = billingType?.trim().toUpperCase();
+  documentNumber = documentNumber?.trim().toUpperCase();
+  currency = currency?.trim().toUpperCase();
 
   // validations
   if (!billingType || !/^[A-Z0-9]+$/.test(billingType)) {
@@ -114,14 +115,14 @@ exports.updateBilling = asyncHandler(async (req, res) => {
   let { billingType, documentNumber, totalAmount } = req.body;
 
   if (billingType) {
-    billingType = billingType.toUpperCase();
+    billingType = billingType.trim().toUpperCase();
     if (!/^[A-Z0-9]+$/.test(billingType)) {
       return res.status(400).json({ message: "Invalid billing type" });
     }
   }
 
   if (documentNumber) {
-    documentNumber = documentNumber.toUpperCase();
+    documentNumber = documentNumber.trim().toUpperCase();
     if (!/^[A-Z0-9]+$/.test(documentNumber)) {
       return res.status(400).json({ message: "Invalid document number" });
     }
