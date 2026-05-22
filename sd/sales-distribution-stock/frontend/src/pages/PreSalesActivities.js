@@ -7,10 +7,12 @@ import {
   softDeleteInquiry,
 } from "../services/inquiryService";
 import { getCustomers } from "../services/customerService";
+import { getMaterials } from "../services/materialService";
 
 function PreSalesActivities() {
   const [inquiries, setInquiries] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [materials, setMaterials] = useState([]);
   const [form, setForm] = useState({
     inquiryType: "IN",
     salesOrg: "",
@@ -18,7 +20,7 @@ function PreSalesActivities() {
     division: "",
     soldToPartyId: "",
     shipToPartyId: "",
-    materialCode: "",
+    materialId: "",
     quantity: 1,
   });
   const [editingId, setEditingId] = useState(null);
@@ -26,6 +28,11 @@ function PreSalesActivities() {
   const loadInquiries = async () => {
     const res = await getInquiries();
     setInquiries(res.data);
+  };
+
+  const loadMaterials = async () => {
+    const res = await getMaterials();
+    setMaterials(res.data);
   };
 
   const loadCustomers = async () => {
@@ -36,6 +43,7 @@ function PreSalesActivities() {
   useEffect(() => {
     loadInquiries();
     loadCustomers();
+    loadMaterials();
   }, []);
 
   const handleChange = (e) => {
@@ -74,8 +82,8 @@ function PreSalesActivities() {
     }
 
     // Material validation
-    if (!form.materialCode.trim()) {
-      alert("Material Code is required");
+    if (!form.materialId) {
+      alert("Material is required");
       return;
     }
 
@@ -97,11 +105,11 @@ function PreSalesActivities() {
       return;
     }
 
-    // Material Code format validation
-    if (!/^[A-Za-z0-9-]+$/.test(form.materialCode)) {
-      alert("Material Code contains invalid characters");
-      return;
-    }
+    // Material Code format validation no needed anymore user selects dropdown
+    // if (!/^[A-Za-z0-9-]+$/.test(form.materialCode)) {
+    //   alert("Material Code contains invalid characters");
+    //   return;
+    // }
 
     // Customer validation
     if (!form.soldToPartyId || !form.shipToPartyId) {
@@ -122,14 +130,25 @@ function PreSalesActivities() {
     }
 
     // Duplicate inquiry validation
+    // Replace the duplicate check that used materialId + quantity
+    const items = [
+      {
+        materialId: form.materialId,
+        quantity: form.quantity,
+        uom: "NOS", // default UoM; you can add a dropdown if you prefer
+      },
+    ];
+    const itemsJsonStr = JSON.stringify(items);
+
     const duplicate = inquiries.find(
       (inq) =>
+        inq.inquiryType === form.inquiryType &&
         inq.salesOrg === form.salesOrg &&
         inq.distributionChannel === form.distributionChannel &&
         inq.division === form.division &&
         String(inq.soldToPartyId) === String(form.soldToPartyId) &&
-        inq.materialCode === form.materialCode &&
-        Number(inq.quantity) === Number(form.quantity) &&
+        String(inq.shipToPartyId) === String(form.shipToPartyId) &&
+        inq.itemsJson === itemsJsonStr && // compare the JSON string
         inq.id !== editingId,
     );
 
@@ -139,25 +158,25 @@ function PreSalesActivities() {
     }
 
     try {
+      const payload = {
+        inquiryType: form.inquiryType,
+        salesOrg: form.salesOrg,
+        distributionChannel: form.distributionChannel,
+        division: form.division,
+        soldToPartyId: form.soldToPartyId,
+        shipToPartyId: form.shipToPartyId,
+        itemsJson: itemsJsonStr, // send as string
+        // Do NOT send materialId, quantity, or materialCode
+      };
+
       if (editingId) {
-        await updateInquiry(editingId, form);
+        await updateInquiry(editingId, payload);
         setEditingId(null);
       } else {
-        await createInquiry(form);
+        await createInquiry(payload);
       }
 
-      setForm({
-        inquiryType: "IN",
-        salesOrg: "",
-        distributionChannel: "",
-        division: "",
-        soldToPartyId: "",
-        shipToPartyId: "",
-        materialCode: "",
-        quantity: 1,
-      });
-
-      loadInquiries();
+      // reset form... (unchanged)
     } catch (err) {
       console.error("Save inquiry error:", err);
     }
@@ -172,8 +191,23 @@ function PreSalesActivities() {
       division: inq.division,
       soldToPartyId: inq.soldToPartyId,
       shipToPartyId: inq.shipToPartyId,
-      materialCode: inq.materialCode || "",
-      quantity: inq.quantity,
+      // extract from itemsJson if exists, else fallback
+      materialId: (() => {
+        try {
+          const items = JSON.parse(inq.itemsJson || "[]");
+          return items[0]?.materialId || inq.materialId || "";
+        } catch {
+          return inq.materialId || "";
+        }
+      })(),
+      quantity: (() => {
+        try {
+          const items = JSON.parse(inq.itemsJson || "[]");
+          return items[0]?.quantity || inq.quantity || 1;
+        } catch {
+          return inq.quantity || 1;
+        }
+      })(),
     });
   };
 
@@ -378,13 +412,20 @@ function PreSalesActivities() {
             </select>
           </div>
           <div className="form-row">
-            <input
-              name="materialCode"
-              value={form.materialCode}
+            <select
+              name="materialId"
+              value={form.materialId}
               onChange={handleChange}
-              placeholder="Material Code"
               required
-            />
+            >
+              <option value="">Select Material</option>
+
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.materialCode} - {m.description}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="form-row">
             <input
@@ -425,7 +466,11 @@ function PreSalesActivities() {
               <td>{inq.inquiryType}</td>
               <td>{inq.salesOrg}</td>
               <td>{displayCustomer(inq.soldToPartyId)}</td>
-              <td>{inq.materialCode}</td>
+              <td>
+                {inq.Material
+                  ? `${inq.Material.materialCode} - ${inq.Material.description}`
+                  : inq.materialCode}
+              </td>
               <td>{inq.quantity}</td>
               <td>
                 <button

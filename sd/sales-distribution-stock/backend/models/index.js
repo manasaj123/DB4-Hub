@@ -1,15 +1,15 @@
 // backend/models/index.js
-const { Sequelize, DataTypes } = require('sequelize');
+const { Sequelize, DataTypes } = require("sequelize");
 
 const sequelize = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
   process.env.DB_PASSWORD,
   {
-    host: process.env.DB_HOST || 'localhost',
-    dialect: 'mysql',
+    host: process.env.DB_HOST || "localhost",
+    dialect: "mysql",
     logging: false,
-  }
+  },
 );
 
 const db = {};
@@ -17,10 +17,14 @@ db.sequelize = sequelize;
 
 // ================= MATERIAL =================
 db.Material = sequelize.define(
-  'Material',
+  "Material",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    materialCode: { type: DataTypes.STRING(50), allowNull: false, unique: true },
+    materialCode: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      unique: true,
+    },
     description: { type: DataTypes.STRING(255), allowNull: false },
     baseUom: { type: DataTypes.STRING(10), allowNull: false },
     materialType: { type: DataTypes.STRING(20), allowNull: false },
@@ -31,12 +35,12 @@ db.Material = sequelize.define(
     movementType: { type: DataTypes.STRING(4) },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'materials', timestamps: true }
+  { tableName: "materials", timestamps: true },
 );
 
 // ================= SALES VIEW =================
 db.SalesView = sequelize.define(
-  'SalesView',
+  "SalesView",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     materialId: { type: DataTypes.INTEGER, allowNull: false },
@@ -53,22 +57,28 @@ db.SalesView = sequelize.define(
     transportationGroup: { type: DataTypes.STRING(10) },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'sales_views', timestamps: true }
+  { tableName: "sales_views", timestamps: true },
 );
 
 // ================= CUSTOMER GROUP =================
 db.CustomerGroup = sequelize.define(
-  'CustomerGroup',
+  "CustomerGroup",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     accountGroup: { type: DataTypes.STRING(4), allowNull: false, unique: true },
     name: { type: DataTypes.STRING(100), allowNull: false },
-    fieldStatusGeneral: { type: DataTypes.STRING(20), defaultValue: 'optional' },
-    fieldStatusCompanyCode: { type: DataTypes.STRING(20), defaultValue: 'optional' },
-    fieldStatusSales: { type: DataTypes.STRING(20), defaultValue: 'optional' },
+    fieldStatusGeneral: {
+      type: DataTypes.STRING(20),
+      defaultValue: "optional",
+    },
+    fieldStatusCompanyCode: {
+      type: DataTypes.STRING(20),
+      defaultValue: "optional",
+    },
+    fieldStatusSales: { type: DataTypes.STRING(20), defaultValue: "optional" },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'customer_groups', timestamps: true }
+  { tableName: "customer_groups", timestamps: true },
 );
 
 // ================= CUSTOMER (ALIGNED WITH SQL) =================
@@ -86,7 +96,7 @@ db.CustomerGroup = sequelize.define(
 // );
 // Customer
 db.Customer = sequelize.define(
-  'Customer',
+  "Customer",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
 
@@ -128,34 +138,34 @@ db.Customer = sequelize.define(
     },
   },
   {
-    tableName: 'customers',
+    tableName: "customers",
     timestamps: true, // uses createdAt / updatedAt
-  }
+  },
 );
-
 
 // ================= INQUIRY =================
 db.Inquiry = sequelize.define(
-  'Inquiry',
+  "Inquiry",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    inquiryType: { type: DataTypes.STRING(4), defaultValue: 'IN' },
+    inquiryType: { type: DataTypes.STRING(4), defaultValue: "IN" },
     salesOrg: { type: DataTypes.STRING(10), allowNull: false },
     distributionChannel: { type: DataTypes.STRING(10), allowNull: false },
     division: { type: DataTypes.STRING(10), allowNull: false },
     soldToPartyId: { type: DataTypes.INTEGER, allowNull: false },
     shipToPartyId: { type: DataTypes.INTEGER, allowNull: false },
+    materialId: { type: DataTypes.INTEGER, allowNull: true },
     materialCode: { type: DataTypes.STRING(20), allowNull: true },
     quantity: { type: DataTypes.DECIMAL(15, 3), allowNull: true },
     itemsJson: { type: DataTypes.TEXT },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'inquiries', timestamps: true }
+  { tableName: "inquiries", timestamps: true },
 );
 
 // ================= QUOTATION =================
 db.Quotation = sequelize.define(
-  'Quotation',
+  "Quotation",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     quotationType: { type: DataTypes.STRING(4), allowNull: false },
@@ -174,12 +184,12 @@ db.Quotation = sequelize.define(
     referenceInquiryId: { type: DataTypes.INTEGER },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'quotations', timestamps: true }
+  { tableName: "quotations", timestamps: true },
 );
 
 // ================= SALES ORDER =================
 db.SalesOrder = sequelize.define(
-  'SalesOrder',
+  "SalesOrder",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     orderType: { type: DataTypes.STRING(4), allowNull: false },
@@ -187,18 +197,18 @@ db.SalesOrder = sequelize.define(
     distributionChannel: { type: DataTypes.STRING(10), allowNull: false },
     division: { type: DataTypes.STRING(10), allowNull: false },
     salesOffice: { type: DataTypes.STRING(10) },
-salesGroup: { type: DataTypes.STRING(10) },
+    salesGroup: { type: DataTypes.STRING(10) },
     soldToPartyId: { type: DataTypes.INTEGER, allowNull: false },
     shipToPartyId: { type: DataTypes.INTEGER, allowNull: false },
     itemsJson: { type: DataTypes.TEXT },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'sales_orders', timestamps: true }
+  { tableName: "sales_orders", timestamps: true },
 );
 
 // ================= SALES DOCUMENT CONFIG =================
 db.SalesDocumentConfig = sequelize.define(
-  'SalesDocumentConfig',
+  "SalesDocumentConfig",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     documentType: { type: DataTypes.STRING(4), allowNull: false, unique: true },
@@ -221,13 +231,13 @@ db.SalesDocumentConfig = sequelize.define(
     intercompanyBillingType: { type: DataTypes.STRING(4) },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'sales_document_configs', timestamps: true }
+  { tableName: "sales_document_configs", timestamps: true },
 );
 
 // ================= ITEM CATEGORIES CONFIG =================
 // ================= ITEM CATEGORIES CONFIG =================
 db.ItemCategoriesConfig = sequelize.define(
-  'ItemCategoriesConfig',
+  "ItemCategoriesConfig",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
 
@@ -240,12 +250,12 @@ db.ItemCategoriesConfig = sequelize.define(
     manualItemCategory: { type: DataTypes.STRING(4) },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'item_categories_configs', timestamps: true }
+  { tableName: "item_categories_configs", timestamps: true },
 );
 
 // ================= SCHEDULE LINE =================
 db.ScheduleLine = sequelize.define(
-  'ScheduleLine',
+  "ScheduleLine",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     scheduleLineCategory: {
@@ -256,8 +266,8 @@ db.ScheduleLine = sequelize.define(
     description: { type: DataTypes.STRING(100) },
 
     // must exist and match DB column names
-    requirementRelevant: { type: DataTypes.STRING(1) },   // maps to requirementRelevant
-    availabilityCheck: { type: DataTypes.STRING(2) },     // maps to availabilityCheck
+    requirementRelevant: { type: DataTypes.STRING(1) }, // maps to requirementRelevant
+    availabilityCheck: { type: DataTypes.STRING(2) }, // maps to availabilityCheck
 
     deliveryBlock: { type: DataTypes.STRING(4) },
     movementType: { type: DataTypes.STRING(4) },
@@ -268,11 +278,11 @@ db.ScheduleLine = sequelize.define(
     specIssValSlt: { type: DataTypes.STRING(4) },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'schedule_lines', timestamps: true }
+  { tableName: "schedule_lines", timestamps: true },
 );
 // ================= CONDITION =================
 db.Condition = sequelize.define(
-  'Condition',
+  "Condition",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     conditionType: { type: DataTypes.STRING(4), allowNull: false },
@@ -281,17 +291,17 @@ db.Condition = sequelize.define(
     salesOrg: { type: DataTypes.STRING(10) },
     distributionChannel: { type: DataTypes.STRING(10) },
     price: { type: DataTypes.DECIMAL(15, 2), allowNull: false },
-    currency: { type: DataTypes.STRING(3), defaultValue: 'INR' },
+    currency: { type: DataTypes.STRING(3), defaultValue: "INR" },
     validFrom: { type: DataTypes.DATEONLY },
     validTo: { type: DataTypes.DATEONLY },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'conditions', timestamps: true }
+  { tableName: "conditions", timestamps: true },
 );
 
 // ================= AGREEMENT =================
 db.Agreement = sequelize.define(
-  'Agreement',
+  "Agreement",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     vendorName: { type: DataTypes.STRING(150), allowNull: false },
@@ -302,12 +312,12 @@ db.Agreement = sequelize.define(
     agreementDate: { type: DataTypes.DATEONLY, allowNull: false },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'agreements', timestamps: true }
+  { tableName: "agreements", timestamps: true },
 );
 
 // ================= QUOTA =================
 db.Quota = sequelize.define(
-  'Quota',
+  "Quota",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     purchasingGroup: { type: DataTypes.STRING(10), allowNull: false },
@@ -321,26 +331,30 @@ db.Quota = sequelize.define(
     quotaUsage: { type: DataTypes.STRING(4) },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'quotas', timestamps: true }
+  { tableName: "quotas", timestamps: true },
 );
 
 // ================= SHIPPING =================
 db.Shipping = sequelize.define(
-  'Shipping',
+  "Shipping",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    shippingPoint: { type: DataTypes.STRING(10), allowNull: false, unique: true },
+    shippingPoint: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+      unique: true,
+    },
     description: { type: DataTypes.STRING(100) },
     defaultRoute: { type: DataTypes.STRING(10) },
     planningRelevant: { type: DataTypes.BOOLEAN, defaultValue: true },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'shipping', timestamps: true }
+  { tableName: "shipping", timestamps: true },
 );
 
 // ================= ROUTE =================
 db.Route = sequelize.define(
-  'Route',
+  "Route",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     routeCode: { type: DataTypes.STRING(10), allowNull: false, unique: true },
@@ -348,12 +362,12 @@ db.Route = sequelize.define(
     stagesJson: { type: DataTypes.TEXT },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'routes', timestamps: true }
+  { tableName: "routes", timestamps: true },
 );
 
 // ================= DELIVERY =================
 db.Delivery = sequelize.define(
-  'Delivery',
+  "Delivery",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     shippingPoint: { type: DataTypes.STRING(10), allowNull: false },
@@ -364,111 +378,185 @@ db.Delivery = sequelize.define(
     deliveryGroup: { type: DataTypes.STRING(10) },
     postGoodsIssueDate: { type: DataTypes.DATEONLY },
     status: {
-      type: DataTypes.ENUM('OPEN', 'PICKED', 'PACKED', 'PGI_DONE'),
-      defaultValue: 'OPEN',
+      type: DataTypes.ENUM("OPEN", "PICKED", "PACKED", "PGI_DONE"),
+      defaultValue: "OPEN",
     },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'deliveries', timestamps: true }
+  { tableName: "deliveries", timestamps: true },
 );
 
 // ================= PICKING =================
 db.Picking = sequelize.define(
-  'Picking',
+  "Picking",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     deliveryId: { type: DataTypes.INTEGER, allowNull: false },
     warehouse: { type: DataTypes.STRING(10) },
     plant: { type: DataTypes.STRING(10) },
-    pickingStatus: { type: DataTypes.ENUM('OPEN', 'PICKED'), defaultValue: 'OPEN' },
-    packingStatus: { type: DataTypes.ENUM('OPEN', 'PACKED'), defaultValue: 'OPEN' },
+    pickingStatus: {
+      type: DataTypes.ENUM("OPEN", "PICKED"),
+      defaultValue: "OPEN",
+    },
+    packingStatus: {
+      type: DataTypes.ENUM("OPEN", "PACKED"),
+      defaultValue: "OPEN",
+    },
     postGoodsIssue: { type: DataTypes.BOOLEAN, defaultValue: false },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'pickings', timestamps: true }
+  { tableName: "pickings", timestamps: true },
 );
 
 // ================= BILLING =================
 db.Billing = sequelize.define(
-  'Billing',
+  "Billing",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     billingType: { type: DataTypes.STRING(4), allowNull: false },
     billingDate: { type: DataTypes.DATEONLY, allowNull: false },
     referenceDeliveryId: { type: DataTypes.INTEGER, allowNull: false },
-    documentNumber: { type: DataTypes.STRING(20), allowNull: false, unique: true },
+    documentNumber: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      unique: true,
+    },
     totalAmount: { type: DataTypes.DECIMAL(15, 2), allowNull: false },
-    currency: { type: DataTypes.STRING(3), defaultValue: 'INR' },
+    currency: { type: DataTypes.STRING(3), defaultValue: "INR" },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'billings', timestamps: true }
+  { tableName: "billings", timestamps: true },
 );
 
 // ================= CREDIT =================
 db.Credit = sequelize.define(
-  'Credit',
+  "Credit",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     customerId: { type: DataTypes.INTEGER, allowNull: false },
     creditLimit: { type: DataTypes.DECIMAL(15, 2), allowNull: false },
-    currency: { type: DataTypes.STRING(3), defaultValue: 'INR' },
+    currency: { type: DataTypes.STRING(3), defaultValue: "INR" },
     riskCategory: { type: DataTypes.STRING(4) },
     creditGroup: { type: DataTypes.STRING(4) },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'credits', timestamps: true }
+  { tableName: "credits", timestamps: true },
 );
 
 // ================= PRICING CONFIG =================
 db.PricingConfig = sequelize.define(
-  'PricingConfig',
+  "PricingConfig",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    pricingProcedure: { type: DataTypes.STRING(10), allowNull: false, unique: true },
+    pricingProcedure: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+      unique: true,
+    },
     description: { type: DataTypes.STRING(100) },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { tableName: 'pricing_configs', timestamps: true }
+  { tableName: "pricing_configs", timestamps: true },
 );
 
 // ================= ASSOCIATIONS =================
-db.Material.hasMany(db.SalesView, { foreignKey: 'materialId' });
-db.SalesView.belongsTo(db.Material, { foreignKey: 'materialId' });
+db.Material.hasMany(db.SalesView, { foreignKey: "materialId" });
+db.SalesView.belongsTo(db.Material, { foreignKey: "materialId" });
 
-db.Customer.hasMany(db.Inquiry, { foreignKey: 'soldToPartyId', as: 'soldInquiries' });
-db.Customer.hasMany(db.Inquiry, { foreignKey: 'shipToPartyId', as: 'shipInquiries' });
-db.Inquiry.belongsTo(db.Customer, { foreignKey: 'soldToPartyId', as: 'soldToParty' });
-db.Inquiry.belongsTo(db.Customer, { foreignKey: 'shipToPartyId', as: 'shipToParty' });
+db.Customer.hasMany(db.Inquiry, {
+  foreignKey: "soldToPartyId",
+  as: "soldInquiries",
+});
+db.Customer.hasMany(db.Inquiry, {
+  foreignKey: "shipToPartyId",
+  as: "shipInquiries",
+});
+db.Inquiry.belongsTo(db.Customer, {
+  foreignKey: "soldToPartyId",
+  as: "soldToParty",
+});
+db.Inquiry.belongsTo(db.Customer, {
+  foreignKey: "shipToPartyId",
+  as: "shipToParty",
+});
 
-db.Customer.hasMany(db.Quotation, { foreignKey: 'soldToPartyId', as: 'soldQuotations' });
-db.Customer.hasMany(db.Quotation, { foreignKey: 'shipToPartyId', as: 'shipQuotations' });
-db.Quotation.belongsTo(db.Customer, { foreignKey: 'soldToPartyId', as: 'soldToParty' });
-db.Quotation.belongsTo(db.Customer, { foreignKey: 'shipToPartyId', as: 'shipToParty' });
-db.Quotation.belongsTo(db.Inquiry, { foreignKey: 'referenceInquiryId', as: 'referenceInquiry' });
+db.Customer.hasMany(db.Quotation, {
+  foreignKey: "soldToPartyId",
+  as: "soldQuotations",
+});
+db.Customer.hasMany(db.Quotation, {
+  foreignKey: "shipToPartyId",
+  as: "shipQuotations",
+});
+db.Quotation.belongsTo(db.Customer, {
+  foreignKey: "soldToPartyId",
+  as: "soldToParty",
+});
+db.Quotation.belongsTo(db.Customer, {
+  foreignKey: "shipToPartyId",
+  as: "shipToParty",
+});
+db.Quotation.belongsTo(db.Inquiry, {
+  foreignKey: "referenceInquiryId",
+  as: "referenceInquiry",
+});
 
-db.Customer.hasMany(db.SalesOrder, { foreignKey: 'soldToPartyId', as: 'soldOrders' });
-db.Customer.hasMany(db.SalesOrder, { foreignKey: 'shipToPartyId', as: 'shipOrders' });
-db.SalesOrder.belongsTo(db.Customer, { foreignKey: 'soldToPartyId', as: 'soldToParty' });
-db.SalesOrder.belongsTo(db.Customer, { foreignKey: 'shipToPartyId', as: 'shipToParty' });
-db.SalesOrder.belongsTo(db.Inquiry, { foreignKey: 'referenceInquiryId', as: 'referenceInquiry' });
-db.SalesOrder.belongsTo(db.Quotation, { foreignKey: 'referenceQuotationId', as: 'referenceQuotation' });
+db.Customer.hasMany(db.SalesOrder, {
+  foreignKey: "soldToPartyId",
+  as: "soldOrders",
+});
+db.Customer.hasMany(db.SalesOrder, {
+  foreignKey: "shipToPartyId",
+  as: "shipOrders",
+});
+db.SalesOrder.belongsTo(db.Customer, {
+  foreignKey: "soldToPartyId",
+  as: "soldToParty",
+});
+db.SalesOrder.belongsTo(db.Customer, {
+  foreignKey: "shipToPartyId",
+  as: "shipToParty",
+});
+db.SalesOrder.belongsTo(db.Inquiry, {
+  foreignKey: "referenceInquiryId",
+  as: "referenceInquiry",
+});
+db.SalesOrder.belongsTo(db.Quotation, {
+  foreignKey: "referenceQuotationId",
+  as: "referenceQuotation",
+});
 
-db.SalesOrder.hasMany(db.Delivery, { foreignKey: 'salesOrderId' });
-db.Delivery.belongsTo(db.SalesOrder, { foreignKey: 'salesOrderId' });
+db.SalesOrder.hasMany(db.Delivery, { foreignKey: "salesOrderId" });
+db.Delivery.belongsTo(db.SalesOrder, { foreignKey: "salesOrderId" });
 
-db.Delivery.hasOne(db.Picking, { foreignKey: 'deliveryId' });
-db.Picking.belongsTo(db.Delivery, { foreignKey: 'deliveryId' });
+db.Delivery.hasOne(db.Picking, { foreignKey: "deliveryId" });
+db.Picking.belongsTo(db.Delivery, { foreignKey: "deliveryId" });
 
-db.Delivery.hasMany(db.Billing, { foreignKey: 'referenceDeliveryId' });
-db.Billing.belongsTo(db.Delivery, { foreignKey: 'referenceDeliveryId' });
+db.Delivery.hasMany(db.Billing, { foreignKey: "referenceDeliveryId" });
+db.Billing.belongsTo(db.Delivery, { foreignKey: "referenceDeliveryId" });
 
-db.Customer.hasMany(db.Credit, { foreignKey: 'customerId' });
-db.Credit.belongsTo(db.Customer, { foreignKey: 'customerId' });
+db.Customer.hasMany(db.Credit, { foreignKey: "customerId" });
+db.Credit.belongsTo(db.Customer, { foreignKey: "customerId" });
 
-db.Customer.hasMany(db.Condition, { foreignKey: 'customerId' });
-db.Condition.belongsTo(db.Customer, { foreignKey: 'customerId', as: 'customer' });
+db.Customer.hasMany(db.Condition, { foreignKey: "customerId" });
+db.Condition.belongsTo(db.Customer, {
+  foreignKey: "customerId",
+  as: "customer",
+});
 
-db.Material.hasMany(db.Condition, { foreignKey: 'materialId' });
-db.Condition.belongsTo(db.Material, { foreignKey: 'materialId', as: 'material' });
+db.Material.hasMany(db.Condition, { foreignKey: "materialId" });
+db.Condition.belongsTo(db.Material, {
+  foreignKey: "materialId",
+  as: "material",
+});
+
+// Inquiry ↔ Material
+db.Material.hasMany(db.Inquiry, {
+  foreignKey: "materialId",
+});
+
+db.Inquiry.belongsTo(db.Material, {
+  foreignKey: "materialId",
+});
 
 module.exports = db;

@@ -6,6 +6,17 @@ getAll:(cb)=>{
 db.query("SELECT * FROM inquiries",cb)
 },
 
+// getAll:(cb)=>{
+//   db.query(`
+//     SELECT 
+//       inquiries.*,
+//       material_stock.material_code AS materialCode
+//     FROM inquiries
+//     LEFT JOIN material_stock
+//       ON inquiries.materialId = material_stock.material_id
+//   `, cb)
+// },
+
 create:(data,cb)=>{
 db.query("INSERT INTO inquiries SET ?",data,cb)
 },
