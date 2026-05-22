@@ -9,7 +9,7 @@ const validateInquiry = (data) => {
 
   const alphaNumericRegex = /^[A-Za-z0-9]+$/;
   const quantityRegex = /^\d+(\.\d{1,3})?$/;
-  const uomRegex = /^(KG|LITERS|PACKETS|PIECES|NOS)$/;
+  // const uomRegex = /^(KG|LITERS|PACKETS|PIECES|NOS)$/;
 
   const requiredFields = [
     "inquiryType",
@@ -83,10 +83,56 @@ const validateInquiry = (data) => {
   }
 
   // 7. Items validation
-  let parsedItems = [];
+  // let parsedItems = [];
 
+  // try {
+  //   parsedItems =
+  //     typeof data.itemsJson === "string"
+  //       ? JSON.parse(data.itemsJson)
+  //       : data.itemsJson;
+  // } catch {
+  //   errors.itemsJson = "Invalid items format";
+  //   return errors;
+  // }
+
+  // if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+  //   errors.itemsJson = "At least one item is required";
+  //   return errors;
+  // }
+
+  // parsedItems.forEach((item, index) => {
+  //   if (!item.materialId) {
+  //     errors[`materialId_${index}`] =
+  //       `Material is required for item ${index + 1}`;
+  //   }
+
+  //   if (!item.quantity) {
+  //     errors[`quantity_${index}`] =
+  //       `Quantity is required for item ${index + 1}`;
+  //   } else {
+  //     if (
+  //       !quantityRegex.test(item.quantity.toString()) ||
+  //       Number(item.quantity) <= 0
+  //     ) {
+  //       errors[`quantity_${index}`] =
+  //         `Quantity must be a positive number with max 3 decimals for item ${
+  //           index + 1
+  //         }`;
+  //     }
+  //   }
+
+  //   if (!item.uom) {
+  //     errors[`uom_${index}`] = `UoM is required for item ${index + 1}`;
+  //   } else if (!uomRegex.test(item.uom.toUpperCase())) {
+  //     errors[`uom_${index}`] = `Invalid UoM for item ${index + 1}`;
+  //   }
+  // });
+
+  // 7. Material validation
+
+  let items = [];
   try {
-    parsedItems =
+    items =
       typeof data.itemsJson === "string"
         ? JSON.parse(data.itemsJson)
         : data.itemsJson;
@@ -95,36 +141,28 @@ const validateInquiry = (data) => {
     return errors;
   }
 
-  if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+  if (!Array.isArray(items) || items.length === 0) {
     errors.itemsJson = "At least one item is required";
     return errors;
   }
 
-  parsedItems.forEach((item, index) => {
+  items.forEach((item, index) => {
     if (!item.materialId) {
-      errors[`materialId_${index}`] =
+      errors[`item_${index}_material`] =
         `Material is required for item ${index + 1}`;
     }
-
-    if (!item.quantity) {
-      errors[`quantity_${index}`] =
-        `Quantity is required for item ${index + 1}`;
-    } else {
-      if (
-        !quantityRegex.test(item.quantity.toString()) ||
-        Number(item.quantity) <= 0
-      ) {
-        errors[`quantity_${index}`] =
-          `Quantity must be a positive number with max 3 decimals for item ${
-            index + 1
-          }`;
-      }
+    const qty = Number(item.quantity);
+    if (!item.quantity || isNaN(qty) || qty <= 0) {
+      errors[`item_${index}_quantity`] =
+        `Quantity must be > 0 for item ${index + 1}`;
     }
-
-    if (!item.uom) {
-      errors[`uom_${index}`] = `UoM is required for item ${index + 1}`;
-    } else if (!uomRegex.test(item.uom.toUpperCase())) {
-      errors[`uom_${index}`] = `Invalid UoM for item ${index + 1}`;
+    if (
+      !item.uom ||
+      !["KG", "LITERS", "PACKETS", "PIECES", "NOS"].includes(
+        item.uom.toUpperCase(),
+      )
+    ) {
+      errors[`item_${index}_uom`] = `Invalid UoM for item ${index + 1}`;
     }
   });
 
@@ -138,6 +176,7 @@ exports.getInquiries = asyncHandler(async (req, res) => {
     include: [
       { model: db.Customer, as: "soldToParty" },
       { model: db.Customer, as: "shipToParty" },
+      { model: db.Material },
     ],
   });
   res.json(list);
@@ -150,6 +189,7 @@ exports.getDeletedInquiries = asyncHandler(async (req, res) => {
     include: [
       { model: db.Customer, as: "soldToParty" },
       { model: db.Customer, as: "shipToParty" },
+      { model: db.Material },
     ],
   });
   res.json(list);
@@ -161,6 +201,7 @@ exports.getInquiryById = asyncHandler(async (req, res) => {
     include: [
       { model: db.Customer, as: "soldToParty" },
       { model: db.Customer, as: "shipToParty" },
+      { model: db.Material },
     ],
   });
   if (!inquiry) {
@@ -174,22 +215,21 @@ exports.getInquiryById = asyncHandler(async (req, res) => {
 // controllers/inquiryController.js
 exports.createInquiry = asyncHandler(async (req, res) => {
   try {
+    // Normalize header fields
     req.body.inquiryType = (req.body.inquiryType || "").trim().toUpperCase();
-
     req.body.salesOrg = (req.body.salesOrg || "").trim().toUpperCase();
-
     req.body.distributionChannel = (req.body.distributionChannel || "")
       .trim()
       .toUpperCase();
-
     req.body.division = (req.body.division || "").trim().toUpperCase();
 
+    // Validate (already handles itemsJson)
     const errors = validateInquiry(req.body);
-
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({ errors });
     }
 
+    // Duplicate check using itemsJson string
     const existingInquiry = await db.Inquiry.findOne({
       where: {
         inquiryType: req.body.inquiryType,
@@ -198,58 +238,49 @@ exports.createInquiry = asyncHandler(async (req, res) => {
         division: req.body.division,
         soldToPartyId: req.body.soldToPartyId,
         shipToPartyId: req.body.shipToPartyId,
-        itemsJson: req.body.itemsJson,
+        itemsJson: req.body.itemsJson, // compare the whole JSON string
         isDeleted: false,
       },
     });
 
     if (existingInquiry) {
       return res.status(400).json({
-        errors: {
-          duplicate: "Duplicate Inquiry already exists",
-        },
+        errors: { duplicate: "Duplicate Inquiry already exists" },
       });
     }
 
+    // No need to look up Material or set materialCode
+    // Just create the record – itemsJson already contains material IDs
     const inquiry = await db.Inquiry.create(req.body);
-
     res.status(201).json(inquiry);
   } catch (err) {
     console.error("Create inquiry error:", err.original || err);
-    res.status(500).json({
-      message: err.message,
-    });
+    res.status(500).json({ message: err.message });
   }
 });
 
 // PUT /api/inquiries/:id
-// PUT /api/inquiries/:id
 exports.updateInquiry = asyncHandler(async (req, res) => {
   const inquiry = await db.Inquiry.findByPk(req.params.id);
-
   if (!inquiry) {
-    return res.status(404).json({
-      message: "Inquiry not found",
-    });
+    return res.status(404).json({ message: "Inquiry not found" });
   }
 
   try {
+    // Normalize header fields
     req.body.inquiryType = (req.body.inquiryType || "").trim().toUpperCase();
-
     req.body.salesOrg = (req.body.salesOrg || "").trim().toUpperCase();
-
     req.body.distributionChannel = (req.body.distributionChannel || "")
       .trim()
       .toUpperCase();
-
     req.body.division = (req.body.division || "").trim().toUpperCase();
 
     const errors = validateInquiry(req.body);
-
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({ errors });
     }
 
+    // Duplicate check (exclude current inquiry)
     const existingInquiry = await db.Inquiry.findOne({
       where: {
         inquiryType: req.body.inquiryType,
@@ -260,29 +291,22 @@ exports.updateInquiry = asyncHandler(async (req, res) => {
         shipToPartyId: req.body.shipToPartyId,
         itemsJson: req.body.itemsJson,
         isDeleted: false,
-        id: {
-          [Op.ne]: req.params.id,
-        },
+        id: { [Op.ne]: req.params.id },
       },
     });
 
     if (existingInquiry) {
       return res.status(400).json({
-        errors: {
-          duplicate: "Duplicate Inquiry already exists",
-        },
+        errors: { duplicate: "Duplicate Inquiry already exists" },
       });
     }
 
+    // No Material lookup, no materialCode
     await inquiry.update(req.body);
-
     res.json(inquiry);
   } catch (err) {
     console.error("Update inquiry error:", err.original || err);
-
-    res.status(500).json({
-      message: err.message,
-    });
+    res.status(500).json({ message: err.message });
   }
 });
 
