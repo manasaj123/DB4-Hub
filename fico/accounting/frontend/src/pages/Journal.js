@@ -1,37 +1,40 @@
 // frontend/src/pages/Journal.js
-import React, { useEffect, useState } from 'react';
-import api from '../api';
+import React, { useEffect, useState } from "react";
+import api from "../api";
 
 const emptyLine = {
-  glAccount: '',
-  debit: '',
-  credit: '',
-  costCenterId: '',
-  profitCenterId: '',
-  narration: '',
+  glAccount: "",
+  debit: "",
+  credit: "",
+  costCenterId: "",
+  profitCenterId: "",
+  narration: "",
 };
 
+const ALLOWED_DOC_TYPES = ["SA", "AB", "KG", "RV", "WA", "WI"];
 const Journal = () => {
   const [header, setHeader] = useState({
-    documentDate: '',
-    postingDate: '',
-    documentType: 'SA',
-    reference: '',
-    headerText: '',
-    companyCode: 'DB4',
-    status: 'POSTED',
+    documentDate: "",
+    postingDate: "",
+    documentType: "SA",
+    reference: "",
+    headerText: "",
+    companyCode: "DB4",
+    status: "POSTED",
   });
 
   const [lines, setLines] = useState([{ ...emptyLine }]);
   const [journalSummary, setJournalSummary] = useState([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [selectedHeader, setSelectedHeader] = useState(null);
   const [selectedLines, setSelectedLines] = useState([]);
   const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState('');
+  const [modalError, setModalError] = useState("");
 
   const [totalDebit, setTotalDebit] = useState(0);
   const [totalCredit, setTotalCredit] = useState(0);
@@ -44,11 +47,17 @@ const Journal = () => {
   };
 
   const loadSummary = async () => {
+    setSaving(true);
     try {
-      const res = await api.get('/journal');
+      const res = await api.get("/journal");
       setJournalSummary(res.data || []);
     } catch (err) {
-      console.error('Journal summary load error', err.response?.data || err.message);
+      console.error(
+        "Journal summary load error",
+        err.response?.data || err.message,
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -89,34 +98,41 @@ const Journal = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
+    setSubmitting(true);
 
     if (!header.documentDate || !header.postingDate || !header.companyCode) {
-      setError('Document date, posting date and company code are required');
+      setError("Document date, posting date and company code are required");
+      setSubmitting(false);
       return;
     }
-console.log("Submitting lines:", lines);
+    console.log("Submitting lines:", lines);
 
     // Validate lines: non-empty G/L and either debit or credit
     if (
-  lines.some((l) => {
-    const gl = l.glAccount?.toString().trim();
-    const debit = Number(l.debit) || 0;
-    const credit = Number(l.credit) || 0;
+      lines.some((l) => {
+        const gl = l.glAccount?.toString().trim();
+        const debit = Number(l.debit) || 0;
+        const credit = Number(l.credit) || 0;
 
-    return (
-      !gl ||                    // GL missing
-      (debit === 0 && credit === 0) // both zero
-    );
-  })
-) {
-  setError('Each line needs a G/L account and either debit or credit');
-  return;
-}
+        return (
+          !gl ||
+          debit < 0 ||
+          credit < 0 ||
+          (debit > 0 && credit > 0) ||
+          (debit === 0 && credit === 0)
+        );
+      })
+    ) {
+      setError("Each line needs a G/L account and either debit or credit");
+      setSubmitting(false);
+      return;
+    }
 
     if (totalDebit.toFixed(2) !== totalCredit.toFixed(2)) {
-      setError('Total debit and credit must be equal');
+      setError("Total debit and credit must be equal");
+      setSubmitting(false);
       return;
     }
 
@@ -127,26 +143,32 @@ console.log("Submitting lines:", lines);
         credit: l.credit ? Number(l.credit) : 0,
         costCenterId: l.costCenterId || null,
         profitCenterId: l.profitCenterId || null,
-        narration: l.narration || '',
+        narration: l.narration || "",
       }));
 
       const payload = { header, lines: cleanLines };
-      const res = await api.post('/journal', payload);
+      const res = await api.post("/journal", payload);
       setSuccess(`Journal posted. Doc No: ${res.data.documentNumber}`);
 
       // reset
-      setHeader((prev) => ({
-        ...prev,
-        reference: '',
-        headerText: '',
-        status: 'POSTED',
-      }));
+      // Reset all header fields, including dates
+      setHeader({
+        documentDate: "",
+        postingDate: "",
+        documentType: "SA",
+        reference: "",
+        headerText: "",
+        companyCode: "DB4",
+        status: "POSTED",
+      });
       setLines([{ ...emptyLine }]);
       computeTotals([{ ...emptyLine }]);
       await loadSummary();
     } catch (err) {
-      console.error('Journal save error', err.response?.data || err.message);
-      setError(err.response?.data?.message || 'Failed to post journal');
+      console.error("Journal save error", err.response?.data || err.message);
+      setError(err.response?.data?.message || "Failed to post journal");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -154,13 +176,16 @@ console.log("Submitting lines:", lines);
     setSelectedHeader(headerRow);
     setShowModal(true);
     setModalLoading(true);
-    setModalError('');
+    setModalError("");
     try {
       const res = await api.get(`/journal/${headerRow.id}/lines`);
       setSelectedLines(res.data.lines || []);
     } catch (err) {
-      console.error('Journal lines load error', err.response?.data || err.message);
-      setModalError(err.response?.data?.message || 'Failed to load lines');
+      console.error(
+        "Journal lines load error",
+        err.response?.data || err.message,
+      );
+      setModalError(err.response?.data?.message || "Failed to load lines");
     } finally {
       setModalLoading(false);
     }
@@ -349,12 +374,18 @@ console.log("Submitting lines:", lines);
               </div>
               <div>
                 <label>Doc Type</label>
-                <input
+                {/* Changed to select dropdown */}
+                <select
                   name="documentType"
                   value={header.documentType}
                   onChange={handleHeaderChange}
-                  placeholder="SA"
-                />
+                >
+                  {ALLOWED_DOC_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label>Company Code *</label>
@@ -363,6 +394,7 @@ console.log("Submitting lines:", lines);
                   value={header.companyCode}
                   onChange={handleHeaderChange}
                   required
+                  maxLength={4}
                 />
               </div>
               <div>
@@ -371,6 +403,7 @@ console.log("Submitting lines:", lines);
                   name="reference"
                   value={header.reference}
                   onChange={handleHeaderChange}
+                  maxLength={16}
                 />
               </div>
               <div>
@@ -384,18 +417,19 @@ console.log("Submitting lines:", lines);
                   <option value="HELD">Held</option>
                 </select>
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ gridColumn: "1 / -1" }}>
                 <label>Header Text</label>
                 <textarea
                   name="headerText"
                   value={header.headerText}
                   onChange={handleHeaderChange}
                   rows={2}
+                  maxLength={50}
                 />
               </div>
             </div>
 
-            <h4 style={{ marginTop: '0.75rem' }}>Lines</h4>
+            <h4 style={{ marginTop: "0.75rem" }}>Lines</h4>
             <table className="lines-table">
               <thead>
                 <tr>
@@ -415,26 +449,31 @@ console.log("Submitting lines:", lines);
                       <input
                         value={line.glAccount}
                         onChange={(e) =>
-                          handleLineChange(idx, 'glAccount', e.target.value)
+                          handleLineChange(idx, "glAccount", e.target.value)
                         }
                         required
+                        maxLength={20}
                       />
                     </td>
                     <td>
                       <input
                         type="number"
+                        step="0.01"
+                        min="0"
                         value={line.debit}
                         onChange={(e) =>
-                          handleLineChange(idx, 'debit', e.target.value)
+                          handleLineChange(idx, "debit", e.target.value)
                         }
                       />
                     </td>
                     <td>
                       <input
                         type="number"
+                        step="0.01"
+                        min="0"
                         value={line.credit}
                         onChange={(e) =>
-                          handleLineChange(idx, 'credit', e.target.value)
+                          handleLineChange(idx, "credit", e.target.value)
                         }
                       />
                     </td>
@@ -442,24 +481,31 @@ console.log("Submitting lines:", lines);
                       <input
                         value={line.costCenterId}
                         onChange={(e) =>
-                          handleLineChange(idx, 'costCenterId', e.target.value)
+                          handleLineChange(idx, "costCenterId", e.target.value)
                         }
+                        maxLength={20}
                       />
                     </td>
                     <td>
                       <input
                         value={line.profitCenterId}
                         onChange={(e) =>
-                          handleLineChange(idx, 'profitCenterId', e.target.value)
+                          handleLineChange(
+                            idx,
+                            "profitCenterId",
+                            e.target.value,
+                          )
                         }
+                        maxLength={20}
                       />
                     </td>
                     <td>
                       <input
                         value={line.narration}
                         onChange={(e) =>
-                          handleLineChange(idx, 'narration', e.target.value)
+                          handleLineChange(idx, "narration", e.target.value)
                         }
+                        maxLength={255}
                       />
                     </td>
                     <td>
@@ -495,8 +541,8 @@ console.log("Submitting lines:", lines);
               </tbody>
             </table>
 
-            <button className="btn-primary" type="submit">
-              Save & Post
+            <button className="btn-primary" type="submit" disabled={submitting}>
+              {saving ? "Saving..." : "Save & Post"}
             </button>
           </form>
         </div>
@@ -550,8 +596,8 @@ console.log("Submitting lines:", lines);
               <div>
                 <h4>Journal {selectedHeader?.documentNumber}</h4>
                 <small>
-                  {selectedHeader?.postingDate} | {selectedHeader?.companyCode} |{' '}
-                  {selectedHeader?.status}
+                  {selectedHeader?.postingDate} | {selectedHeader?.companyCode}{" "}
+                  | {selectedHeader?.status}
                 </small>
               </div>
               <button type="button" onClick={closeModal}>
@@ -592,7 +638,11 @@ console.log("Submitting lines:", lines);
               )}
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={closeModal}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={closeModal}
+              >
                 Close
               </button>
             </div>
