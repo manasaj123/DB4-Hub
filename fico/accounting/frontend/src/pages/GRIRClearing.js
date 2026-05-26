@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import api from '../api';
-import '../styles/Common.css';
+import React, { useEffect, useState } from "react";
+import api from "../api";
+import "../styles/Common.css";
 
 const GRIRClearing = () => {
   const [form, setForm] = useState({
-    poNumber: '',
-    invoiceId: '',
-    invoiceNumber: '',
-    vendorName: '',
-    amount: '',
-    clearedAmount: '',
-    status: 'PENDING',
-    narration: ''  // Added narration
+    poNumber: "",
+    invoiceId: "",
+    invoiceNumber: "",
+    vendorName: "",
+    amount: "",
+    clearedAmount: "",
+    status: "PENDING",
+    narration: "", // Added narration
   });
 
   const [invoiceList, setInvoiceList] = useState([]);
   const [grirEntries, setGrirEntries] = useState([]);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');  // For showing balance message
-  const [remainingBalance, setRemainingBalance] = useState(null);  // Show remaining balance
+  const [successMessage, setSuccessMessage] = useState(""); // For showing balance message
+  const [remainingBalance, setRemainingBalance] = useState(null); // Show remaining balance
 
   useEffect(() => {
     loadGrirEntries();
@@ -28,7 +28,7 @@ const GRIRClearing = () => {
 
   const loadGrirEntries = async () => {
     try {
-      const res = await api.get('/grir-clearing');
+      const res = await api.get("/grir-clearing");
       setGrirEntries(res.data);
     } catch (err) {
       console.error(err);
@@ -37,8 +37,8 @@ const GRIRClearing = () => {
 
   const loadInvoices = async () => {
     try {
-      const res = await api.get('/invoices', {
-        params: { status: 'POSTED' }
+      const res = await api.get("/invoices", {
+        params: { status: "POSTED" },
       });
       setInvoiceList(res.data);
     } catch (err) {
@@ -48,174 +48,166 @@ const GRIRClearing = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-    
+    setForm((prev) => ({ ...prev, [name]: value }));
+
     if (validationErrors[name]) {
-      setValidationErrors(prev => ({ ...prev, [name]: '' }));
+      setValidationErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleInvoiceSelect = (e) => {
     const invoiceId = e.target.value;
-    const invoice = invoiceList.find(inv => inv.id === Number(invoiceId));
-    
+    const invoice = invoiceList.find((inv) => inv.id === Number(invoiceId));
+
     if (!invoice) {
-      setForm(prev => ({ 
-        ...prev, 
-        invoiceId: '', 
-        invoiceNumber: '',
-        vendorName: '', 
-        amount: '',
-        clearedAmount: ''
+      setForm((prev) => ({
+        ...prev,
+        invoiceId: "",
+        invoiceNumber: "",
+        vendorName: "",
+        amount: "",
+        clearedAmount: "",
       }));
+      setRemainingBalance(null);
       return;
     }
 
-    const poFromInvoice = invoice.poNumber || '';
-    
-    // Check if this PO and Vendor combination already has an entry
-    const existingEntry = grirEntries.find(
-      entry => entry.poNumber === poFromInvoice && 
-               (entry.vendorName === (invoice.partyName || invoice.vendorName))
+    // Invoice outstanding = totalAmount - already cleared
+    const outstanding =
+      Number(invoice.totalAmount) - Number(invoice.clearedAmount || 0);
+    setRemainingBalance(outstanding);
+
+    // Show message
+    setSuccessMessage(
+      `Invoice selected. Outstanding balance: ₹${outstanding.toFixed(2)}`,
     );
 
-    if (existingEntry) {
-      // Show remaining balance
-      const remaining = Number(existingEntry.amount) - Number(existingEntry.clearedAmount);
-      setRemainingBalance(remaining);
-      setSuccessMessage(`Existing entry found. Pending balance: ₹${remaining.toFixed(2)}`);
-      
-      // Set the maximum cleared amount to remaining balance
-      setForm(prev => ({
-        ...prev,
-        invoiceId,
-        invoiceNumber: invoice.invoiceNumber || '',
-        vendorName: invoice.partyName || invoice.vendorName || '',
-        poNumber: poFromInvoice,
-        amount: existingEntry.amount,  // Use existing amount
-        clearedAmount: remaining,  // Default to remaining balance
-        narration: prev.narration
-      }));
-    } else {
-      setRemainingBalance(null);
-      setSuccessMessage('');
-      
-      setForm(prev => ({
-        ...prev,
-        invoiceId,
-        invoiceNumber: invoice.invoiceNumber || '',
-        vendorName: invoice.partyName || invoice.vendorName || '',
-        poNumber: poFromInvoice || prev.poNumber,
-        amount: invoice.totalAmount || prev.amount,
-        clearedAmount: invoice.totalAmount || '',
-        narration: prev.narration
-      }));
-    }
+    // Fill form fields from invoice
+    setForm((prev) => ({
+      ...prev,
+      invoiceId: invoice.id, // store invoiceId
+      invoiceNumber: invoice.invoiceNumber || "",
+      vendorName: invoice.partyName || invoice.vendorName || "",
+      poNumber: invoice.poNumber || prev.poNumber, // if invoice has a poNumber
+      amount: invoice.totalAmount, // or use PO amount?
+      clearedAmount: outstanding, // default to full outstanding
+      narration: prev.narration,
+    }));
   };
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!form.poNumber.trim()) {
-      errors.poNumber = 'PO Number is required';
+      errors.poNumber = "PO Number is required";
     }
-    
+
     if (!form.invoiceId) {
-      errors.invoiceId = 'Please select an invoice';
+      errors.invoiceId = "Please select an invoice";
     }
-    
+
     if (!form.vendorName.trim()) {
-      errors.vendorName = 'Customer/Vendor Name is required';
+      errors.vendorName = "Customer/Vendor Name is required";
     }
-    
+
     if (!form.amount || Number(form.amount) <= 0) {
-      errors.amount = 'PO Amount must be greater than 0';
+      errors.amount = "PO Amount must be greater than 0";
     }
-    
+
     if (!form.clearedAmount || Number(form.clearedAmount) < 0) {
-      errors.clearedAmount = 'Cleared Amount must be 0 or greater';
+      errors.clearedAmount = "Cleared Amount must be 0 or greater";
     }
-    
+
     if (Number(form.clearedAmount) > Number(form.amount)) {
-      errors.clearedAmount = 'Cleared Amount cannot exceed PO Amount';
+      errors.clearedAmount = "Cleared Amount cannot exceed PO Amount";
     }
-    
+
     // Check if clearing more than remaining balance
-    if (remainingBalance !== null && Number(form.clearedAmount) > remainingBalance) {
+    if (
+      remainingBalance !== null &&
+      Number(form.clearedAmount) > remainingBalance
+    ) {
       errors.clearedAmount = `Cannot clear more than remaining balance of ₹${remainingBalance.toFixed(2)}`;
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccessMessage('');
-    
+    setError("");
+    setSuccessMessage("");
+
     if (!validateForm()) {
       return;
     }
 
     try {
       const payload = {
+        invoiceId: form.invoiceId,
         poNumber: form.poNumber,
         invoiceNumber: form.invoiceNumber,
         vendorName: form.vendorName,
         amount: Number(form.amount),
         clearedAmount: Number(form.clearedAmount),
         status: form.status,
-        narration: form.narration  // Added narration
+        narration: form.narration, // Added narration
       };
 
-      const response = await api.post('/grir-clearing', payload);
+      const response = await api.post("/grir-clearing", payload);
 
       // Handle response for additional clearing
       if (response.data.message) {
         setSuccessMessage(
           `Successfully cleared additional ₹${Number(form.clearedAmount).toFixed(2)}. ` +
-          `Remaining balance: ₹${response.data.remainingBalance.toFixed(2)}`
+            `Remaining balance: ₹${response.data.remainingBalance.toFixed(2)}`,
         );
       }
 
       // Reset form
       setForm({
-        poNumber: '',
-        invoiceId: '',
-        invoiceNumber: '',
-        vendorName: '',
-        amount: '',
-        clearedAmount: '',
-        status: 'PENDING',
-        narration: ''
+        invoiceId: "",
+        poNumber: "",
+        // invoiceId: "",
+        invoiceNumber: "",
+        vendorName: "",
+        amount: "",
+        clearedAmount: "",
+        status: "PENDING",
+        narration: "",
       });
       setValidationErrors({});
       setRemainingBalance(null);
-      
+
       loadGrirEntries();
     } catch (err) {
-      setError(err.response?.data?.message || 'GR/IR clearing failed');
+      setError(err.response?.data?.message || "GR/IR clearing failed");
     }
   };
 
   const totalCleared = grirEntries.reduce(
     (sum, entry) => sum + Math.max(0, Number(entry.clearedAmount || 0)),
-    0
+    0,
   );
-  
+
   const totalPending = grirEntries.reduce(
     (sum, entry) => sum + Math.max(0, Number(entry.pendingAmount || 0)),
-    0
+    0,
   );
 
   const getStatusClass = (status) => {
     switch (status) {
-      case 'CLEARED': return 'status-cleared';
-      case 'PENDING': return 'status-pending';
-      case 'PARTIAL': return 'status-partial';
-      case 'DISCREPANCY': return 'status-discrepancy';
-      default: return '';
+      case "CLEARED":
+        return "status-cleared";
+      case "PENDING":
+        return "status-pending";
+      case "PARTIAL":
+        return "status-partial";
+      case "DISCREPANCY":
+        return "status-discrepancy";
+      default:
+        return "";
     }
   };
 
@@ -226,64 +218,92 @@ const GRIRClearing = () => {
         <div className="card">
           <h3>Create GR/IR Entry</h3>
           {error && <div className="error-text">{error}</div>}
-          {successMessage && <div className="success-text">{successMessage}</div>}
-          
+          {successMessage && (
+            <div className="success-text">{successMessage}</div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>PO Number <span className="required-star">*</span></label>
+              <label>
+                PO Number <span className="required-star">*</span>
+              </label>
               <input
                 name="poNumber"
                 value={form.poNumber}
                 onChange={handleChange}
                 required
                 placeholder="Enter PO Number (e.g., PO-001)"
-                className={validationErrors.poNumber ? 'input-error' : ''}
+                className={validationErrors.poNumber ? "input-error" : ""}
               />
               {validationErrors.poNumber && (
-                <span className="error-message">{validationErrors.poNumber}</span>
+                <span className="error-message">
+                  {validationErrors.poNumber}
+                </span>
               )}
             </div>
 
             <div className="form-group">
-              <label>Invoice <span className="required-star">*</span></label>
+              <label>
+                Invoice <span className="required-star">*</span>
+              </label>
               <select
                 name="invoiceId"
                 value={form.invoiceId}
                 onChange={handleInvoiceSelect}
                 required
-                className={validationErrors.invoiceId ? 'input-error' : ''}
+                className={validationErrors.invoiceId ? "input-error" : ""}
               >
                 <option value="">Select invoice</option>
-                {invoiceList.map(inv => (
+                {invoiceList.map((inv) => (
+                  // <option key={inv.id} value={inv.id}>
+                  //   {inv.invoiceNumber} -{" "}
+                  //   {inv.partyName || inv.vendorName || "Unknown"} - ₹
+                  //   {Number(inv.totalAmount).toFixed(2)}
+                  // </option>
+
                   <option key={inv.id} value={inv.id}>
-                    {inv.invoiceNumber} - {inv.partyName || inv.vendorName || 'Unknown'} - ₹{Number(inv.totalAmount).toFixed(2)}
+                    {inv.invoiceNumber} -{" "}
+                    {inv.partyName || inv.vendorName || "Unknown"} - Outstanding
+                    ₹{(inv.totalAmount - (inv.clearedAmount || 0)).toFixed(2)}
                   </option>
                 ))}
               </select>
               {validationErrors.invoiceId && (
-                <span className="error-message">{validationErrors.invoiceId}</span>
+                <span className="error-message">
+                  {validationErrors.invoiceId}
+                </span>
               )}
             </div>
 
             <div className="form-group">
-              <label>Customer/Vendor Name <span className="required-star">*</span></label>
+              <label>
+                Customer/Vendor Name <span className="required-star">*</span>
+              </label>
               <input
                 name="vendorName"
                 value={form.vendorName}
                 onChange={handleChange}
                 required
                 placeholder="Auto-filled from invoice or enter manually"
-                className={validationErrors.vendorName ? 'input-error' : ''}
+                className={validationErrors.vendorName ? "input-error" : ""}
               />
               {validationErrors.vendorName && (
-                <span className="error-message">{validationErrors.vendorName}</span>
+                <span className="error-message">
+                  {validationErrors.vendorName}
+                </span>
               )}
             </div>
 
-            <input type="hidden" name="invoiceNumber" value={form.invoiceNumber} />
+            <input
+              type="hidden"
+              name="invoiceNumber"
+              value={form.invoiceNumber}
+            />
 
             <div className="form-group">
-              <label>PO Amount <span className="required-star">*</span></label>
+              <label>
+                PO Amount <span className="required-star">*</span>
+              </label>
               <input
                 type="number"
                 name="amount"
@@ -293,7 +313,7 @@ const GRIRClearing = () => {
                 min="0"
                 step="0.01"
                 placeholder="0.00"
-                className={validationErrors.amount ? 'input-error' : ''}
+                className={validationErrors.amount ? "input-error" : ""}
               />
               {validationErrors.amount && (
                 <span className="error-message">{validationErrors.amount}</span>
@@ -301,7 +321,9 @@ const GRIRClearing = () => {
             </div>
 
             <div className="form-group">
-              <label>Invoice Amount Cleared <span className="required-star">*</span></label>
+              <label>
+                Invoice Amount Cleared <span className="required-star">*</span>
+              </label>
               <input
                 type="number"
                 name="clearedAmount"
@@ -312,10 +334,12 @@ const GRIRClearing = () => {
                 step="0.01"
                 max={remainingBalance || form.amount || undefined}
                 placeholder="0.00"
-                className={validationErrors.clearedAmount ? 'input-error' : ''}
+                className={validationErrors.clearedAmount ? "input-error" : ""}
               />
               {validationErrors.clearedAmount && (
-                <span className="error-message">{validationErrors.clearedAmount}</span>
+                <span className="error-message">
+                  {validationErrors.clearedAmount}
+                </span>
               )}
               {remainingBalance !== null ? (
                 <small className="helper-text warning">
@@ -386,24 +410,35 @@ const GRIRClearing = () => {
               <tbody>
                 {grirEntries.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center">No GR/IR entries found</td>
+                    <td colSpan="7" className="text-center">
+                      No GR/IR entries found
+                    </td>
                   </tr>
                 ) : (
-                  grirEntries.map(entry => (
+                  grirEntries.map((entry) => (
                     <tr key={entry.id}>
-                      <td>{entry.poNumber || '-'}</td>
-                      <td>{entry.vendorName || entry.invoiceNumber || '-'}</td>
+                      <td>{entry.poNumber || "-"}</td>
+                      <td>{entry.vendorName || entry.invoiceNumber || "-"}</td>
                       <td>₹{Number(entry.amount || 0).toFixed(2)}</td>
                       <td>₹{Number(entry.clearedAmount || 0).toFixed(2)}</td>
-                      <td className={Number(entry.pendingAmount) < 0 ? 'text-danger' : ''}>
-                        ₹{Math.max(0, Number(entry.pendingAmount || 0)).toFixed(2)}
+                      <td
+                        className={
+                          Number(entry.pendingAmount) < 0 ? "text-danger" : ""
+                        }
+                      >
+                        ₹
+                        {Math.max(0, Number(entry.pendingAmount || 0)).toFixed(
+                          2,
+                        )}
                       </td>
                       <td>
-                        <span className={`status-badge ${getStatusClass(entry.status)}`}>
+                        <span
+                          className={`status-badge ${getStatusClass(entry.status)}`}
+                        >
                           {entry.status}
                         </span>
                       </td>
-                      <td className="text-small">{entry.narration || '-'}</td>
+                      <td className="text-small">{entry.narration || "-"}</td>
                     </tr>
                   ))
                 )}

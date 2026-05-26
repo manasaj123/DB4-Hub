@@ -408,6 +408,53 @@ db.Picking = sequelize.define(
   { tableName: "pickings", timestamps: true },
 );
 
+// ================= POST GOODS ISSUE =================
+db.PostGoodsIssue = sequelize.define(
+  "PostGoodsIssue",
+  {
+    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+    deliveryId: { type: DataTypes.INTEGER, allowNull: false },
+    materialId: { type: DataTypes.INTEGER, allowNull: false },
+    quantity: { type: DataTypes.DECIMAL(15, 3), allowNull: false },
+    pgiDate: { type: DataTypes.DATEONLY, allowNull: false },
+  },
+  { tableName: "post_goods_issues", timestamps: true },
+);
+
+// Associations
+db.Delivery.hasMany(db.PostGoodsIssue, { foreignKey: "deliveryId" });
+db.PostGoodsIssue.belongsTo(db.Delivery, { foreignKey: "deliveryId" });
+
+db.Material.hasMany(db.PostGoodsIssue, { foreignKey: "materialId" });
+db.PostGoodsIssue.belongsTo(db.Material, { foreignKey: "materialId" });
+
+// ================= STOCK (real inventory) =================
+db.Stock = sequelize.define(
+  "Stock",
+  {
+    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+    materialId: { type: DataTypes.INTEGER, allowNull: false },
+    plant: { type: DataTypes.STRING(10), allowNull: false },
+    warehouse: { type: DataTypes.STRING(10) },
+    storageLocation: { type: DataTypes.STRING(10) },
+    availableQty: {
+      type: DataTypes.DECIMAL(15, 3),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    reservedQty: {
+      type: DataTypes.DECIMAL(15, 3),
+      allowNull: false,
+      defaultValue: 0,
+    },
+  },
+  { tableName: "stock", timestamps: true },
+);
+
+// Associations
+db.Material.hasMany(db.Stock, { foreignKey: "materialId" });
+db.Stock.belongsTo(db.Material, { foreignKey: "materialId" });
+
 // ================= BILLING =================
 db.Billing = sequelize.define(
   "Billing",

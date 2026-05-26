@@ -33,14 +33,13 @@ exports.getDeliveryById = asyncHandler(async (req, res) => {
 });
 
 // POST /api/deliveries
+// POST /api/deliveries
 exports.createDelivery = asyncHandler(async (req, res) => {
   req.body.shippingPoint = (req.body.shippingPoint || "").trim().toUpperCase();
-
   req.body.warehouse = (req.body.warehouse || "").trim().toUpperCase();
-
   req.body.plant = (req.body.plant || "").trim().toUpperCase();
-
   req.body.deliveryGroup = (req.body.deliveryGroup || "").trim().toUpperCase();
+
   const {
     shippingPoint,
     salesOrderId,
@@ -52,79 +51,66 @@ exports.createDelivery = asyncHandler(async (req, res) => {
 
   const alphaNumRegex = /^[A-Za-z0-9\s-]+$/;
 
+  // --- validations (exactly as before) ---
   if (!shippingPoint || !shippingPoint.trim()) {
-    return res.status(400).json({
-      message: "Shipping Point is required",
-    });
+    return res.status(400).json({ message: "Shipping Point is required" });
   }
-
   if (!alphaNumRegex.test(shippingPoint)) {
-    return res.status(400).json({
-      message: "Shipping Point contains invalid characters",
-    });
+    return res
+      .status(400)
+      .json({ message: "Shipping Point contains invalid characters" });
   }
-
   if (!salesOrderId) {
-    return res.status(400).json({
-      message: "Sales Order is required",
-    });
+    return res.status(400).json({ message: "Sales Order is required" });
   }
-
   if (!warehouse || !warehouse.trim()) {
-    return res.status(400).json({
-      message: "Warehouse is required",
-    });
+    return res.status(400).json({ message: "Warehouse is required" });
   }
-
   if (!alphaNumRegex.test(warehouse)) {
-    return res.status(400).json({
-      message: "Warehouse contains invalid characters",
-    });
+    return res
+      .status(400)
+      .json({ message: "Warehouse contains invalid characters" });
   }
-
   if (!plant || !plant.trim()) {
-    return res.status(400).json({
-      message: "Plant is required",
-    });
+    return res.status(400).json({ message: "Plant is required" });
   }
-
   if (!alphaNumRegex.test(plant)) {
-    return res.status(400).json({
-      message: "Plant contains invalid characters",
-    });
+    return res
+      .status(400)
+      .json({ message: "Plant contains invalid characters" });
   }
-
   if (deliveryGroup && !alphaNumRegex.test(deliveryGroup)) {
-    return res.status(400).json({
-      message: "Invalid Delivery Group",
-    });
+    return res.status(400).json({ message: "Invalid Delivery Group" });
   }
-
   if (postGoodsIssueDate) {
     const date = new Date(postGoodsIssueDate);
-
     if (isNaN(date.getTime())) {
-      return res.status(400).json({
-        message: "Invalid PGI Date",
-      });
+      return res.status(400).json({ message: "Invalid PGI Date" });
     }
   }
 
-  // duplicate exact delivery check
+  // duplicate delivery check
   const existing = await db.Delivery.findOne({
-    where: {
-      salesOrderId,
-      isDeleted: false,
-    },
+    where: { salesOrderId, isDeleted: false },
   });
-
   if (existing) {
-    return res.status(400).json({
-      message: "Delivery already exists for this Sales Order",
-    });
+    return res
+      .status(400)
+      .json({ message: "Delivery already exists for this Sales Order" });
   }
 
-  const delivery = await db.Delivery.create(req.body);
+  // ========== NEW: copy itemsJson from the sales order ==========
+  const order = await db.SalesOrder.findByPk(salesOrderId);
+  if (!order) {
+    return res.status(400).json({ message: "Sales order not found" });
+  }
+  const itemsJson = order.itemsJson; // the actual items list
+  // ==============================================================
+
+  const delivery = await db.Delivery.create({
+    ...req.body,
+    itemsJson, // override whatever came from the frontend
+  });
 
   res.status(201).json(delivery);
 });
@@ -233,6 +219,8 @@ exports.updateDelivery = asyncHandler(async (req, res) => {
       message: "Delivery already exists for this Sales Order",
     });
   }
+  // Ignore any itemsJson sent during update – it stays as originally copied
+  delete req.body.itemsJson;
 
   await delivery.update(req.body);
 
