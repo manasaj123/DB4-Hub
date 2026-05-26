@@ -153,6 +153,8 @@ const isValidBaseAmount = (amount) => {
   }
 };
 
+
+
   // fetch and open party transactions popup (from summary row)
   const openPartyTransactionsFor = async (partyName) => {
     if (!partyName) return;

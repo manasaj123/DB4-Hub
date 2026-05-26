@@ -1,7 +1,7 @@
 // backend/src/controllers/trialBalanceController.js
 const db = require('../config/db');
-const { Ledger } = db;
-const { Op, fn, col } = db.Sequelize; // keep this if db exports Sequelize
+const { Ledger, GLAccount } = db; // Import GLAccount model
+const { Op, fn, col } = db.Sequelize;
 
 // GET /api/trial-balance/:period   (period = '2026-04')
 exports.getTrialBalanceByPeriod = async (req, res, next) => {
@@ -30,17 +30,27 @@ exports.getTrialBalanceByPeriod = async (req, res, next) => {
       order: [['accountCode', 'ASC']],
     });
 
+    // Fetch all GL account names
+    const glAccounts = await GLAccount.findAll({
+      attributes: ['glCode', 'name'],
+    });
+    
+    const accountNameMap = {};
+    glAccounts.forEach(acc => {
+      accountNameMap[acc.glCode] = acc.name;
+    });
+
     const result = rows.map(row => {
       const accountNumber = row.accountCode;
-      const accountName = ''; // no column; you can fill later via master join
+      const accountName = accountNameMap[accountNumber] || ''; // Now populated!
       const debit = Number(row.get('debit') || 0);
       const credit = Number(row.get('credit') || 0);
-      const balance = debit - credit; // debit minus credit
+      const balance = debit - credit;
       const balanceType = balance >= 0 ? 'debit' : 'credit';
 
       return {
         accountNumber,
-        accountName,
+        accountName, // Now has actual name
         debit,
         credit,
         balance: Math.abs(balance),

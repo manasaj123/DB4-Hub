@@ -6,9 +6,8 @@ import '../styles/Common.css';
 const ParkedInvoices = () => {
   const [parkedInvoices, setParkedInvoices] = useState([]);
   const [error, setError] = useState('');
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [approvalRemarks, setApprovalRemarks] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadParkedInvoices();
@@ -17,162 +16,123 @@ const ParkedInvoices = () => {
   const loadParkedInvoices = async () => {
     try {
       const res = await api.get('/parked-invoices');
-      setParkedInvoices(res.data);
+      const onlyParked = (res.data || []).filter(inv => inv.status === 'PARKED');
+      setParkedInvoices(onlyParked);
       setError('');
     } catch (err) {
-      setError('Failed to load parked invoices');
+      try {
+        const res = await api.get('/invoices?status=PARKED');
+        const onlyParked = (res.data || []).filter(inv => inv.status === 'PARKED');
+        setParkedInvoices(onlyParked);
+      } catch (err2) {
+        setError('Failed to load parked invoices');
+      }
     }
   };
 
-  const openApprovalModal = (invoice) => {
-    setSelectedInvoice(invoice);
-    setApprovalRemarks('');
-    setShowApprovalModal(true);
-  };
+  // Send invoice to Approval Workflow
+  const sendToWorkflow = async (invoice) => {
+    if (!window.confirm(`Send ${invoice.invoiceNumber} to Approval Workflow?`)) return;
 
-  const handleApprove = async () => {
-    if (!selectedInvoice) return;
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
     try {
-      await api.post(`/parked-invoices/${selectedInvoice.id}/approve`, {
-        approvedBy: 1, // TODO: replace with current user from auth
-        approvalDate: new Date().toISOString().split('T')[0],
-        remarks: approvalRemarks
+      await api.post('/approval-workflow/submit', {
+        documentType: 'INVOICE',
+        documentId: invoice.id,
+        amount: invoice.totalAmount
       });
-
-      setShowApprovalModal(false);
-      await loadParkedInvoices();
-      setError('');
+      
+      setSuccess(`${invoice.invoiceNumber} sent to Approval Workflow!`);
+      loadParkedInvoices();
     } catch (err) {
-      setError('Approval failed');
+      setError(err.response?.data?.message || 'Failed to send to workflow');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedInvoice) return;
-    try {
-      await api.post(`/parked-invoices/${selectedInvoice.id}/reject`);
-      setShowApprovalModal(false);
-      await loadParkedInvoices();
-    } catch (err) {
-      setError('Rejection failed');
-    }
+  const formatCurrency = (amount) => {
+    return Number(amount || 0).toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
   };
 
   return (
     <div>
-      <h2>Parked Invoices (Pending Approval)</h2>
+      <h2>📄 Parked Invoices ({parkedInvoices.length})</h2>
+      <p className="page-description">Send parked invoices to Approval Workflow for review</p>
+      
       {error && <div className="error-text">{error}</div>}
+      {success && <div className="success-text">{success}</div>}
 
       <div className="card full-width">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Invoice No</th>
-              <th>Party</th>
-              <th>Amount</th>
-              <th>Date</th>
-              <th>Created By</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {parkedInvoices.map((invoice) => (
-              <tr key={invoice.id}>
-                <td>{invoice.invoiceNumber}</td>
-                <td>{invoice.partyName}</td>
-                <td>₹{Number(invoice.totalAmount).toFixed(2)}</td>
-                <td>{invoice.date}</td>
-                <td>{invoice.User?.name || ''}</td>
-                <td>
-                  <span
-                    className={`status-${invoice.status.toLowerCase()}`}
-                  >
-                    {invoice.status}
-                  </span>
-                </td>
-                <td>
-                  {invoice.status === 'PARKED' && (
-                    <button
-                      className="btn-primary btn-small"
-                      onClick={() => openApprovalModal(invoice)}
-                    >
-                      Approve/Reject
-                    </button>
-                  )}
-                  {invoice.status === 'APPROVED' && (
-                    <span className="text-success">✓ Approved</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {parkedInvoices.length === 0 && (
-              <tr>
-                <td colSpan="7" className="text-center">
-                  No parked invoices pending approval
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {showApprovalModal && selectedInvoice && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <div className="modal-header">
-              <h4>
-                Approve Invoice {selectedInvoice.invoiceNumber}
-              </h4>
-              <button onClick={() => setShowApprovalModal(false)}>
-                X
-              </button>
-            </div>
-            <div className="modal-body">
-              <p>
-                <strong>Party:</strong> {selectedInvoice.partyName}
-              </p>
-              <p>
-                <strong>Amount:</strong> ₹
-                {Number(selectedInvoice.totalAmount).toFixed(2)}
-              </p>
-              <p>
-                <strong>Created:</strong>{' '}
-                {selectedInvoice.User?.name || ''}
-              </p>
-
-              <div className="form-group">
-                <label>Remarks</label>
-                <textarea
-                  value={approvalRemarks}
-                  onChange={(e) => setApprovalRemarks(e.target.value)}
-                  rows="3"
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                className="btn-secondary"
-                onClick={() => setShowApprovalModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn-danger btn-small"
-                onClick={handleReject}
-              >
-                Reject
-              </button>
-              <button
-                className="btn-primary"
-                onClick={handleApprove}
-              >
-                Approve & Post
-              </button>
-            </div>
-          </div>
+        <div className="table-header">
+          <h3>Parked Invoices</h3>
+          <button className="btn-secondary" onClick={loadParkedInvoices}>🔄 Refresh</button>
         </div>
-      )}
+        
+        <div className="table-responsive">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Invoice No</th>
+                <th>Party</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Created By</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parkedInvoices.map(invoice => (
+                <tr key={invoice.id}>
+                  <td><strong>{invoice.invoiceNumber}</strong></td>
+                  <td>{invoice.partyName}</td>
+                  <td className="amount-right">₹{formatCurrency(invoice.totalAmount)}</td>
+                  <td>{formatDate(invoice.date)}</td>
+                  <td>{invoice.User?.name || invoice.createdByName || 'Unknown'}</td>
+                  <td>
+                    <span className="status-badge status-parked">⏳ Parked</span>
+                  </td>
+                  <td>
+                    <button 
+                      className="btn-warning btn-small"
+                      onClick={() => sendToWorkflow(invoice)}
+                      disabled={loading}
+                    >
+                      📤 Send to Approval
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {parkedInvoices.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="text-center">
+                    <div className="empty-state">
+                      <p>🎉 No parked invoices</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
