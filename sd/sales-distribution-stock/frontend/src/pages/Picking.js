@@ -1,4 +1,3 @@
-// frontend/src/pages/Picking.js
 import React, { useEffect, useState } from "react";
 import {
   getPickings,
@@ -16,7 +15,7 @@ const initialForm = {
   plant: "",
   pickingStatus: "OPEN",
   packingStatus: "OPEN",
-  postGoodsIssue: false,
+  // postGoodsIssue removed – it is managed only by the PGI process
 };
 
 const Picking = () => {
@@ -53,11 +52,34 @@ const Picking = () => {
   }, []);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
+
+    // When delivery changes, auto‑fill warehouse & plant from the selected delivery
+    if (name === "deliveryId") {
+      const selectedDelivery = deliveries.find((d) => d.id === Number(value));
+      setFormData((prev) => ({
+        ...prev,
+        deliveryId: value,
+        warehouse: selectedDelivery?.warehouse || "",
+        plant: selectedDelivery?.plant || "",
+      }));
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
+  };
+
+  // Validate status transitions
+  const validateStatus = (data) => {
+    // Cannot PACK before PICKING is done
+    if (data.packingStatus === "PACKED" && data.pickingStatus !== "PICKED") {
+      alert("You must complete Picking before Packing.");
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e) => {
@@ -65,45 +87,37 @@ const Picking = () => {
 
     const alphaNumRegex = /^[A-Za-z0-9\s-]+$/;
 
-    // 1. Required fields first
     if (!formData.deliveryId) {
-      alert("Select delivery");
+      alert("Select a delivery");
       return;
     }
-
     if (!formData.warehouse?.trim()) {
       alert("Warehouse is required");
       return;
     }
-
     if (!formData.plant?.trim()) {
       alert("Plant is required");
       return;
     }
-
-    // 2. Format validation
     if (!alphaNumRegex.test(formData.warehouse)) {
       alert("Invalid Warehouse (no special characters)");
       return;
     }
-
     if (!alphaNumRegex.test(formData.plant)) {
       alert("Invalid Plant (no special characters)");
       return;
     }
 
-    // 3. Business rule
-    if (
-      formData.pickingStatus === "PICKED" &&
-      formData.packingStatus !== "PACKED"
-    ) {
-      alert("Cannot PICK before PACKING is completed");
-      return;
-    }
+    // Business rule: picking before packing
+    if (!validateStatus(formData)) return;
 
     const payload = {
-      ...formData,
       deliveryId: Number(formData.deliveryId),
+      warehouse: formData.warehouse.trim(),
+      plant: formData.plant.trim(),
+      pickingStatus: formData.pickingStatus,
+      packingStatus: formData.packingStatus,
+      // postGoodsIssue is always false – never set from this page
     };
 
     try {
@@ -129,7 +143,7 @@ const Picking = () => {
       plant: p.plant || "",
       pickingStatus: p.pickingStatus || "OPEN",
       packingStatus: p.packingStatus || "OPEN",
-      postGoodsIssue: !!p.postGoodsIssue,
+      // no postGoodsIssue field
     });
   };
 
@@ -167,134 +181,24 @@ const Picking = () => {
   return (
     <div className="page-container">
       <style>{`
-        .page-container{
-          max-width:1100px;
-          margin:auto;
-          padding:20px;
-          font-family:Segoe UI, sans-serif;
-        }
-
-        h2{
-          margin-bottom:16px;
-        }
-
-        .form-card{
-          background:white;
-          padding:16px;
-          border-radius:6px;
-          box-shadow:0 2px 6px rgba(0,0,0,0.1);
-          margin-bottom:20px;
-        }
-
-        h4{
-          margin:10px 0 6px;
-          font-size:14px;
-        }
-
-        /* normal vertical form like Deliveries */
-        .form-row{
-          display:flex;
-          flex-direction:column;
-          margin-bottom:10px;
-        }
-
-        .form-row label{
-          font-size:14px;
-          margin-bottom:3px;
-          align-self:flex-start;
-        }
-
-        .form-row input,
-        .form-row select{
-          height:32px;
-          padding:3px 8px;
-          border:1px solid #cbd5e1;
-          border-radius:4px;
-          font-size:13px;
-          align-self:flex-start;
-          width:300px;
-        }
-
-        .form-row input[type="checkbox"]{
-          height:auto;
-          width:auto;
-          margin-right:6px;
-        }
-
-        .form-actions{
-          margin-top:14px;
-          display:flex;
-          gap:8px;
-        }
-
-        .form-actions button{
-          padding:7px 14px;
-          border:none;
-          border-radius:4px;
-          cursor:pointer;
-          font-size:13px;
-          background:#2563eb;
-          color:white;
-        }
-
-        .form-actions button[type="button"]{
-          background:#6b7280;
-        }
-
-        .list-header{
-          display:flex;
-          justify-content:space-between;
-          align-items:center;
-          margin:16px 0;
-        }
-
-        .list-header button{
-          padding:7px 14px;
-          border:none;
-          border-radius:4px;
-          background:#6b7280;
-          color:white;
-          cursor:pointer;
-          font-size:13px;
-        }
-
-        .data-table{
-          width:100%;
-          border-collapse:collapse;
-          margin-top:8px;
-        }
-
-        .data-table th{
-          background:#e0f2fe;
-          padding:6px;
-          border:1px solid #ddd;
-          font-size:12px;
-        }
-
-        .data-table td{
-          padding:5px;
-          border:1px solid #ddd;
-          font-size:12px;
-        }
-
-        .data-table tr:nth-child(even){
-          background:#f9fafb;
-        }
-
-        .data-table button{
-          padding:3px 8px;
-          border:none;
-          border-radius:4px;
-          cursor:pointer;
-          font-size:11px;
-          background:#2563eb;
-          color:white;
-          margin-right:4px;
-        }
-
-        .data-table button:nth-child(2){
-          background:#f59e0b;
-        }
+        /* same styles as before (omitted for brevity) */
+        .page-container{ max-width:1100px; margin:auto; padding:20px; font-family:Segoe UI, sans-serif; }
+        h2{ margin-bottom:16px; }
+        .form-card{ background:white; padding:16px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1); margin-bottom:20px; }
+        .form-row{ display:flex; flex-direction:column; margin-bottom:10px; }
+        .form-row label{ font-size:14px; margin-bottom:3px; align-self:flex-start; }
+        .form-row input, .form-row select{ height:32px; padding:3px 8px; border:1px solid #cbd5e1; border-radius:4px; font-size:13px; align-self:flex-start; width:300px; }
+        .form-actions{ margin-top:14px; display:flex; gap:8px; }
+        .form-actions button{ padding:7px 14px; border:none; border-radius:4px; cursor:pointer; font-size:13px; background:#2563eb; color:white; }
+        .form-actions button[type="button"]{ background:#6b7280; }
+        .list-header{ display:flex; justify-content:space-between; align-items:center; margin:16px 0; }
+        .list-header button{ padding:7px 14px; border:none; border-radius:4px; background:#6b7280; color:white; cursor:pointer; font-size:13px; }
+        .data-table{ width:100%; border-collapse:collapse; margin-top:8px; }
+        .data-table th{ background:#e0f2fe; padding:6px; border:1px solid #ddd; font-size:12px; }
+        .data-table td{ padding:5px; border:1px solid #ddd; font-size:12px; }
+        .data-table tr:nth-child(even){ background:#f9fafb; }
+        .data-table button{ padding:3px 8px; border:none; border-radius:4px; cursor:pointer; font-size:11px; background:#2563eb; color:white; margin-right:4px; }
+        .data-table button:nth-child(2){ background:#f59e0b; }
       `}</style>
 
       <h2>Picking & Packing</h2>
@@ -325,11 +229,17 @@ const Picking = () => {
             name="warehouse"
             value={formData.warehouse}
             onChange={handleChange}
+            required
           />
         </div>
         <div className="form-row">
           <label>Plant</label>
-          <input name="plant" value={formData.plant} onChange={handleChange} />
+          <input
+            name="plant"
+            value={formData.plant}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <h4>Status</h4>
@@ -355,17 +265,8 @@ const Picking = () => {
             <option value="PACKED">PACKED</option>
           </select>
         </div>
-        <div className="form-row">
-          <label>
-            <input
-              type="checkbox"
-              name="postGoodsIssue"
-              checked={formData.postGoodsIssue}
-              onChange={handleChange}
-            />
-            Post Goods Issue Done
-          </label>
-        </div>
+
+        {/* No postGoodsIssue checkbox – it is controlled only by the PGI page */}
 
         <div className="form-actions">
           <button type="submit">

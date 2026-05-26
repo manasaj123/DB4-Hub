@@ -3,6 +3,16 @@ const asyncHandler = require("../middleware/asyncHandler");
 const db = require("../models");
 
 // ---------------- VALIDATION ----------------
+
+const normalizeFieldStatus = (v) => {
+  const map = {
+    required: "Required",
+    optional: "Optional",
+    hidden: "Hidden",
+  };
+
+  return map[(v || "").trim().toLowerCase()] || null;
+};
 const validateCustomerGroup = (data) => {
   const errors = {};
 
@@ -79,6 +89,16 @@ exports.createCustomerGroup = asyncHandler(async (req, res) => {
 
     req.body.name = (req.body.name || "").trim();
 
+    req.body.fieldStatusGeneral = normalizeFieldStatus(
+      req.body.fieldStatusGeneral,
+    );
+
+    req.body.fieldStatusCompanyCode = normalizeFieldStatus(
+      req.body.fieldStatusCompanyCode,
+    );
+
+    req.body.fieldStatusSales = normalizeFieldStatus(req.body.fieldStatusSales);
+
     const errors = validateCustomerGroup(req.body);
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({ errors });
@@ -103,6 +123,16 @@ exports.updateCustomerGroup = asyncHandler(async (req, res) => {
     req.body.accountGroup = (req.body.accountGroup || "").trim().toUpperCase();
 
     req.body.name = (req.body.name || "").trim();
+
+    req.body.fieldStatusGeneral = normalizeFieldStatus(
+      req.body.fieldStatusGeneral,
+    );
+
+    req.body.fieldStatusCompanyCode = normalizeFieldStatus(
+      req.body.fieldStatusCompanyCode,
+    );
+
+    req.body.fieldStatusSales = normalizeFieldStatus(req.body.fieldStatusSales);
 
     const errors = validateCustomerGroup(req.body);
     if (Object.keys(errors).length > 0) {

@@ -102,32 +102,33 @@ const CustomerAccountGroup = () => {
       }
     }
 
-    // Field Status validations
-    if (
-      name === "fieldStatusGeneral" ||
-      name === "fieldStatusCompanyCode" ||
-      name === "fieldStatusSales"
-    ) {
-      const allowedValues = ["Required", "Optional", "Hidden"];
-
-      // Allow typing partial value while entering
-      const isValidPartial = allowedValues.some((v) =>
-        v.toLowerCase().startsWith(value.toLowerCase()),
-      );
-
-      if (!isValidPartial && value !== "") {
-        return;
-      }
-    }
-
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
+  const normalizeStatus = (v) => {
+    const map = {
+      required: "Required",
+      optional: "Optional",
+      hidden: "Hidden",
+    };
+
+    return map[(v || "").trim().toLowerCase()] || "";
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const normalizedData = {
+      ...formData,
+      fieldStatusGeneral: normalizeStatus(formData.fieldStatusGeneral),
+      fieldStatusCompanyCode: normalizeStatus(formData.fieldStatusCompanyCode),
+      fieldStatusSales: normalizeStatus(formData.fieldStatusSales),
+    };
+
+    const validStatuses = ["Required", "Optional", "Hidden"];
 
     // Account Group validation
     const accountGroupRegex = /^[A-Z0-9]{4}$/;
@@ -148,28 +149,28 @@ const CustomerAccountGroup = () => {
     }
 
     // Field Status validation
-    const validStatuses = ["Required", "Optional", "Hidden"];
+    // const validStatuses = ["Required", "Optional", "Hidden"];
 
-    if (!validStatuses.includes(formData.fieldStatusGeneral)) {
+    if (!validStatuses.includes(normalizedData.fieldStatusGeneral)) {
       alert("General Data must be Required, Optional, or Hidden");
       return;
     }
 
-    if (!validStatuses.includes(formData.fieldStatusCompanyCode)) {
+    if (!validStatuses.includes(normalizedData.fieldStatusCompanyCode)) {
       alert("Company Code Data must be Required, Optional, or Hidden");
       return;
     }
 
-    if (!validStatuses.includes(formData.fieldStatusSales)) {
+    if (!validStatuses.includes(normalizedData.fieldStatusSales)) {
       alert("Sales Data must be Required, Optional, or Hidden");
       return;
     }
 
     try {
       if (editingId) {
-        await updateCustomerGroup(editingId, formData);
+        await updateCustomerGroup(editingId, normalizedData);
       } else {
-        await createCustomerGroup(formData);
+        await createCustomerGroup(normalizedData);
       }
 
       setFormData(initialForm);

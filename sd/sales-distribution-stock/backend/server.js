@@ -46,6 +46,8 @@ app.use('/api/pickings', require('./routes/pickingRoutes'));
 app.use('/api/billings', require('./routes/billingRoutes'));
 app.use('/api/credits', require('./routes/creditRoutes'));
 app.use('/api/pricing', require('./routes/pricingRoutes'));
+app.use('/api/stock', require('./routes/stock'));
+app.use('/api/pgi', require('./routes/pgi'));
 
 // sync DB then start
 const PORT = process.env.PORT || 5011;

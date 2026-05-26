@@ -1,24 +1,28 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React from "react";
+import { NavLink } from "react-router-dom";
 
 const Sidebar = () => {
   const linkClass = ({ isActive }) =>
-    isActive ? 'sidebar-link active' : 'sidebar-link';
+    isActive ? "sidebar-link active" : "sidebar-link";
 
   return (
     <aside className="sidebar">
       <nav className="sidebar-nav">
-
         {/* MATERIAL MASTER */}
 
         <NavLink to="/material-stock" className={linkClass}>
-          Create Material Stock
+          {/* Create Material Stock */}
+          Material Master
+        </NavLink>
+
+        {/* NEW: STOCK MANAGEMENT */}
+        <NavLink to="/stock-management" className={linkClass}>
+          Stock Management
         </NavLink>
 
         <NavLink to="/material-sales-view" className={linkClass}>
           MM For Sales View
         </NavLink>
-
 
         {/* CUSTOMER MASTER */}
 
@@ -30,19 +34,14 @@ const Sidebar = () => {
           Customer Account Groups
         </NavLink>
 
-
         {/* PRE SALES */}
-         <NavLink to="/pre-sales-activities" className={linkClass}>
+        <NavLink to="/pre-sales-activities" className={linkClass}>
           Pre-Sales Activities
         </NavLink>
-
-        
 
         <NavLink to="/inquiry" className={linkClass}>
           Create Quotations
         </NavLink>
-
-        
 
         {/* SALES DOCUMENT CONFIG */}
 
@@ -58,8 +57,6 @@ const Sidebar = () => {
           Schedule Line Categories
         </NavLink>
 
-        
-
         {/* PRICING */}
 
         <NavLink to="/pricing-config" className={linkClass}>
@@ -70,18 +67,11 @@ const Sidebar = () => {
           Condition Records
         </NavLink>
 
-        
-
-
         {/* SALES ORDER */}
-
-      
 
         <NavLink to="/creation-of-sales-order" className={linkClass}>
           Creation of Sales Order
         </NavLink>
-
-        
 
         <NavLink to="/agreement" className={linkClass}>
           Outline Agreements
@@ -90,8 +80,6 @@ const Sidebar = () => {
         <NavLink to="/quota" className={linkClass}>
           Quota Arrangement
         </NavLink>
-
-
 
         {/* DELIVERY */}
 
@@ -111,6 +99,9 @@ const Sidebar = () => {
           Picking / Packing / PGI
         </NavLink>
 
+        <NavLink to="/pgi" className={linkClass}>
+          Post Goods Issue
+        </NavLink>
 
         {/* BILLING */}
 
@@ -118,13 +109,11 @@ const Sidebar = () => {
           Billing
         </NavLink>
 
-
         {/* CREDIT MANAGEMENT */}
 
         <NavLink to="/credit" className={linkClass}>
           Credit Management
         </NavLink>
-        
       </nav>
     </aside>
   );
