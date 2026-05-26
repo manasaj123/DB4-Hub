@@ -23,22 +23,49 @@ export default function CustomerOnboarding() {
     let msg = "";
 
     if (field === "name") {
-      if (!value) msg = "Name is required";
-      else if (
+      if (!value) {
+        msg = "Name is required";
+      } else if (value.length < 2) {
+        msg = "Name must be at least 2 characters";
+      } else if (value.length > 50) {
+        msg = "Name must be less than 50 characters";
+      } else if (!/^[a-zA-Z\s'-]+$/.test(value)) {
+        // Only allows letters, spaces, hyphens, and apostrophes
+        msg = "Name can only contain letters, spaces, hyphens, and apostrophes";
+      } else if (
         customers.some(
           (c) => c.name.toLowerCase() === value.toLowerCase()
         )
-      ) msg = "Customer already exists";
+      ) {
+        msg = "Customer already exists";
+      }
     }
 
     if (field === "address") {
-      if (!value) msg = "Address is required";
+      if (!value) {
+        msg = "Address is required";
+      } else if (value.length < 3) {
+        msg = "Address must be at least 3 characters";
+      } else if (value.length > 200) {
+        msg = "Address must be less than 200 characters";
+      } else if (/([!@#$%&*()_+=:;'",.?/\\-]){3,}/.test(value)) {
+        // Allows letters, numbers, spaces, and common address characters
+        msg = "Address contains invalid characters";
+      }
     }
 
     if (field === "contact") {
-      if (!value) msg = "Contact is required";
-      else if (!/^\d+$/.test(value)) msg = "Only numbers allowed";
-      else if (value.length !== 10) msg = "Must be 10 digits";
+      if (!value) {
+        msg = "Contact is required";
+      } else if (!/^\d+$/.test(value)) {
+        msg = "Only numbers allowed";
+      } else if (value.length !== 10) {
+        msg = "Must be exactly 10 digits";
+      } else if (/^0{5,}/.test(value)) {
+        msg = "Invalid contact number (too many leading zeros)";
+      } else if (/^(\d)\1{9}$/.test(value)) {
+        msg = "Invalid contact number (all same digits)";
+      }
     }
 
     setErrors((prev) => ({ ...prev, [field]: msg }));
@@ -46,6 +73,9 @@ export default function CustomerOnboarding() {
 
   const handleChange = (field, value) => {
     if (field === "contact" && !/^\d*$/.test(value)) return;
+    
+    // For name, only allow typing of valid characters
+    if (field === "name" && value !== "" && !/^[a-zA-Z\s'-]*$/.test(value)) return;
 
     if (field === "name") setCustomerName(value);
     if (field === "address") setAddress(value);
@@ -75,6 +105,7 @@ export default function CustomerOnboarding() {
     validateField("address", address);
     validateField("contact", contact);
 
+    // Check for any errors after validation
     if (
       errors.name ||
       errors.address ||
@@ -84,19 +115,24 @@ export default function CustomerOnboarding() {
       !contact
     ) return;
 
-    await axios.post("http://localhost:5001/api/customers", {
-      name: customerName,
-      address,
-      contact,
-    });
+    try {
+      await axios.post("http://localhost:5001/api/customers", {
+        name: customerName.trim(),
+        address: address.trim(),
+        contact: contact.trim(),
+      });
 
-    fetchCustomers();
+      fetchCustomers();
 
-    setCustomerName("");
-    setAddress("");
-    setContact("");
-    setErrors({});
-    setTouched({});
+      setCustomerName("");
+      setAddress("");
+      setContact("");
+      setErrors({});
+      setTouched({});
+    } catch (error) {
+      console.error("Error adding customer:", error);
+      setErrors(prev => ({ ...prev, general: "Failed to add customer" }));
+    }
   };
 
   const isFormValid =
@@ -116,7 +152,11 @@ export default function CustomerOnboarding() {
         {/* NAME */}
         <div style={styles.field}>
           <input
-            style={styles.input}
+            style={{
+              ...styles.input,
+              borderColor: touched.name && errors.name ? "#ff4444" : 
+                          isValidField("name") ? "#4CAF50" : "#ccc"
+            }}
             placeholder="Customer Name"
             value={customerName}
             onChange={(e) => handleChange("name", e.target.value)}
@@ -131,7 +171,11 @@ export default function CustomerOnboarding() {
         {/* ADDRESS */}
         <div style={styles.field}>
           <input
-            style={styles.input}
+            style={{
+              ...styles.input,
+              borderColor: touched.address && errors.address ? "#ff4444" : 
+                          isValidField("address") ? "#4CAF50" : "#ccc"
+            }}
             placeholder="Address"
             value={address}
             onChange={(e) => handleChange("address", e.target.value)}
@@ -146,7 +190,11 @@ export default function CustomerOnboarding() {
         {/* CONTACT */}
         <div style={styles.field}>
           <input
-            style={styles.input}
+            style={{
+              ...styles.input,
+              borderColor: touched.contact && errors.contact ? "#ff4444" : 
+                          isValidField("contact") ? "#4CAF50" : "#ccc"
+            }}
             placeholder="Contact Number"
             value={contact}
             maxLength={10}
@@ -229,6 +277,7 @@ const styles = {
     borderRadius: "6px",
     border: "1px solid #ccc",
     boxSizing: "border-box",
+    transition: "border-color 0.3s",
   },
 
   error: {
@@ -252,6 +301,7 @@ const styles = {
     borderRadius: "6px",
     color: "#fff",
     fontWeight: "bold",
+    transition: "background-color 0.3s",
   },
 
   listCard: {

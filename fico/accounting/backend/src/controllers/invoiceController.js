@@ -402,3 +402,94 @@ exports.getNextInvoiceNumber = async (req, res, next) => {
     next(err);
   }
 };
+
+// backend/src/controllers/invoiceController.js
+
+// Get invoices by status (for approval workflow)
+exports.getInvoicesByStatus = async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    const where = {};
+    if (status) {
+      where.status = status;
+    }
+    
+    const invoices = await Invoice.findAll({
+      where,
+      order: [['date', 'DESC'], ['id', 'DESC']]
+    });
+    
+    res.json(invoices);
+  } catch (err) {
+    console.error('Error fetching invoices by status:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// backend/src/controllers/invoiceController.js
+
+// Update invoice status (approve/reject)
+exports.updateInvoiceStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, remarks } = req.body;
+    
+    if (!['APPROVED', 'REJECTED', 'PARKED'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+    
+    const invoice = await Invoice.findByPk(id);
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    await invoice.update({
+      status,
+      narration: remarks ? `${invoice.narration || ''} [${status}: ${remarks}]` : invoice.narration
+    });
+    
+    res.json({ 
+      message: `Invoice ${status.toLowerCase()} successfully`,
+      invoice 
+    });
+  } catch (err) {
+    console.error('Error updating invoice status:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// backend/src/controllers/invoiceController.js
+
+// Add this function if not already present
+exports.getParkedInvoices = async (req, res) => {
+  try {
+    const invoices = await Invoice.findAll({
+      where: {
+        status: 'PARKED'  // Only get PARKED invoices
+      },
+      order: [['date', 'DESC'], ['id', 'DESC']],
+      include: [
+        {
+          model: db.User,
+          attributes: ['name', 'username'],
+          required: false
+        }
+      ]
+    });
+
+    // Format the response
+    const result = invoices.map(invoice => {
+      const invJson = invoice.toJSON();
+      return {
+        ...invJson,
+        createdByName: invJson.User?.name || invJson.createdByName || 'Unknown'
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching parked invoices:', err);
+    res.status(500).json({ message: err.message });
+  }
+};

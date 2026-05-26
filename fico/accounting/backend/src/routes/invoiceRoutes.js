@@ -47,7 +47,33 @@ router.get(
   invoiceController.listInvoiceParties
 );
 
+// backend/src/routes/invoice.js (or wherever your invoice routes are)
 
+// Get invoices by status (for approval)
+router.get(
+  '/status/:status',
+  authMiddleware,
+  invoiceController.getInvoicesByStatus
+);
+
+// backend/src/routes/invoice.js
+
+// Update invoice status
+router.put(
+  '/:id/status',
+  authMiddleware,
+  roleMiddleware('ADMIN', 'ACCOUNTANT', 'APPROVER'),
+  invoiceController.updateInvoiceStatus
+);
+// backend/src/routes/invoice.js
+
+// Get parked invoices for approval
+router.get(
+  '/parked',
+  authMiddleware,
+  roleMiddleware('ADMIN', 'ACCOUNTANT', 'APPROVER'),
+  invoiceController.getParkedInvoices
+);
 // routes/invoiceRoutes.js
 router.get('/next-number', authMiddleware, invoiceController.getNextInvoiceNumber);
 
