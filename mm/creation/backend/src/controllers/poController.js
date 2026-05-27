@@ -6,11 +6,11 @@ const generatePONumber = async () => {
   const [rows] = await db.query(
     `SELECT MAX(CAST(SUBSTRING(po_no, 8) AS UNSIGNED)) AS max_num
      FROM purchase_orders
-     WHERE po_no LIKE 'DB4-PO-%'`
-  ); // [web:71][web:72]
+     WHERE po_no LIKE 'DB4-PO-%'`,
+  );
   const maxNum = rows[0]?.max_num || 0;
   const nextNum = maxNum + 1;
-  const padded = String(nextNum).padStart(3, "0"); // 1 -> 001 [web:73][web:76]
+  const padded = String(nextNum).padStart(3, "0");
   return `DB4-PO-${padded}`;
 };
 
@@ -48,18 +48,19 @@ export const createPO = async (req, res, next) => {
 
     const [hRes] = await conn.query(
       `INSERT INTO purchase_orders
-       (po_no, po_date, vendor_id, status, payment_terms, currency, po_type, source_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (po_no, po_date, vendor_id, status, payment_terms, currency, po_type, source_type, freight_charges)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         po_no,
-        header.po_date,                  // should be YYYY-MM-DD from frontend
+        header.po_date,
         header.vendor_id,
         header.status || "OPEN",
         header.payment_terms,
         header.currency || "INR",
         header.po_type || "STOCK",
-        header.source_type || "DIRECT"
-      ]
+        header.source_type || "DIRECT",
+        header.freight_charges || 0,
+      ],
     );
     const poId = hRes.insertId;
 
@@ -74,8 +75,8 @@ export const createPO = async (req, res, next) => {
           item.qty,
           item.price,
           item.tax_percent || 0,
-          item.delivery_date || null     // YYYY-MM-DD or null
-        ]
+          item.delivery_date || null,
+        ],
       );
     }
 
@@ -89,7 +90,6 @@ export const createPO = async (req, res, next) => {
   }
 };
 
-// Hard delete PO + all its children (invoice_items, po_items, vendor_invoices)
 export const deletePO = async (req, res, next) => {
   const conn = await db.getConnection();
   try {
@@ -101,7 +101,7 @@ export const deletePO = async (req, res, next) => {
       `DELETE ii FROM invoice_items ii
        JOIN po_items pi ON ii.po_item_id = pi.id
        WHERE pi.po_id = ?`,
-      [id]
+      [id],
     );
 
     // 2) delete grn_items that reference po_items of this PO
@@ -109,31 +109,22 @@ export const deletePO = async (req, res, next) => {
       `DELETE gi FROM grn_items gi
        JOIN po_items pi ON gi.po_item_id = pi.id
        WHERE pi.po_id = ?`,
-      [id]
+      [id],
     );
 
     // 3) delete po_items for this PO
-    await conn.query(
-      "DELETE FROM po_items WHERE po_id = ?",
-      [id]
-    );
+    await conn.query("DELETE FROM po_items WHERE po_id = ?", [id]);
 
     // 4) delete vendor_invoices that reference this PO
-    await conn.query(
-      "DELETE FROM vendor_invoices WHERE po_id = ?",
-      [id]
-    );
+    await conn.query("DELETE FROM vendor_invoices WHERE po_id = ?", [id]);
 
     // 5) delete GRN headers that reference this PO
-    await conn.query(
-      "DELETE FROM grn_headers WHERE po_id = ?",
-      [id]
-    );
+    await conn.query("DELETE FROM grn_headers WHERE po_id = ?", [id]);
 
     // 6) delete the PO itself
     const [result] = await conn.query(
       "DELETE FROM purchase_orders WHERE id = ?",
-      [id]
+      [id],
     );
 
     if (result.affectedRows === 0) {
@@ -151,7 +142,6 @@ export const deletePO = async (req, res, next) => {
   }
 };
 
-
 export const updatePO = async (req, res, next) => {
   const conn = await db.getConnection();
   try {
@@ -165,14 +155,15 @@ export const updatePO = async (req, res, next) => {
        FROM grn_items gi
        JOIN po_items pi ON gi.po_item_id = pi.id
        WHERE pi.po_id = ?`,
-      [id]
+      [id],
     );
     const hasGRN = grnRows[0].cnt > 0;
 
     // 1) update header
     await conn.query(
       `UPDATE purchase_orders
-       SET po_no = ?, po_date = ?, vendor_id = ?, status = ?, payment_terms = ?, currency = ?, po_type = ?, source_type = ?
+       SET po_no = ?, po_date = ?, vendor_id = ?, status = ?, payment_terms = ?, 
+           currency = ?, po_type = ?, source_type = ?, freight_charges = ?
        WHERE id = ?`,
       [
         header.po_no,
@@ -183,8 +174,9 @@ export const updatePO = async (req, res, next) => {
         header.currency || "INR",
         header.po_type || "STOCK",
         header.source_type || "DIRECT",
-        id
-      ]
+        header.freight_charges || 0,
+        id,
+      ],
     );
 
     // 2) only replace items when no GRN exists
@@ -202,8 +194,8 @@ export const updatePO = async (req, res, next) => {
             item.qty,
             item.price,
             item.tax_percent || 0,
-            item.delivery_date || null
-          ]
+            item.delivery_date || null,
+          ],
         );
       }
     }

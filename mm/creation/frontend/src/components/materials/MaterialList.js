@@ -5,7 +5,7 @@ const tableStyle = {
   borderCollapse: "separate",
   borderSpacing: "0 8px",
   fontSize: "13px",
-  background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)"
+  background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
 };
 
 const thStyle = {
@@ -15,7 +15,7 @@ const thStyle = {
   color: "#ffffff",
   fontWeight: "600",
   borderRadius: "8px 8px 0 0",
-  textShadow: "0 1px 2px rgba(0,0,0,0.1)"
+  textShadow: "0 1px 2px rgba(0,0,0,0.1)",
 };
 
 const tdStyle = {
@@ -23,7 +23,7 @@ const tdStyle = {
   backgroundColor: "#ffffff",
   borderRadius: "8px",
   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-  transition: "all 0.2s ease"
+  transition: "all 0.2s ease",
 };
 
 const actionBtnStyle = {
@@ -34,7 +34,7 @@ const actionBtnStyle = {
   border: "none",
   cursor: "pointer",
   transition: "all 0.2s",
-  marginRight: "6px"
+  marginRight: "6px",
 };
 
 const editBtnStyle = {
@@ -42,14 +42,14 @@ const editBtnStyle = {
   background: "linear-gradient(135deg, #2768f4 0%, #2768f4 100%)",
   color: "#ffffff",
   boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
-  marginBottom: "6px"
+  marginBottom: "6px",
 };
 
 const deleteBtnStyle = {
   ...actionBtnStyle,
   background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
   color: "#ffffff",
-  boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)"
+  boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)",
 };
 
 const perishableTagStyle = {
@@ -59,13 +59,13 @@ const perishableTagStyle = {
   borderRadius: "20px",
   color: "#ffffff",
   background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-  boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)"
+  boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
 };
 
 const nonPerishableTagStyle = {
   ...perishableTagStyle,
   background: "linear-gradient(135deg, #6b7280 0%, #4b5563 100%)",
-  fontSize: "11px"
+  fontSize: "11px",
 };
 
 export default function MaterialList({ data, onEdit, onDelete }) {
@@ -79,7 +79,7 @@ export default function MaterialList({ data, onEdit, onDelete }) {
           borderRadius: "12px",
           border: "2px dashed #d1d5db",
           color: "#6b7280",
-          fontSize: "14px"
+          fontSize: "14px",
         }}
       >
         No materials yet. Add your first material above!
@@ -94,6 +94,8 @@ export default function MaterialList({ data, onEdit, onDelete }) {
           <tr>
             <th style={thStyle}>Material</th>
             <th style={thStyle}>Name</th>
+            <th style={thStyle}>Batch</th>
+            <th style={thStyle}>Expiry</th>
             <th style={thStyle}>Type/Group</th>
             <th style={thStyle}>Storage</th>
             <th style={thStyle}>Sales Org</th>
@@ -137,6 +139,16 @@ export default function MaterialList({ data, onEdit, onDelete }) {
                   <span style={{ color: "#1f2937", fontWeight: "600" }}>
                     {m.name}
                   </span>
+                </td>
+
+                {/* Batch */}
+                <td style={tdStyle}>{m.batch_number || "—"}</td>
+
+                {/* Expiry */}
+                <td style={tdStyle}>
+                  {m.expiry_date
+                    ? new Date(m.expiry_date).toLocaleDateString()
+                    : "—"}
                 </td>
 
                 {/* Type/Group */}
@@ -190,18 +202,14 @@ export default function MaterialList({ data, onEdit, onDelete }) {
 
                 {/* Valuation / Issue */}
                 <td style={tdStyle}>
-                  <div style={{ color: "#3b82f6" }}>
-                    {m.valuation_method}
-                  </div>
+                  <div style={{ color: "#3b82f6" }}>{m.valuation_method}</div>
                   <div style={{ color: "#6b7280", fontSize: "12px" }}>
                     {m.issue_type}
                   </div>
                 </td>
 
                 {/* NEW: Qty cell */}
-                <td style={tdStyle}>
-                  {m.qty != null ? m.qty : ""}
-                </td>
+                <td style={tdStyle}>{m.qty != null ? m.qty : ""}</td>
 
                 {/* Type (Perishable / Non-perishable) */}
                 <td style={tdStyle}>

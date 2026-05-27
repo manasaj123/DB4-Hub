@@ -6,7 +6,7 @@ const PLANT_CODE = "DB4"; // same idea as DB4-INV
 const generateMaterialNumber = async () => {
   const [rows] = await db.query(
     "SELECT material_number FROM materials WHERE material_number LIKE ? ORDER BY id DESC LIMIT 1",
-    [`${PLANT_CODE}-MAT-%`]
+    [`${PLANT_CODE}-MAT-%`],
   );
 
   let nextSeq = 1;
@@ -32,17 +32,27 @@ export const Material = {
     return db.query("SELECT * FROM materials WHERE id = ?", [id]);
   },
 
+  // NEW method
+  async findByNameExcludingId(name, excludeId) {
+    const [rows] = await db.query(
+      "SELECT id FROM materials WHERE name = ? AND id != ?",
+      [name, excludeId],
+    );
+    return rows; // empty array if no duplicate
+  },
+
   // auto-generate material_number, ignore value from body
   async create(data) {
     const material_number = await generateMaterialNumber();
 
     return db.query(
       `INSERT INTO materials (
-        material_number, industry_sector, material_type, material_group,
-        storage_type, warehouse_number, sales_org, storage_location,
-        distribution_channel, gross_weight, net_weight, name, uom,
-        shelf_life_days, valuation_method, issue_type, perishable, qty
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  material_number, industry_sector, material_type, material_group,
+  storage_type, warehouse_number, sales_org, storage_location,
+  distribution_channel, gross_weight, net_weight, name, uom,
+  shelf_life_days, valuation_method, issue_type, perishable, qty,
+  batch_number, expiry_date
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         material_number,
         data.industry_sector || null,
@@ -61,8 +71,10 @@ export const Material = {
         data.valuation_method || "MOVING_AVG",
         data.issue_type || "FIFO",
         data.perishable ? 1 : 0,
-        data.qty ?? null          // NEW: save qty
-      ]
+        data.qty ?? null, // NEW: save qty
+        data.batch_number || "", // ← add this
+        data.expiry_date || null,
+      ],
     );
   },
 
@@ -86,7 +98,10 @@ export const Material = {
         valuation_method      = ?,
         issue_type            = ?,
         perishable            = ?,
-        qty                   = ?
+        qty                   = ?,
+        batch_number          = ?,
+        expiry_date           = ?
+        
       WHERE id = ?`,
       [
         data.material_number, // keep existing on edit
@@ -106,9 +121,11 @@ export const Material = {
         data.valuation_method || "MOVING_AVG",
         data.issue_type || "FIFO",
         data.perishable ? 1 : 0,
-        data.qty ?? null,      // NEW: update qty
-        id
-      ]
+        data.qty ?? null, // NEW: update qty
+        data.batch_number || "", // ← batch number value
+        data.expiry_date || null, // ← expiry date value
+        id,
+      ],
     );
   },
 
@@ -117,11 +134,11 @@ export const Material = {
     // check PR usage
     const [prRows] = await db.query(
       "SELECT COUNT(*) AS cnt FROM pr_items WHERE material_id = ?",
-      [id]
+      [id],
     );
     if (prRows[0].cnt > 0) {
       const err = new Error(
-        "Cannot delete material: it is used in Purchase Requisitions"
+        "Cannot delete material: it is used in Purchase Requisitions",
       );
       err.code = "MATERIAL_IN_USE_PR";
       throw err;
@@ -130,11 +147,11 @@ export const Material = {
     // check PO usage
     const [poRows] = await db.query(
       "SELECT COUNT(*) AS cnt FROM po_items WHERE material_id = ?",
-      [id]
+      [id],
     );
     if (poRows[0].cnt > 0) {
       const err = new Error(
-        "Cannot delete material: it is used in Purchase Orders"
+        "Cannot delete material: it is used in Purchase Orders",
       );
       err.code = "MATERIAL_IN_USE_PO";
       throw err;
@@ -142,5 +159,5 @@ export const Material = {
 
     // if safe, delete
     return db.query("DELETE FROM materials WHERE id = ?", [id]);
-  }
+  },
 };
