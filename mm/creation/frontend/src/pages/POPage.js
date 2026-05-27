@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import poApi from "../api/poApi";
 import vendorApi from "../api/vendorApi";
 import materialApi from "../api/materialApi";
@@ -28,6 +28,14 @@ const formatAmount = (amount) => {
   if (isNaN(num)) return "0";
   // Remove extra decimals, show only up to 2 decimal places if needed
   return num.toFixed(2).replace(/\.00$/, '');
+};
+
+// Format amount with 2 decimal places
+const formatAmountWithDecimals = (amount) => {
+  if (!amount && amount !== 0) return "0.00";
+  const num = Number(amount);
+  if (isNaN(num)) return "0.00";
+  return num.toFixed(2);
 };
 
 // Get today's date in YYYY-MM-DD format (local timezone)
@@ -138,6 +146,22 @@ const tdStyle = {
   borderBottom: "1px solid #f3f4f6"
 };
 
+const summaryLabelStyle = {
+  fontSize: "13px",
+  fontWeight: "500",
+  color: "#374151",
+  textAlign: "right",
+  padding: "4px 8px"
+};
+
+const summaryValueStyle = {
+  fontSize: "13px",
+  fontWeight: "600",
+  color: "#111827",
+  padding: "4px 8px",
+  textAlign: "right"
+};
+
 export default function POPage() {
   const [vendors, setVendors] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -155,7 +179,8 @@ export default function POPage() {
     payment_terms: "",
     currency: "INR",
     po_type: "STOCK",
-    source_type: "DIRECT"
+    source_type: "DIRECT",
+    freight_charges: "0"
   });
 
   const [items, setItems] = useState([
@@ -164,6 +189,33 @@ export default function POPage() {
 
   const [selectedPrId, setSelectedPrId] = useState("");
   const [selectedPrDetails, setSelectedPrDetails] = useState(null);
+
+  // Calculate totals using useMemo for performance
+  const totals = useMemo(() => {
+    let subtotal = 0;
+    let totalTax = 0;
+
+    items.forEach((item) => {
+      if (item.material_id && item.qty && item.price) {
+        const itemTotal = Number(item.qty) * Number(item.price);
+        subtotal += itemTotal;
+        
+        if (item.tax_percent) {
+          totalTax += itemTotal * (Number(item.tax_percent) / 100);
+        }
+      }
+    });
+
+    const freight = Number(header.freight_charges) || 0;
+    const grandTotal = subtotal + totalTax + freight;
+
+    return {
+      subtotal,
+      totalTax,
+      freight,
+      grandTotal
+    };
+  }, [items, header.freight_charges]);
 
   const loadRefs = async () => {
     try {
@@ -244,6 +296,14 @@ export default function POPage() {
     return "";
   };
 
+  const validateFreight = (freight) => {
+    if (!freight && freight !== 0) return "";
+    const num = Number(freight);
+    if (isNaN(num)) return "Freight must be a number";
+    if (num < 0) return "Freight cannot be negative";
+    return "";
+  };
+
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
     let processedValue = value;
@@ -254,6 +314,9 @@ export default function POPage() {
     }
     if (name === "currency") {
       processedValue = value.replace(/[^A-Za-z]/g, '').toUpperCase();
+    }
+    if (name === "freight_charges") {
+      processedValue = value.replace(/[^0-9.]/g, '');
     }
     
     setHeader((h) => ({ ...h, [name]: processedValue }));
@@ -308,7 +371,8 @@ export default function POPage() {
       payment_terms: "",
       currency: "INR",
       po_type: "STOCK",
-      source_type: "DIRECT"
+      source_type: "DIRECT",
+      freight_charges: "0"
     });
     setItems([
       { material_id: "", qty: "", price: "", tax_percent: "", delivery_date: "" }
@@ -343,6 +407,10 @@ export default function POPage() {
     } else if (header.currency.length !== 3) {
       newErrors.currency = "Currency must be 3 letters (e.g., INR, USD, EUR)";
     }
+    
+    // Validate freight charges
+    const freightError = validateFreight(header.freight_charges);
+    if (freightError) newErrors.freight_charges = freightError;
     
     // Validate items
     let hasValidItem = false;
@@ -394,12 +462,13 @@ export default function POPage() {
       const payload = {
         header: {
           po_no: header.po_no,
-          po_date: header.po_date, // Send as is without timezone conversion
+          po_date: header.po_date,
           vendor_id: Number(header.vendor_id),
           payment_terms: header.payment_terms,
           currency: header.currency,
           po_type: header.po_type,
-          source_type: header.source_type
+          source_type: header.source_type,
+          freight_charges: Number(header.freight_charges) || 0
         },
         items: items
           .filter((i) => i.material_id && i.qty && i.price)
@@ -470,7 +539,8 @@ export default function POPage() {
         payment_terms: fullHeader.payment_terms || "",
         currency: fullHeader.currency || "INR",
         po_type: fullHeader.po_type || "STOCK",
-        source_type: fullHeader.source_type || "DIRECT"
+        source_type: fullHeader.source_type || "DIRECT",
+        freight_charges: fullHeader.freight_charges || "0"
       });
       setItems(
         (fullItems || []).map((it) => ({
@@ -610,6 +680,22 @@ export default function POPage() {
             </label>
           </div>
 
+          <div style={formRowStyle}>
+            <label style={labelStyle}>
+              Freight Charges
+              <input
+                style={getInputStyle("freight_charges")}
+                type="text"
+                name="freight_charges"
+                value={header.freight_charges}
+                onChange={handleHeaderChange}
+                placeholder="0.00"
+              />
+              {errors.freight_charges && <div style={errorTextStyle}>{errors.freight_charges}</div>}
+            </label>
+            <div style={{ ...labelStyle, flex: 2 }}></div>
+          </div>
+
           {header.source_type === "PR" && (
             <>
               <div style={formRowStyle}>
@@ -713,8 +799,8 @@ export default function POPage() {
                 <input
                   style={errors[`item_${idx}_price`] ? inputErrorStyle : inputStyle}
                   type="number"
-                  step="1"
-                  min="1"
+                  step="0.01"
+                  min="0"
                   value={it.price}
                   onChange={(e) =>
                     handleItemChange(idx, "price", e.target.value)
@@ -728,7 +814,7 @@ export default function POPage() {
                 <input
                   style={errors[`item_${idx}_tax`] ? inputErrorStyle : inputStyle}
                   type="number"
-                  step="1"
+                  step="0.01"
                   min="0"
                   max="100"
                   value={it.tax_percent}
@@ -752,12 +838,57 @@ export default function POPage() {
                 />
                 {errors[`item_${idx}_delivery_date`] && <div style={errorTextStyle}>{errors[`item_${idx}_delivery_date`]}</div>}
               </label>
+              <label style={{ ...labelStyle, flex: "0 0 auto", minWidth: "80px" }}>
+                Total
+                <input
+                  style={{ ...inputStyle, backgroundColor: "#f9fafb" }}
+                  type="text"
+                  value={it.material_id && it.qty && it.price ? formatAmountWithDecimals(Number(it.qty) * Number(it.price)) : "0.00"}
+                  readOnly
+                />
+              </label>
             </div>
           ))}
 
           {errors.general && (
             <div style={{ ...errorTextStyle, marginBottom: "8px" }}>{errors.general}</div>
           )}
+
+          {/* Totals Summary */}
+          <div style={{ marginTop: "16px", borderTop: "1px solid #e5e7eb", paddingTop: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <table style={{ width: "300px", fontSize: "13px" }}>
+                <tbody>
+                  <tr>
+                    <td style={summaryLabelStyle}>Subtotal:</td>
+                    <td style={summaryValueStyle}>
+                      {header.currency} {formatAmountWithDecimals(totals.subtotal)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={summaryLabelStyle}>Tax Amount:</td>
+                    <td style={summaryValueStyle}>
+                      {header.currency} {formatAmountWithDecimals(totals.totalTax)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={summaryLabelStyle}>Freight Charges:</td>
+                    <td style={summaryValueStyle}>
+                      {header.currency} {formatAmountWithDecimals(totals.freight)}
+                    </td>
+                  </tr>
+                  <tr style={{ borderTop: "2px solid #374151" }}>
+                    <td style={{ ...summaryLabelStyle, fontSize: "14px", fontWeight: "600" }}>
+                      Grand Total:
+                    </td>
+                    <td style={{ ...summaryValueStyle, fontSize: "14px", fontWeight: "700" }}>
+                      {header.currency} {formatAmountWithDecimals(totals.grandTotal)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           <button
             type="button"

@@ -20,11 +20,16 @@ export const createMaterial = async (req, res, next) => {
 
     res.status(201).json({
       id: result.insertId,
-      material_number: created?.material_number || null
+      material_number: created?.material_number || null,
       // if you want, you can include qty and other fields here too:
       // qty: created?.qty ?? null
     });
   } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
+      return res
+        .status(409)
+        .json({ error: "A material with this name already exists." });
+    }
     next(err);
   }
 };
@@ -32,9 +37,23 @@ export const createMaterial = async (req, res, next) => {
 export const updateMaterial = async (req, res, next) => {
   try {
     const { id } = req.params;
+    // If the request tries to change the name, check it's not already used
+    if (req.body.name) {
+      const duplicate = await Material.findByNameExcludingId(req.body.name, id);
+      if (duplicate.length > 0) {
+        return res
+          .status(409)
+          .json({ error: "Another material already uses this name." });
+      }
+    }
     await Material.update(id, req.body);
     res.json({ success: true });
   } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
+      return res
+        .status(409)
+        .json({ error: "A material with this name already exists." });
+    }
     next(err);
   }
 };

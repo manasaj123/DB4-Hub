@@ -4,7 +4,7 @@ const formRowStyle = {
   display: "flex",
   gap: "12px",
   marginBottom: "12px",
-  flexWrap: "wrap"
+  flexWrap: "wrap",
 };
 
 const labelStyle = {
@@ -13,7 +13,7 @@ const labelStyle = {
   fontSize: "13px",
   color: "#1f2937",
   flex: 1,
-  minWidth: "180px"
+  minWidth: "180px",
 };
 
 const inputStyle = {
@@ -23,24 +23,24 @@ const inputStyle = {
   border: "2px solid #e5e7eb",
   backgroundColor: "#fafbfc",
   transition: "all 0.2s",
-  outline: "none"
+  outline: "none",
 };
 
 const inputErrorStyle = {
   ...inputStyle,
   border: "2px solid #dc2626",
-  backgroundColor: "#fef2f2"
+  backgroundColor: "#fef2f2",
 };
 
 const selectStyle = {
   ...inputStyle,
-  cursor: "pointer"
+  cursor: "pointer",
 };
 
 const selectErrorStyle = {
   ...selectStyle,
   border: "2px solid #dc2626",
-  backgroundColor: "#fef2f2"
+  backgroundColor: "#fef2f2",
 };
 
 const buttonStyle = {
@@ -51,32 +51,32 @@ const buttonStyle = {
   border: "none",
   cursor: "pointer",
   transition: "all 0.2s",
-  marginRight: "8px"
+  marginRight: "8px",
 };
 
 const primaryBtnStyle = {
   ...buttonStyle,
   background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
   color: "#ffffff",
-  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)"
+  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
 };
 
 const cancelBtnStyle = {
   ...buttonStyle,
   background: "linear-gradient(135deg, #6b7280 0%, #4b5563 100%)",
   color: "#ffffff",
-  boxShadow: "0 4px 12px rgba(107, 114, 128, 0.3)"
+  boxShadow: "0 4px 12px rgba(107, 114, 128, 0.3)",
 };
 
 const errorMessageStyle = {
   color: "#dc2626",
   fontSize: "11px",
-  marginTop: "4px"
+  marginTop: "4px",
 };
 
 const asteriskStyle = {
   color: "#dc2626",
-  marginLeft: "2px"
+  marginLeft: "2px",
 };
 
 const getDefaultFormState = () => ({
@@ -92,15 +92,21 @@ const getDefaultFormState = () => ({
   gross_weight: "",
   net_weight: "",
   name: "",
-  uom: "KG", 
+  batch_number: "",
+  uom: "KG",
   shelf_life_days: "",
+  expiry_date: "",
   valuation_method: "MOVING_AVG",
   issue_type: "FIFO",
   perishable: false,
-  qty: ""
+  qty: "",
 });
 
-export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) {
+export default function MaterialForm({
+  onSave,
+  editingMaterial,
+  onCancelEdit,
+}) {
   const [form, setForm] = useState(getDefaultFormState);
   const [errors, setErrors] = useState({});
 
@@ -126,10 +132,13 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
         name: safeString(editingMaterial.name),
         uom: safeString(editingMaterial.uom) || "KG",
         shelf_life_days: safeString(editingMaterial.shelf_life_days),
-        valuation_method: safeString(editingMaterial.valuation_method) || "MOVING_AVG",
+        valuation_method:
+          safeString(editingMaterial.valuation_method) || "MOVING_AVG",
         issue_type: safeString(editingMaterial.issue_type) || "FIFO",
         perishable: !!editingMaterial.perishable,
-        qty: safeString(editingMaterial.qty)
+        qty: safeString(editingMaterial.qty),
+        batch_number: safeString(editingMaterial.batch_number),
+        expiry_date: safeString(editingMaterial.expiry_date),
       });
     } else {
       setForm(getDefaultFormState());
@@ -140,8 +149,9 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
   // Validation functions
   const validateName = (name) => {
     if (!name || name.trim() === "") return "Material name is required";
-    const nameRegex = /^[A-Za-z\s]+$/;
-    if (!nameRegex.test(name)) return "Name should only contain letters and spaces (no numbers or special characters)";
+    const nameRegex = /^[A-Za-z0-9\s]+$/; // ← allow numbers
+    if (!nameRegex.test(name))
+      return "Name can only contain letters, numbers and spaces";
     return "";
   };
 
@@ -153,28 +163,32 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
   const validateMaterialGroup = (group) => {
     if (!group || group.trim() === "") return "";
     const groupRegex = /^[A-Za-z\s]+$/;
-    if (!groupRegex.test(group)) return "Material group should only contain letters and spaces";
+    if (!groupRegex.test(group))
+      return "Material group should only contain letters and spaces";
     return "";
   };
 
   const validateWarehouseNumber = (warehouse) => {
     if (!warehouse || warehouse.trim() === "") return "";
     const warehouseRegex = /^[A-Za-z0-9\s]+$/;
-    if (!warehouseRegex.test(warehouse)) return "Warehouse number should only contain letters, numbers and spaces";
+    if (!warehouseRegex.test(warehouse))
+      return "Warehouse number should only contain letters, numbers and spaces";
     return "";
   };
 
   const validateSalesOrg = (salesOrg) => {
     if (!salesOrg || salesOrg.trim() === "") return "";
     const salesRegex = /^[A-Za-z0-9\s]+$/;
-    if (!salesRegex.test(salesOrg)) return "Sales org should only contain letters, numbers and spaces";
+    if (!salesRegex.test(salesOrg))
+      return "Sales org should only contain letters, numbers and spaces";
     return "";
   };
 
   const validateStorageLocation = (location) => {
     if (!location || location.trim() === "") return "";
     const locationRegex = /^[A-Za-z0-9\s]+$/;
-    if (!locationRegex.test(location)) return "Storage location should only contain letters, numbers and spaces";
+    if (!locationRegex.test(location))
+      return "Storage location should only contain letters, numbers and spaces";
     return "";
   };
 
@@ -214,78 +228,87 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
     return "";
   };
 
+  const validateBatchNumber = (bn) => {
+    if (!bn || bn.trim() === "") return "Batch number is required";
+    if (!/^[A-Za-z0-9]+$/.test(bn))
+      return "Only letters and numbers are allowed";
+    return "";
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     let processedValue = value;
-    
+
     // Real-time input restrictions
-    if (name === "name") {
-      processedValue = value.replace(/[^A-Za-z\s]/g, '');
+    if (name === "batch_number") {
+      processedValue = value.replace(/[^A-Za-z0-9]/g, ""); // ← no \s
     }
     if (name === "material_group") {
-      processedValue = value.replace(/[^A-Za-z\s]/g, '');
+      processedValue = value.replace(/[^A-Za-z\s]/g, "");
     }
     if (name === "warehouse_number") {
-      processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
+      processedValue = value.replace(/[^A-Za-z0-9\s]/g, "");
     }
     if (name === "sales_org") {
-      processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
+      processedValue = value.replace(/[^A-Za-z0-9\s]/g, "");
     }
     if (name === "storage_location") {
-      processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
+      processedValue = value.replace(/[^A-Za-z0-9\s]/g, "");
     }
-    
+
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : processedValue
+      [name]: type === "checkbox" ? checked : processedValue,
     }));
-    
-    
+
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     const nameError = validateName(form.name);
     if (nameError) newErrors.name = nameError;
-    
+
     const uomError = validateUOM(form.uom);
     if (uomError) newErrors.uom = uomError;
-    
+
     const materialGroupError = validateMaterialGroup(form.material_group);
     if (materialGroupError) newErrors.material_group = materialGroupError;
-    
+
     const warehouseError = validateWarehouseNumber(form.warehouse_number);
     if (warehouseError) newErrors.warehouse_number = warehouseError;
-    
+
     const salesOrgError = validateSalesOrg(form.sales_org);
     if (salesOrgError) newErrors.sales_org = salesOrgError;
-    
+
     const storageLocationError = validateStorageLocation(form.storage_location);
     if (storageLocationError) newErrors.storage_location = storageLocationError;
-    
+
     const grossWeightError = validateGrossWeight(form.gross_weight);
     if (grossWeightError) newErrors.gross_weight = grossWeightError;
-    
+
     const netWeightError = validateNetWeight(form.net_weight);
     if (netWeightError) newErrors.net_weight = netWeightError;
-    
+
     const shelfLifeError = validateShelfLife(form.shelf_life_days);
     if (shelfLifeError) newErrors.shelf_life_days = shelfLifeError;
-    
+
     const qtyError = validateQty(form.qty);
     if (qtyError) newErrors.qty = qtyError;
-    
+
+    const bnError = validateBatchNumber(form.batch_number);
+    if (bnError) newErrors.batch_number = bnError;
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -302,12 +325,16 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
       gross_weight: form.gross_weight ? Number(form.gross_weight) : null,
       net_weight: form.net_weight ? Number(form.net_weight) : null,
       name: form.name || null,
+      batch_number: form.batch_number,
       uom: form.uom || null,
-      shelf_life_days: form.shelf_life_days ? Number(form.shelf_life_days) : null,
+      shelf_life_days: form.shelf_life_days
+        ? Number(form.shelf_life_days)
+        : null,
+      expiry_date: form.expiry_date || null,
       valuation_method: form.valuation_method || "MOVING_AVG",
       issue_type: form.issue_type || "FIFO",
       perishable: form.perishable ? 1 : 0,
-      qty: form.qty ? Number(form.qty) : null
+      qty: form.qty ? Number(form.qty) : null,
     };
 
     const payload = editingMaterial
@@ -315,7 +342,7 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
       : basePayload;
 
     await onSave(payload);
-    
+
     if (!editingMaterial) {
       setForm(getDefaultFormState());
     }
@@ -336,10 +363,9 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
         background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
         padding: "24px",
         borderRadius: "12px",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.1)"
+        boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
       }}
     >
-      
       <div style={formRowStyle}>
         <label style={labelStyle}>
           Material Number
@@ -398,7 +424,6 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
         </label>
       </div>
 
-      
       <div style={formRowStyle}>
         <label style={labelStyle}>
           Industry Sector
@@ -433,7 +458,6 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
         </label>
       </div>
 
-      
       <div style={formRowStyle}>
         <label style={labelStyle}>
           Material Group
@@ -444,7 +468,9 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             style={getInputStyle("material_group")}
             placeholder="Only letters and spaces"
           />
-          {errors.material_group && <div style={errorMessageStyle}>{errors.material_group}</div>}
+          {errors.material_group && (
+            <div style={errorMessageStyle}>{errors.material_group}</div>
+          )}
         </label>
         <label style={labelStyle}>
           Storage Type
@@ -458,6 +484,7 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             <option value="BULK">Bulk</option>
             <option value="PALLET">Pallet</option>
             <option value="SHELF">Shelf</option>
+            <option value="COLD_STORAGE">Cold Storage</option>
           </select>
         </label>
         <label style={labelStyle}>
@@ -469,11 +496,12 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             style={getInputStyle("warehouse_number")}
             placeholder="Letters, numbers and spaces only"
           />
-          {errors.warehouse_number && <div style={errorMessageStyle}>{errors.warehouse_number}</div>}
+          {errors.warehouse_number && (
+            <div style={errorMessageStyle}>{errors.warehouse_number}</div>
+          )}
         </label>
       </div>
 
-      
       <div style={formRowStyle}>
         <label style={labelStyle}>
           Sales Org
@@ -484,7 +512,9 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             style={getInputStyle("sales_org")}
             placeholder="Letters, numbers and spaces only"
           />
-          {errors.sales_org && <div style={errorMessageStyle}>{errors.sales_org}</div>}
+          {errors.sales_org && (
+            <div style={errorMessageStyle}>{errors.sales_org}</div>
+          )}
         </label>
         <label style={labelStyle}>
           Storage Location
@@ -495,7 +525,9 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             style={getInputStyle("storage_location")}
             placeholder="Letters, numbers and spaces only"
           />
-          {errors.storage_location && <div style={errorMessageStyle}>{errors.storage_location}</div>}
+          {errors.storage_location && (
+            <div style={errorMessageStyle}>{errors.storage_location}</div>
+          )}
         </label>
         <label style={labelStyle}>
           Distribution Channel
@@ -513,7 +545,6 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
         </label>
       </div>
 
-      
       <div style={formRowStyle}>
         <label style={labelStyle}>
           Gross Weight
@@ -527,7 +558,9 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             min="0"
             placeholder="Gross weight"
           />
-          {errors.gross_weight && <div style={errorMessageStyle}>{errors.gross_weight}</div>}
+          {errors.gross_weight && (
+            <div style={errorMessageStyle}>{errors.gross_weight}</div>
+          )}
         </label>
         <label style={labelStyle}>
           Net Weight
@@ -541,7 +574,9 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             min="0"
             placeholder="Net weight"
           />
-          {errors.net_weight && <div style={errorMessageStyle}>{errors.net_weight}</div>}
+          {errors.net_weight && (
+            <div style={errorMessageStyle}>{errors.net_weight}</div>
+          )}
         </label>
         <label style={labelStyle}>
           Shelf Life (days)
@@ -554,11 +589,12 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             min="0"
             placeholder="Shelf life in days"
           />
-          {errors.shelf_life_days && <div style={errorMessageStyle}>{errors.shelf_life_days}</div>}
+          {errors.shelf_life_days && (
+            <div style={errorMessageStyle}>{errors.shelf_life_days}</div>
+          )}
         </label>
       </div>
 
-      
       <div style={formRowStyle}>
         <label style={labelStyle}>
           Valuation Method
@@ -588,14 +624,13 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
         </label>
       </div>
 
-      
       <div
         style={{
           marginBottom: "16px",
           padding: "12px",
           backgroundColor: "rgba(59, 130, 246, 0.1)",
           borderRadius: "8px",
-          borderLeft: "4px solid #3b82f6"
+          borderLeft: "4px solid #3b82f6",
         }}
       >
         <label
@@ -605,7 +640,7 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             gap: "8px",
             fontSize: "14px",
             fontWeight: "500",
-            color: "#1e40af"
+            color: "#1e40af",
           }}
         >
           <input
@@ -615,6 +650,35 @@ export default function MaterialForm({ onSave, editingMaterial, onCancelEdit }) 
             onChange={handleChange}
           />
           <span>Perishable item (has expiry date)</span>
+        </label>
+      </div>
+
+      {/* Batch & Expiry Row */}
+      <div style={formRowStyle}>
+        <label style={labelStyle}>
+          Batch Number <span style={asteriskStyle}>*</span>
+          <input
+            name="batch_number"
+            value={form.batch_number}
+            onChange={handleChange}
+            style={getInputStyle("batch_number")}
+            required
+            placeholder="Only letters and numbers"
+          />
+          {errors.batch_number && (
+            <div style={errorMessageStyle}>{errors.batch_number}</div>
+          )}
+        </label>
+
+        <label style={labelStyle}>
+          Expiry Date
+          <input
+            type="date"
+            name="expiry_date"
+            value={form.expiry_date}
+            onChange={handleChange}
+            style={inputStyle}
+          />
         </label>
       </div>
 
