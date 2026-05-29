@@ -12,10 +12,20 @@ const toMysqlDate = (value) => {
   return `${y}-${m}-${day}`;
 };
 
-/* GET ALL RFQs */
+/* GET ALL RFQs with summary */
 export const getRFQs = async (req, res, next) => {
   try {
-    const [rows] = await RFQ.findAll();
+    const [rows] = await db.query(
+      `SELECT h.*, 
+        COUNT(DISTINCT ri.id) as item_count,
+        SUM(ri.qty) as total_qty,
+        COUNT(DISTINCT rv.vendor_id) as vendor_count
+       FROM rfq_headers h
+       LEFT JOIN rfq_items ri ON h.id = ri.rfq_id
+       LEFT JOIN rfq_vendors rv ON h.id = rv.rfq_id
+       GROUP BY h.id
+       ORDER BY h.id DESC`
+    );
     res.json(rows);
   } catch (err) {
     next(err);
@@ -26,7 +36,7 @@ export const getRFQs = async (req, res, next) => {
 export const createRFQ = async (req, res, next) => {
   const conn = await db.getConnection();
   try {
-    const { header, items } = req.body;
+    const { header, items, vendors } = req.body;
     await conn.beginTransaction();
 
     // generate RFQ number RFQ-001 style
@@ -45,12 +55,14 @@ export const createRFQ = async (req, res, next) => {
     }
     const generatedRfqNo = `RFQ-${String(nextSeq).padStart(3, "0")}`;
 
+    // Insert RFQ Header with ALL fields including new ones
     const [headerRes] = await conn.query(
       `INSERT INTO rfq_headers
         (rfq_no, rfq_type, rfq_date, question_deadline, purchase_org,
          delivery_date, material_group, plant, storage_location,
-         vendor_id, supplying_plant, reference_pr_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         vendor_id, supplying_plant, reference_pr_id, 
+         status, quotation_valid_until, currency, payment_terms)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         generatedRfqNo,
         header.rfq_type,
@@ -61,14 +73,19 @@ export const createRFQ = async (req, res, next) => {
         header.material_group || null,
         header.plant || null,
         header.storage_location || null,
-        header.vendor_id || null,
+        null, // vendor_id is now handled in rfq_vendors table
         header.supplying_plant || null,
-        header.reference_pr_id || null
+        header.reference_pr_id || null,
+        header.status || "Draft",
+        toMysqlDate(header.quotation_valid_until),
+        header.currency || "USD",
+        header.payment_terms || "Net 30"
       ]
     );
 
     const rfqId = headerRes.insertId;
 
+    // Insert Items
     for (const item of items || []) {
       if (!item.material_id || !item.qty) continue;
       await conn.query(
@@ -79,8 +96,24 @@ export const createRFQ = async (req, res, next) => {
       );
     }
 
+    // Insert Vendors (Multi-vendor support)
+    if (vendors && vendors.length > 0) {
+      for (const vendor of vendors) {
+        if (!vendor.vendor_id) continue;
+        await conn.query(
+          `INSERT INTO rfq_vendors (rfq_id, vendor_id)
+           VALUES (?, ?)`,
+          [rfqId, vendor.vendor_id]
+        );
+      }
+    }
+
     await conn.commit();
-    res.status(201).json({ id: rfqId, rfq_no: generatedRfqNo });
+    res.status(201).json({ 
+      id: rfqId, 
+      rfq_no: generatedRfqNo,
+      message: "RFQ created successfully" 
+    });
   } catch (err) {
     await conn.rollback();
     next(err);
@@ -89,16 +122,32 @@ export const createRFQ = async (req, res, next) => {
   }
 };
 
-/* GET ONE RFQ */
+/* GET ONE RFQ with all relations */
 export const getRFQById = async (req, res, next) => {
   try {
     const id = req.params.id;
     const [[headerRow]] = await RFQ.findByIdHeader(id);
+    
     if (!headerRow) {
       return res.status(404).json({ message: "RFQ not found" });
     }
+    
     const [itemRows] = await RFQ.findItemsByRFQ(id);
-    res.json({ header: headerRow, items: itemRows });
+    
+    // Get vendors for this RFQ
+    const [vendorRows] = await db.query(
+      `SELECT rv.id, rv.vendor_id, v.name as vendor_name
+       FROM rfq_vendors rv
+       JOIN vendors v ON rv.vendor_id = v.id
+       WHERE rv.rfq_id = ?`,
+      [id]
+    );
+    
+    res.json({ 
+      header: headerRow, 
+      items: itemRows,
+      vendors: vendorRows 
+    });
   } catch (err) {
     next(err);
   }
@@ -109,9 +158,10 @@ export const updateRFQ = async (req, res, next) => {
   const conn = await db.getConnection();
   try {
     const id = req.params.id;
-    const { header, items } = req.body;
+    const { header, items, vendors } = req.body;
     await conn.beginTransaction();
 
+    // Update RFQ Header with ALL fields
     await conn.query(
       `UPDATE rfq_headers
        SET rfq_type = ?,
@@ -124,7 +174,11 @@ export const updateRFQ = async (req, res, next) => {
            storage_location = ?,
            vendor_id = ?,
            supplying_plant = ?,
-           reference_pr_id = ?
+           reference_pr_id = ?,
+           status = ?,
+           quotation_valid_until = ?,
+           currency = ?,
+           payment_terms = ?
        WHERE id = ?`,
       [
         header.rfq_type,
@@ -135,13 +189,18 @@ export const updateRFQ = async (req, res, next) => {
         header.material_group || null,
         header.plant || null,
         header.storage_location || null,
-        header.vendor_id || null,
+        null, // vendor_id is now handled in rfq_vendors table
         header.supplying_plant || null,
         header.reference_pr_id || null,
+        header.status || "Draft",
+        toMysqlDate(header.quotation_valid_until),
+        header.currency || "USD",
+        header.payment_terms || "Net 30",
         id
       ]
     );
 
+    // Update Items - delete existing and insert new
     await conn.query(`DELETE FROM rfq_items WHERE rfq_id = ?`, [id]);
     for (const item of items || []) {
       if (!item.material_id || !item.qty) continue;
@@ -152,8 +211,21 @@ export const updateRFQ = async (req, res, next) => {
       );
     }
 
+    // Update Vendors - delete existing and insert new
+    await conn.query(`DELETE FROM rfq_vendors WHERE rfq_id = ?`, [id]);
+    if (vendors && vendors.length > 0) {
+      for (const vendor of vendors) {
+        if (!vendor.vendor_id) continue;
+        await conn.query(
+          `INSERT INTO rfq_vendors (rfq_id, vendor_id)
+           VALUES (?, ?)`,
+          [id, vendor.vendor_id]
+        );
+      }
+    }
+
     await conn.commit();
-    res.json({ message: "RFQ updated" });
+    res.json({ message: "RFQ updated successfully" });
   } catch (err) {
     await conn.rollback();
     next(err);
@@ -164,18 +236,30 @@ export const updateRFQ = async (req, res, next) => {
 
 /* DELETE RFQ */
 export const deleteRFQ = async (req, res, next) => {
+  const conn = await db.getConnection();
   try {
     const id = req.params.id;
-    await db.query(`DELETE FROM rfq_items WHERE rfq_id = ?`, [id]);
-    const [result] = await db.query(
+    await conn.beginTransaction();
+    
+    // Delete related records first (due to foreign keys)
+    await conn.query(`DELETE FROM rfq_vendors WHERE rfq_id = ?`, [id]);
+    await conn.query(`DELETE FROM rfq_items WHERE rfq_id = ?`, [id]);
+    const [result] = await conn.query(
       `DELETE FROM rfq_headers WHERE id = ?`,
       [id]
     );
+    
     if (result.affectedRows === 0) {
+      await conn.rollback();
       return res.status(404).json({ message: "RFQ not found" });
     }
+    
+    await conn.commit();
     res.status(204).end();
   } catch (err) {
+    await conn.rollback();
     next(err);
+  } finally {
+    conn.release();
   }
 };

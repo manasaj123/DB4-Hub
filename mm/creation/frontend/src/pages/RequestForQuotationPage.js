@@ -6,7 +6,7 @@ import materialApi from "../api/materialApi";
 export default function RequestForQuotationPage() {
   const styles = {
     container: {
-      maxWidth: "1100px",
+      maxWidth: "1200px",
       margin: "10px auto",
       padding: "16px",
       background: "#f4f6f9",
@@ -20,11 +20,18 @@ export default function RequestForQuotationPage() {
     sectionTitle: {
       marginTop: "20px",
       marginBottom: "8px",
-      fontSize: "16px"
+      fontSize: "16px",
+      fontWeight: "bold"
     },
     formRow: {
       display: "grid",
       gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gap: "16px",
+      marginBottom: "10px"
+    },
+    formRow2: {
+      display: "grid",
+      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
       gap: "16px",
       marginBottom: "10px"
     },
@@ -53,6 +60,11 @@ export default function RequestForQuotationPage() {
       color: "#dc2626",
       fontSize: "11px",
       marginTop: "4px"
+    },
+    infoText: {
+      fontSize: "10px",
+      color: "#6b7280",
+      marginTop: "2px"
     },
     tableWrapper: {
       marginTop: "10px",
@@ -114,15 +126,81 @@ export default function RequestForQuotationPage() {
       borderRadius: "5px",
       border: "1px solid #ccc",
       marginBottom: "10px",
+    },
+    statusBadge: {
+      padding: "4px 8px",
+      borderRadius: "4px",
+      fontSize: "11px",
+      fontWeight: "bold",
+      display: "inline-block"
+    },
+    statusDraft: { background: "#9ca3af", color: "white" },
+    statusSent: { background: "#3b82f6", color: "white" },
+    statusPendingQuote: { background: "#f59e0b", color: "white" },
+    statusQuoted: { background: "#10b981", color: "white" },
+    statusClosed: { background: "#6b7280", color: "white" },
+    statusCancelled: { background: "#ef4444", color: "white" },
+    filterBar: {
+      display: "flex",
+      gap: "10px",
+      marginBottom: "15px",
+      alignItems: "center",
+      flexWrap: "wrap"
+    },
+    select: {
+      padding: "7px",
+      borderRadius: "5px",
+      border: "1px solid #ccc"
+    },
+    vendorTable: {
+      width: "100%",
+      borderCollapse: "collapse",
+      marginTop: "10px",
+      marginBottom: "15px",
+      background: "white"
+    },
+    vendorTh: {
+      background: "#059669",
+      color: "white",
+      padding: "8px",
+      border: "1px solid #ddd",
+      fontSize: "12px"
+    },
+    addVendorBtn: {
+      background: "#059669",
+      color: "white",
+      padding: "6px 12px",
+      border: "none",
+      borderRadius: "4px",
+      cursor: "pointer",
+      fontSize: "12px",
+      marginBottom: "10px"
+    },
+    removeVendorBtn: {
+      background: "#dc2626",
+      color: "white",
+      padding: "4px 8px",
+      border: "none",
+      borderRadius: "4px",
+      cursor: "pointer",
+      fontSize: "11px"
     }
   };
 
+  // State variables
   const [rfqs, setRFQs] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [statusFilter, setStatusFilter] = useState("");
+  
+  // Multi-vendor support - stores selected vendors for current RFQ
+  const [selectedVendors, setSelectedVendors] = useState([]);
+  
+  // Vendor quotes for each vendor (for the full multi-vendor feature)
+  const [vendorQuotes, setVendorQuotes] = useState([]);
 
   const [header, setHeader] = useState({
     rfq_type: "",
@@ -133,9 +211,13 @@ export default function RequestForQuotationPage() {
     material_group: "",
     plant: "",
     storage_location: "",
-    vendor_id: "",
     supplying_plant: "",
-    reference_pr_id: ""
+    reference_pr_id: "",
+    // NEW FIELDS
+    status: "Draft",
+    quotation_valid_until: "",
+    currency: "USD",
+    payment_terms: "Net 30"
   });
 
   const [items, setItems] = useState([{ material_id: "", qty: "" }]);
@@ -149,23 +231,22 @@ export default function RequestForQuotationPage() {
     return `${year}-${month}-${day}`;
   };
 
-  // Validate no special characters (only letters, numbers, spaces, and hyphens)
+  // Validate no special characters
   const validateNoSpecialChars = (value, fieldName) => {
     if (!value) return "";
     const regex = /^[A-Za-z0-9\s-]+$/;
     if (!regex.test(value)) {
-      return `${fieldName} should only contain letters, numbers, spaces and hyphens (no special characters like @, #, $, etc.)`;
+      return `${fieldName} should only contain letters, numbers, spaces and hyphens`;
     }
     return "";
   };
 
-  // Validate PR format (e.g., PR-001, PR-123, PO-456)
+  // Validate PR format
   const validatePRFormat = (value, fieldName) => {
     if (!value) return "";
-    // Format: 2-3 letters followed by hyphen followed by 3-4 digits
     const prRegex = /^[A-Za-z]{2,3}-\d{3,4}$/;
     if (!prRegex.test(value)) {
-      return `${fieldName} must be in format like PR-001, PO-123, RFQ-4567 (letters-hyphen-numbers)`;
+      return `${fieldName} must be in format like PR-001, PO-123`;
     }
     return "";
   };
@@ -183,7 +264,18 @@ export default function RequestForQuotationPage() {
     return "";
   };
 
-  // Validate quantity is positive
+  // Validate date is not before RFQ date
+  const validateValidUntilDate = (date) => {
+    if (!date || !header.rfq_date) return "";
+    const validUntil = new Date(date);
+    const rfqDate = new Date(header.rfq_date);
+    if (validUntil < rfqDate) {
+      return "Quotation Validity Date cannot be before RFQ Date";
+    }
+    return "";
+  };
+
+  // Validate quantity
   const validateQuantity = (qty) => {
     if (!qty && qty !== 0) return "";
     const num = Number(qty);
@@ -192,6 +284,7 @@ export default function RequestForQuotationPage() {
     return "";
   };
 
+  // Load data
   const loadRFQs = async () => {
     const res = await rfqApi.getAll();
     setRFQs(res.data);
@@ -213,26 +306,36 @@ export default function RequestForQuotationPage() {
     loadVendors();
   }, []);
 
+  // Multi-vendor functions
+  const addVendorToRFQ = () => {
+    setSelectedVendors([...selectedVendors, { vendor_id: "", id: Date.now() }]);
+  };
+
+  const removeVendorFromRFQ = (tempId) => {
+    setSelectedVendors(selectedVendors.filter(v => v.id !== tempId));
+  };
+
+  const updateVendorSelection = (tempId, vendorId) => {
+    setSelectedVendors(selectedVendors.map(v => 
+      v.id === tempId ? { ...v, vendor_id: vendorId } : v
+    ));
+  };
+
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
     let processedValue = value;
     
-    // Remove special characters from text fields (allow hyphens for reference_pr_id)
-    if (name === "rfq_type" || name === "purchase_org" || name === "material_group" || 
-        name === "plant" || name === "storage_location" || name === "supplying_plant") {
+    // Remove special characters from text fields
+    if (["rfq_type", "purchase_org", "material_group", "plant", "storage_location", "supplying_plant"].includes(name)) {
       processedValue = value.replace(/[^A-Za-z0-9\s-]/g, '');
     }
     
-    // For reference_pr_id, allow letters, numbers, and hyphens
     if (name === "reference_pr_id") {
-      processedValue = value.replace(/[^A-Za-z0-9-]/g, '');
-      // Convert to uppercase for consistency
-      processedValue = processedValue.toUpperCase();
+      processedValue = value.replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
     }
     
     setHeader((h) => ({ ...h, [name]: processedValue }));
     
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: "" }));
     }
@@ -241,7 +344,6 @@ export default function RequestForQuotationPage() {
   const handleItemChange = (index, field, value) => {
     let processedValue = value;
     
-    // For qty, ensure it's positive
     if (field === "qty") {
       if (value < 0) processedValue = "";
     }
@@ -250,7 +352,6 @@ export default function RequestForQuotationPage() {
       prev.map((it, i) => (i === index ? { ...it, [field]: processedValue } : it))
     );
     
-    // Clear error for this item field
     if (errors[`item_${index}_${field}`]) {
       setErrors(prev => ({ ...prev, [`item_${index}_${field}`]: "" }));
     }
@@ -271,18 +372,35 @@ export default function RequestForQuotationPage() {
       material_group: "",
       plant: "",
       storage_location: "",
-      vendor_id: "",
       supplying_plant: "",
-      reference_pr_id: ""
+      reference_pr_id: "",
+      status: "Draft",
+      quotation_valid_until: "",
+      currency: "USD",
+      payment_terms: "Net 30"
     });
     setItems([{ material_id: "", qty: "" }]);
+    setSelectedVendors([]);
     setErrors({});
+  };
+
+  // Get status badge style
+  const getStatusBadgeStyle = (status) => {
+    switch(status) {
+      case 'Draft': return styles.statusDraft;
+      case 'Sent': return styles.statusSent;
+      case 'Pending Quote': return styles.statusPendingQuote;
+      case 'Quoted': return styles.statusQuoted;
+      case 'Closed': return styles.statusClosed;
+      case 'Cancelled': return styles.statusCancelled;
+      default: return styles.statusDraft;
+    }
   };
 
   const validateForm = () => {
     const newErrors = {};
     
-    // Validate RFQ Type
+    // RFQ Type validation
     if (!header.rfq_type) {
       newErrors.rfq_type = "RFQ Type is required";
     } else {
@@ -290,7 +408,7 @@ export default function RequestForQuotationPage() {
       if (specialCharError) newErrors.rfq_type = specialCharError;
     }
     
-    // Validate RFQ Date
+    // RFQ Date validation
     if (!header.rfq_date) {
       newErrors.rfq_date = "RFQ Date is required";
     } else {
@@ -298,7 +416,7 @@ export default function RequestForQuotationPage() {
       if (pastDateError) newErrors.rfq_date = pastDateError;
     }
     
-    // Validate Question Deadline (must be >= RFQ Date)
+    // Question Deadline validation
     if (header.question_deadline) {
       const pastDateError = validateNotPastDate(header.question_deadline, "Question Deadline");
       if (pastDateError) {
@@ -308,7 +426,7 @@ export default function RequestForQuotationPage() {
       }
     }
     
-    // Validate Delivery Date (must be >= RFQ Date)
+    // Delivery Date validation
     if (header.delivery_date) {
       const pastDateError = validateNotPastDate(header.delivery_date, "Delivery Date");
       if (pastDateError) {
@@ -318,67 +436,50 @@ export default function RequestForQuotationPage() {
       }
     }
     
-    // Validate Purchase Org
+    // Quotation Validity Date validation
+    if (header.quotation_valid_until) {
+      const validUntilError = validateValidUntilDate(header.quotation_valid_until);
+      if (validUntilError) newErrors.quotation_valid_until = validUntilError;
+    }
+    
+    // Other field validations
     if (header.purchase_org) {
       const specialCharError = validateNoSpecialChars(header.purchase_org, "Purchase Organization");
       if (specialCharError) newErrors.purchase_org = specialCharError;
     }
     
-    // Validate Material Group
     if (header.material_group) {
       const specialCharError = validateNoSpecialChars(header.material_group, "Material Group");
       if (specialCharError) newErrors.material_group = specialCharError;
     }
     
-    // Validate Plant
     if (header.plant) {
       const specialCharError = validateNoSpecialChars(header.plant, "Plant");
       if (specialCharError) newErrors.plant = specialCharError;
     }
     
-    // Validate Storage Location
-    if (header.storage_location) {
-      const specialCharError = validateNoSpecialChars(header.storage_location, "Storage Location");
-      if (specialCharError) newErrors.storage_location = specialCharError;
-    }
-    
-    // Validate Supplying Plant
-    if (header.supplying_plant) {
-      const specialCharError = validateNoSpecialChars(header.supplying_plant, "Supplying Plant");
-      if (specialCharError) newErrors.supplying_plant = specialCharError;
-    }
-    
-    // Validate Vendor selection
-    if (!header.vendor_id) {
-      newErrors.vendor_id = "Vendor is required";
-    }
-    
-    // Validate Reference PR ID (must be in PR-001 format)
     if (header.reference_pr_id) {
       const prFormatError = validatePRFormat(header.reference_pr_id, "Reference Purchase Requisition");
-      if (prFormatError) {
-        newErrors.reference_pr_id = prFormatError;
+      if (prFormatError) newErrors.reference_pr_id = prFormatError;
+    }
+    
+    // Multi-vendor validation - at least one vendor required
+    if (selectedVendors.length === 0) {
+      newErrors.vendors = "At least one vendor is required for RFQ";
+    } else {
+      const hasValidVendor = selectedVendors.some(v => v.vendor_id);
+      if (!hasValidVendor) {
+        newErrors.vendors = "Please select at least one valid vendor";
       }
     }
     
-    // Validate items
+    // Items validation
     let hasValidItem = false;
     items.forEach((item, idx) => {
       if (item.material_id && item.qty) {
         hasValidItem = true;
-        
-        // Validate quantity
         const qtyError = validateQuantity(item.qty);
-        if (qtyError) {
-          newErrors[`item_${idx}_qty`] = qtyError;
-        }
-      } else if (item.material_id || item.qty) {
-        if (!item.material_id) {
-          newErrors[`item_${idx}_material`] = "Please select material";
-        }
-        if (!item.qty) {
-          newErrors[`item_${idx}_qty`] = "Quantity is required";
-        }
+        if (qtyError) newErrors[`item_${idx}_qty`] = qtyError;
       }
     });
     
@@ -401,15 +502,16 @@ export default function RequestForQuotationPage() {
     const payload = {
       header: {
         ...header,
-        vendor_id: header.vendor_id ? Number(header.vendor_id) : null,
-        reference_pr_id: header.reference_pr_id || null
+        reference_pr_id: header.reference_pr_id || null,
+        quotation_valid_until: header.quotation_valid_until || null
       },
-      items: items
-        .filter((i) => i.material_id && i.qty)
-        .map((i) => ({
-          material_id: Number(i.material_id),
-          qty: Number(i.qty)
-        }))
+      items: items.filter((i) => i.material_id && i.qty).map((i) => ({
+        material_id: Number(i.material_id),
+        qty: Number(i.qty)
+      })),
+      vendors: selectedVendors.filter(v => v.vendor_id).map(v => ({
+        vendor_id: Number(v.vendor_id)
+      }))
     };
 
     try {
@@ -437,7 +539,7 @@ export default function RequestForQuotationPage() {
   const editRFQ = async (rfq) => {
     setEditingId(rfq.id);
     const res = await rfqApi.getById(rfq.id);
-    const { header: h, items: its } = res.data;
+    const { header: h, items: its, vendors: vendorList } = res.data;
 
     setHeader({
       rfq_type: h.rfq_type || "",
@@ -448,17 +550,24 @@ export default function RequestForQuotationPage() {
       material_group: h.material_group || "",
       plant: h.plant || "",
       storage_location: h.storage_location || "",
-      vendor_id: h.vendor_id ? String(h.vendor_id) : "",
       supplying_plant: h.supplying_plant || "",
-      reference_pr_id: h.reference_pr_id || ""
+      reference_pr_id: h.reference_pr_id || "",
+      status: h.status || "Draft",
+      quotation_valid_until: toInputDate(h.quotation_valid_until),
+      currency: h.currency || "USD",
+      payment_terms: h.payment_terms || "Net 30"
     });
 
-    setItems(
-      (its || []).map((it) => ({
-        material_id: String(it.material_id),
-        qty: String(it.qty)
-      }))
-    );
+    setItems((its || []).map((it) => ({
+      material_id: String(it.material_id),
+      qty: String(it.qty)
+    })));
+    
+    setSelectedVendors((vendorList || []).map((v, idx) => ({
+      id: idx,
+      vendor_id: String(v.vendor_id)
+    })));
+    
     setErrors({});
   };
 
@@ -475,10 +584,10 @@ export default function RequestForQuotationPage() {
 
   const filteredRFQs = rfqs.filter((r) => {
     const term = search.toLowerCase();
-    return (
-      r.rfq_no?.toLowerCase().includes(term) ||
-      r.rfq_type?.toLowerCase().includes(term)
-    );
+    const matchesSearch = r.rfq_no?.toLowerCase().includes(term) ||
+                         r.rfq_type?.toLowerCase().includes(term);
+    const matchesStatus = !statusFilter || r.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const getInputStyle = (fieldName) => {
@@ -490,13 +599,13 @@ export default function RequestForQuotationPage() {
       <h2 style={styles.title}>Request for Quotation</h2>
 
       <form onSubmit={handleSubmit}>
-        {/* Row 1: RFQ No, RFQ Type, Purchase Org */}
-        <div style={styles.formRow}>
+        {/* Row 1: RFQ No, RFQ Type, Purchase Org, Status */}
+        <div style={styles.formRow2}>
           <div style={styles.formCol}>
             <label style={styles.label}>RFQ No</label>
             <input
               style={styles.input}
-              value={editingId ? "(Editing existing RFQ)" : "Auto Generated"}
+              value={editingId ? "(Editing)" : "Auto Generated"}
               disabled
             />
           </div>
@@ -519,14 +628,32 @@ export default function RequestForQuotationPage() {
               name="purchase_org"
               value={header.purchase_org}
               onChange={handleHeaderChange}
-              placeholder="Letters, numbers, spaces and hyphens only"
+              placeholder="Purchase org"
             />
             {errors.purchase_org && <div style={styles.errorText}>{errors.purchase_org}</div>}
           </div>
+          <div style={styles.formCol}>
+            <label style={styles.label}>RFQ Status *</label>
+            <select
+              style={styles.input}
+              name="status"
+              value={header.status}
+              onChange={handleHeaderChange}
+              required
+            >
+              <option value="Draft">Draft</option>
+              <option value="Sent">Sent</option>
+              <option value="Pending Quote">Pending Quote</option>
+              <option value="Quoted">Quoted</option>
+              <option value="Closed">Closed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+            <div style={styles.infoText}>Track RFQ through procurement workflow</div>
+          </div>
         </div>
 
-        {/* Row 2: RFQ Date, Question Deadline, Delivery Date */}
-        <div style={styles.formRow}>
+        {/* Row 2: RFQ Date, Question Deadline, Delivery Date, Quotation Valid Until */}
+        <div style={styles.formRow2}>
           <div style={styles.formCol}>
             <label style={styles.label}>RFQ Date *</label>
             <input
@@ -564,10 +691,23 @@ export default function RequestForQuotationPage() {
             />
             {errors.delivery_date && <div style={styles.errorText}>{errors.delivery_date}</div>}
           </div>
+          <div style={styles.formCol}>
+            <label style={styles.label}>Quotation Valid Until</label>
+            <input
+              style={getInputStyle("quotation_valid_until")}
+              type="date"
+              name="quotation_valid_until"
+              value={header.quotation_valid_until}
+              onChange={handleHeaderChange}
+              min={header.rfq_date || getTodayDate()}
+            />
+            {errors.quotation_valid_until && <div style={styles.errorText}>{errors.quotation_valid_until}</div>}
+            <div style={styles.infoText}>Vendor quotes valid until this date</div>
+          </div>
         </div>
 
-        {/* Row 3: Material Group, Plant, Storage Location */}
-        <div style={styles.formRow}>
+        {/* Row 3: Material Group, Plant, Storage Location, Supplying Plant */}
+        <div style={styles.formRow2}>
           <div style={styles.formCol}>
             <label style={styles.label}>Material Group</label>
             <input
@@ -575,7 +715,7 @@ export default function RequestForQuotationPage() {
               name="material_group"
               value={header.material_group}
               onChange={handleHeaderChange}
-              placeholder="Letters, numbers, spaces and hyphens only"
+              placeholder="Material group"
             />
             {errors.material_group && <div style={styles.errorText}>{errors.material_group}</div>}
           </div>
@@ -586,7 +726,7 @@ export default function RequestForQuotationPage() {
               name="plant"
               value={header.plant}
               onChange={handleHeaderChange}
-              placeholder="Letters, numbers, spaces and hyphens only"
+              placeholder="Plant"
             />
             {errors.plant && <div style={styles.errorText}>{errors.plant}</div>}
           </div>
@@ -597,14 +737,10 @@ export default function RequestForQuotationPage() {
               name="storage_location"
               value={header.storage_location}
               onChange={handleHeaderChange}
-              placeholder="Letters, numbers, spaces and hyphens only"
+              placeholder="Storage location"
             />
             {errors.storage_location && <div style={styles.errorText}>{errors.storage_location}</div>}
           </div>
-        </div>
-
-        {/* Row 4: Supplying Plant, Vendor, Reference PR */}
-        <div style={styles.formRow}>
           <div style={styles.formCol}>
             <label style={styles.label}>Supplying Plant</label>
             <input
@@ -612,46 +748,127 @@ export default function RequestForQuotationPage() {
               name="supplying_plant"
               value={header.supplying_plant}
               onChange={handleHeaderChange}
-              placeholder="Letters, numbers, spaces and hyphens only"
+              placeholder="Supplying plant"
             />
             {errors.supplying_plant && <div style={styles.errorText}>{errors.supplying_plant}</div>}
           </div>
+        </div>
+
+        {/* Row 4: Currency, Payment Terms, Reference PR */}
+        <div style={styles.formRow2}>
           <div style={styles.formCol}>
-            <label style={styles.label}>Vendor *</label>
+            <label style={styles.label}>Currency *</label>
             <select
-              style={getInputStyle("vendor_id")}
-              name="vendor_id"
-              value={header.vendor_id}
+              style={styles.input}
+              name="currency"
+              value={header.currency}
               onChange={handleHeaderChange}
               required
             >
-              <option value="">Select Vendor</option>
-              {vendors.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
+              <option value="USD">USD - US Dollar</option>
+              <option value="EUR">EUR - Euro</option>
+              <option value="INR">INR - Indian Rupee</option>
+              <option value="GBP">GBP - British Pound</option>
+              <option value="JPY">JPY - Japanese Yen</option>
             </select>
-            {errors.vendor_id && <div style={styles.errorText}>{errors.vendor_id}</div>}
           </div>
           <div style={styles.formCol}>
-            <label style={styles.label}>Reference Purchase Requisition</label>
+            <label style={styles.label}>Payment Terms *</label>
+            <select
+              style={styles.input}
+              name="payment_terms"
+              value={header.payment_terms}
+              onChange={handleHeaderChange}
+              required
+            >
+              <option value="Net 30">Net 30</option>
+              <option value="Net 45">Net 45</option>
+              <option value="Net 60">Net 60</option>
+              <option value="Advance 100%">Advance 100%</option>
+              <option value="50% Advance, 50% Net 30">50% Advance, 50% Net 30</option>
+              <option value="Letter of Credit">Letter of Credit</option>
+              <option value="Cash on Delivery">Cash on Delivery</option>
+            </select>
+            <div style={styles.infoText}>Standard procurement payment terms</div>
+          </div>
+          <div style={styles.formCol}>
+            <label style={styles.label}>Ref-Purchase Requisition</label>
             <input
               style={getInputStyle("reference_pr_id")}
               name="reference_pr_id"
               value={header.reference_pr_id}
               onChange={handleHeaderChange}
-              placeholder="Format: PR-001, PO-123, RFQ-4567"
+              placeholder="Format: PR-001"
             />
             {errors.reference_pr_id && <div style={styles.errorText}>{errors.reference_pr_id}</div>}
-            <div style={{ fontSize: "10px", color: "#6b7280", marginTop: "2px" }}>
-              Example: PR-001, PO-123, RFQ-4567
-            </div>
+            <div style={styles.infoText}>Link to source PR document</div>
+          </div>
+          <div style={styles.formCol}>
+            {/* Empty for alignment */}
           </div>
         </div>
 
-        <h4 style={styles.sectionTitle}>Materials (Material & Qty) *</h4>
+        {/* Multi-Vendor Support Section */}
+        <h4 style={styles.sectionTitle}>Vendors (Multi-Vendor RFQ) *</h4>
+        <div style={styles.tableWrapper}>
+          <table style={styles.vendorTable}>
+            <thead>
+              <tr>
+                <th style={styles.vendorTh}>Vendor</th>
+                <th style={styles.vendorTh}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedVendors.map((vendor, idx) => (
+                <tr key={vendor.id}>
+                  <td style={styles.td}>
+                    <select
+                      style={styles.input}
+                      value={vendor.vendor_id}
+                      onChange={(e) => updateVendorSelection(vendor.id, e.target.value)}
+                    >
+                      <option value="">Select Vendor</option>
+                      {vendors.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td style={styles.td}>
+                    <button
+                      type="button"
+                      style={styles.removeVendorBtn}
+                      onClick={() => removeVendorFromRFQ(vendor.id)}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {selectedVendors.length === 0 && (
+                <tr>
+                  <td colSpan="2" style={{ ...styles.td, textAlign: "center", color: "#666" }}>
+                    No vendors added. Click "Add Vendor" to send this RFQ to multiple vendors.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        <button
+          type="button"
+          style={styles.addVendorBtn}
+          onClick={addVendorToRFQ}
+        >
+          + Add Vendor
+        </button>
+        {errors.vendors && <div style={styles.errorText}>{errors.vendors}</div>}
+        <div style={styles.infoText}>Send RFQ to multiple vendors for competitive bidding</div>
 
+        {/* Materials Section */}
+        <h4 style={styles.sectionTitle}>Materials (Material & Qty) *</h4>
         <div style={styles.tableWrapper}>
           <table style={styles.table}>
             <thead>
@@ -688,7 +905,7 @@ export default function RequestForQuotationPage() {
                       min="1"
                       value={it.qty}
                       onChange={(e) => handleItemChange(idx, "qty", e.target.value)}
-                      placeholder=" 0"
+                      placeholder="0"
                     />
                     {errors[`item_${idx}_qty`] && (
                       <div style={styles.errorText}>{errors[`item_${idx}_qty`]}</div>
@@ -709,7 +926,7 @@ export default function RequestForQuotationPage() {
           style={{ ...styles.button, ...styles.addBtn }}
           onClick={addRow}
         >
-          Add Row
+          Add Material Row
         </button>
 
         <button
@@ -730,14 +947,40 @@ export default function RequestForQuotationPage() {
         )}
       </form>
 
+      {/* Existing RFQs Table */}
       <h3 style={{ marginTop: "30px" }}>Existing RFQs</h3>
 
-      <input
-        style={styles.searchBox}
-        placeholder="Search by RFQ No / Type"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <div style={styles.filterBar}>
+        <input
+          style={styles.searchBox}
+          placeholder="Search by RFQ No / Type"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        
+        <select
+          style={styles.select}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="">All Statuses</option>
+          <option value="Draft">Draft</option>
+          <option value="Sent">Sent</option>
+          <option value="Pending Quote">Pending Quote</option>
+          <option value="Quoted">Quoted</option>
+          <option value="Closed">Closed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+
+        {(statusFilter) && (
+          <button
+            onClick={() => setStatusFilter("")}
+            style={{ ...styles.button, background: "#6b7280", color: "white", padding: "7px 15px" }}
+          >
+            Clear Filters
+          </button>
+        )}
+      </div>
 
       <div style={styles.tableWrapper}>
         <table style={styles.table}>
@@ -745,12 +988,13 @@ export default function RequestForQuotationPage() {
             <tr>
               <th style={styles.th}>RFQ No</th>
               <th style={styles.th}>Type</th>
+              <th style={styles.th}>Status</th>
               <th style={styles.th}>RFQ Date</th>
-              <th style={styles.th}>Question Deadline</th>
-              <th style={styles.th}>Purchase Org</th>
-              <th style={styles.th}>Delivery Date</th>
+              <th style={styles.th}>Valid Until</th>
+              <th style={styles.th}>Currency</th>
+              <th style={styles.th}>Payment Terms</th>
               <th style={styles.th}>Plant</th>
-              <th style={styles.th}>Vendor</th>
+              <th style={styles.th}>Vendors</th>
               <th style={styles.th}>Qty</th>
               <th style={styles.th}>Items</th>
               <th style={styles.th}>Action</th>
@@ -761,14 +1005,17 @@ export default function RequestForQuotationPage() {
               <tr key={r.id}>
                 <td style={styles.td}>{r.rfq_no}</td>
                 <td style={styles.td}>{r.rfq_type}</td>
-                <td style={styles.td}>{toInputDate(r.rfq_date)}</td>
-                <td style={styles.td}>{toInputDate(r.question_deadline)}</td>
-                <td style={styles.td}>{r.purchase_org}</td>
-                <td style={styles.td}>{toInputDate(r.delivery_date)}</td>
-                <td style={styles.td}>{r.plant}</td>
                 <td style={styles.td}>
-                  {vendors.find(v => v.id === r.vendor_id)?.name || r.vendor_id}
+                  <span style={{...styles.statusBadge, ...getStatusBadgeStyle(r.status)}}>
+                    {r.status || "Draft"}
+                  </span>
                 </td>
+                <td style={styles.td}>{toInputDate(r.rfq_date)}</td>
+                <td style={styles.td}>{toInputDate(r.quotation_valid_until)}</td>
+                <td style={styles.td}>{r.currency || "USD"}</td>
+                <td style={styles.td}>{r.payment_terms || "Net 30"}</td>
+                <td style={styles.td}>{r.plant}</td>
+                <td style={styles.td}>{r.vendor_count || 0}</td>
                 <td style={styles.td}>{r.total_qty}</td>
                 <td style={styles.td}>{r.item_count}</td>
                 <td style={styles.td}>
@@ -791,7 +1038,7 @@ export default function RequestForQuotationPage() {
             ))}
             {filteredRFQs.length === 0 && (
               <tr>
-                <td style={styles.td} colSpan={11}>
+                <td style={styles.td} colSpan={12}>
                   No RFQs found.
                 </td>
               </tr>

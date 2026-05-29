@@ -111,6 +111,81 @@ export default function PRPage() {
       borderRadius: "5px",
       border: "1px solid #ccc",
       marginBottom: "10px"
+    },
+    statusBadge: {
+      padding: "4px 8px",
+      borderRadius: "4px",
+      fontSize: "12px",
+      fontWeight: "bold",
+      display: "inline-block"
+    },
+    statusDraft: {
+      background: "#9ca3af",
+      color: "white"
+    },
+    statusPending: {
+      background: "#f59e0b",
+      color: "white"
+    },
+    statusApproved: {
+      background: "#10b981",
+      color: "white"
+    },
+    statusRejected: {
+      background: "#ef4444",
+      color: "white"
+    },
+    statusClosed: {
+      background: "#6b7280",
+      color: "white"
+    },
+    priorityLow: {
+      background: "#22c55e",
+      color: "white",
+      padding: "4px 8px",
+      borderRadius: "4px",
+      fontSize: "12px",
+      fontWeight: "bold",
+      display: "inline-block"
+    },
+    priorityMedium: {
+      background: "#f59e0b",
+      color: "white",
+      padding: "4px 8px",
+      borderRadius: "4px",
+      fontSize: "12px",
+      fontWeight: "bold",
+      display: "inline-block"
+    },
+    priorityHigh: {
+      background: "#ef4444",
+      color: "white",
+      padding: "4px 8px",
+      borderRadius: "4px",
+      fontSize: "12px",
+      fontWeight: "bold",
+      display: "inline-block"
+    },
+    priorityUrgent: {
+      background: "#7c3aed",
+      color: "white",
+      padding: "4px 8px",
+      borderRadius: "4px",
+      fontSize: "12px",
+      fontWeight: "bold",
+      display: "inline-block"
+    },
+    filterBar: {
+      display: "flex",
+      gap: "10px",
+      marginBottom: "15px",
+      alignItems: "center",
+      flexWrap: "wrap"
+    },
+    select: {
+      padding: "7px",
+      borderRadius: "5px",
+      border: "1px solid #ccc"
     }
   };
 
@@ -121,6 +196,8 @@ export default function PRPage() {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
 
   const [header, setHeader] = useState({
     req_date: "",
@@ -128,7 +205,9 @@ export default function PRPage() {
     uom: "",
     batch: "",
     plant: "",
-    purchase_org: ""
+    purchase_org: "",
+    status: "Draft", // NEW: PR Status
+    priority: "Medium" // NEW: Priority Level
   });
 
   const [items, setItems] = useState([
@@ -154,7 +233,6 @@ export default function PRPage() {
 
   /* ---------------- VALIDATION FUNCTIONS ---------------- */
 
-  // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -163,7 +241,6 @@ export default function PRPage() {
     return `${year}-${month}-${day}`;
   };
 
-  // Validate no special characters (only letters, numbers, spaces)
   const validateNoSpecialChars = (value, fieldName) => {
     if (!value) return "";
     const regex = /^[A-Za-z0-9\s]+$/;
@@ -173,7 +250,6 @@ export default function PRPage() {
     return "";
   };
 
-  // Validate date is not in the past
   const validateNotPastDate = (date, fieldName) => {
     if (!date) return "";
     const selectedDate = new Date(date);
@@ -186,7 +262,6 @@ export default function PRPage() {
     return "";
   };
 
-  // Validate quantity is positive
   const validateQuantity = (qty) => {
     if (!qty) return "";
     const num = Number(qty);
@@ -199,14 +274,12 @@ export default function PRPage() {
     const { name, value } = e.target;
     let processedValue = value;
     
-    // Remove special characters from text fields
     if (name === "requester" || name === "batch" || name === "plant" || name === "purchase_org") {
       processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
     }
     
     setHeader((h) => ({ ...h, [name]: processedValue }));
     
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: "" }));
     }
@@ -215,12 +288,10 @@ export default function PRPage() {
   const handleItemChange = (index, field, value) => {
     let processedValue = value;
     
-    // For remarks, remove special characters
     if (field === "remarks") {
       processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
     }
     
-    // For qty, ensure it's positive
     if (field === "qty") {
       if (value < 0) processedValue = "";
     }
@@ -229,7 +300,6 @@ export default function PRPage() {
       prev.map((it, i) => (i === index ? { ...it, [field]: processedValue } : it))
     );
     
-    // Clear error for this item field
     if (errors[`item_${index}_${field}`]) {
       setErrors(prev => ({ ...prev, [`item_${index}_${field}`]: "" }));
     }
@@ -250,7 +320,9 @@ export default function PRPage() {
       uom: "",
       batch: "",
       plant: "",
-      purchase_org: ""
+      purchase_org: "",
+      status: "Draft",
+      priority: "Medium"
     });
     setItems([{ material_id: "", qty: "", required_date: "", remarks: "" }]);
     setErrors({});
@@ -259,7 +331,6 @@ export default function PRPage() {
   const validateForm = () => {
     const newErrors = {};
     
-    // Validate header fields
     if (!header.req_date) {
       newErrors.req_date = "Req Date is required";
     } else {
@@ -287,19 +358,16 @@ export default function PRPage() {
       if (specialCharError) newErrors.purchase_org = specialCharError;
     }
     
-    // Validate items
     let hasValidItem = false;
     items.forEach((item, idx) => {
       if (item.material_id && item.qty) {
         hasValidItem = true;
         
-        // Validate quantity
         const qtyError = validateQuantity(item.qty);
         if (qtyError) {
           newErrors[`item_${idx}_qty`] = qtyError;
         }
         
-        // Validate required date is not past
         if (item.required_date) {
           const pastDateError = validateNotPastDate(item.required_date, "Required Date");
           if (pastDateError) {
@@ -307,7 +375,6 @@ export default function PRPage() {
           }
         }
         
-        // Validate remarks for special characters
         if (item.remarks) {
           const specialCharError = validateNoSpecialChars(item.remarks, "Remarks");
           if (specialCharError) {
@@ -372,7 +439,9 @@ export default function PRPage() {
         uom: h.uom || "",
         batch: h.batch || "",
         plant: h.plant || "",
-        purchase_org: h.purchase_org || ""
+        purchase_org: h.purchase_org || "",
+        status: h.status || "Draft",
+        priority: h.priority || "Medium"
       });
 
       setItems(
@@ -396,12 +465,35 @@ export default function PRPage() {
     loadPRs();
   };
 
+  // Function to get status badge style
+  const getStatusBadgeStyle = (status) => {
+    switch(status) {
+      case 'Draft': return styles.statusDraft;
+      case 'Pending': return styles.statusPending;
+      case 'Approved': return styles.statusApproved;
+      case 'Rejected': return styles.statusRejected;
+      case 'Closed': return styles.statusClosed;
+      default: return styles.statusDraft;
+    }
+  };
+
+  // Function to get priority badge style
+  const getPriorityBadgeStyle = (priority) => {
+    switch(priority) {
+      case 'Low': return styles.priorityLow;
+      case 'Medium': return styles.priorityMedium;
+      case 'High': return styles.priorityHigh;
+      case 'Urgent': return styles.priorityUrgent;
+      default: return styles.priorityMedium;
+    }
+  };
+
   const filteredPRs = prs.filter((pr) => {
-    const term = search.toLowerCase();
-    return (
-      pr.req_no?.toLowerCase().includes(term) ||
-      pr.requester?.toLowerCase().includes(term)
-    );
+    const matchesSearch = pr.req_no?.toLowerCase().includes(search.toLowerCase()) ||
+                         pr.requester?.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = !statusFilter || pr.status === statusFilter;
+    const matchesPriority = !priorityFilter || pr.priority === priorityFilter;
+    return matchesSearch && matchesStatus && matchesPriority;
   });
 
   const getInputStyle = (fieldName) => {
@@ -511,6 +603,48 @@ export default function PRPage() {
           </div>
         </div>
 
+        {/* Row 4: Status + Priority (NEW) */}
+        <div style={styles.formRow}>
+          <div style={styles.formCol}>
+            <label style={styles.label}>Status *</label>
+            <select
+              style={styles.input}
+              name="status"
+              value={header.status}
+              onChange={handleHeaderChange}
+              required
+            >
+              <option value="Draft">Draft</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+              <option value="Closed">Closed</option>
+            </select>
+            <div style={{ fontSize: "11px", color: "#666", marginTop: "4px" }}>
+              Track PR through approval lifecycle
+            </div>
+          </div>
+
+          <div style={styles.formCol}>
+            <label style={styles.label}>Priority *</label>
+            <select
+              style={styles.input}
+              name="priority"
+              value={header.priority}
+              onChange={handleHeaderChange}
+              required
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+            <div style={{ fontSize: "11px", color: "#666", marginTop: "4px" }}>
+              For emergency procurement and material planning
+            </div>
+          </div>
+        </div>
+
         {/* -------- ITEMS TABLE -------- */}
         <h4>Items</h4>
 
@@ -573,7 +707,7 @@ export default function PRPage() {
                     onChange={(e) =>
                       handleItemChange(idx, "qty", e.target.value)
                     }
-                    placeholder=" 0"
+                    placeholder="0"
                   />
                   {errors[`item_${idx}_qty`] && (
                     <div style={styles.errorText}>{errors[`item_${idx}_qty`]}</div>
@@ -636,12 +770,52 @@ export default function PRPage() {
       {/* -------- EXISTING PR TABLE -------- */}
       <h3 style={{ marginTop: "30px" }}>Existing PRs</h3>
 
-      <input
-        style={styles.searchBox}
-        placeholder="Search by PR No / Requestor"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      {/* Filter Bar (NEW) */}
+      <div style={styles.filterBar}>
+        <input
+          style={styles.searchBox}
+          placeholder="Search by PR No / Requestor"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        
+        <select
+          style={styles.select}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="">All Statuses</option>
+          <option value="Draft">Draft</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Closed">Closed</option>
+        </select>
+
+        <select
+          style={styles.select}
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+        >
+          <option value="">All Priorities</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Urgent">Urgent</option>
+        </select>
+
+        {(statusFilter || priorityFilter) && (
+          <button
+            onClick={() => {
+              setStatusFilter("");
+              setPriorityFilter("");
+            }}
+            style={{ ...styles.button, background: "#6b7280", color: "white", padding: "7px 15px" }}
+          >
+            Clear Filters
+          </button>
+        )}
+      </div>
 
       <table style={styles.table}>
         <thead>
@@ -649,6 +823,8 @@ export default function PRPage() {
             <th style={styles.th}>PR No</th>
             <th style={styles.th}>Date</th>
             <th style={styles.th}>Requestor</th>
+            <th style={styles.th}>Status</th>
+            <th style={styles.th}>Priority</th>
             <th style={styles.th}>UOM</th>
             <th style={styles.th}>Batch</th>
             <th style={styles.th}>Plant</th>
@@ -665,6 +841,16 @@ export default function PRPage() {
               <td style={styles.td}>{pr.req_no}</td>
               <td style={styles.td}>{pr.req_date ? pr.req_date.split('T')[0] : ""}</td>
               <td style={styles.td}>{pr.requester}</td>
+              <td style={styles.td}>
+                <span style={{...styles.statusBadge, ...getStatusBadgeStyle(pr.status)}}>
+                  {pr.status || "Draft"}
+                </span>
+              </td>
+              <td style={styles.td}>
+                <span style={getPriorityBadgeStyle(pr.priority)}>
+                  {pr.priority || "Medium"}
+                </span>
+              </td>
               <td style={styles.td}>{pr.uom}</td>
               <td style={styles.td}>{pr.batch}</td>
               <td style={styles.td}>{pr.plant}</td>
@@ -691,7 +877,7 @@ export default function PRPage() {
           ))}
           {filteredPRs.length === 0 && (
             <tr>
-              <td style={styles.td} colSpan={10}>
+              <td style={styles.td} colSpan={12}>
                 No PRs found.
               </td>
             </tr>
