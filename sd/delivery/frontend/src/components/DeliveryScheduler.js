@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import "./Styles.css"; 
 
-const DeliveryScheduler = ({ deliveries, setDeliveries }) => {
+const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, refreshAllData }) => {
   const [formData, setFormData] = useState({
     order_id: '',
     customer_name: '',
@@ -12,10 +12,12 @@ const DeliveryScheduler = ({ deliveries, setDeliveries }) => {
     driver_id: '',
     driver_name: '',
     lat: 17.3850,
-    lng: 78.4867
+    lng: 78.4867,
+    total_amount: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [showAll, setShowAll] = useState(false);
 
   const handleSchedule = async (e) => {
     e.preventDefault();
@@ -23,43 +25,62 @@ const DeliveryScheduler = ({ deliveries, setDeliveries }) => {
     setSuccessMsg('');
     
     try {
-      console.log('📦 Sending:', formData); // DEBUG
+      // Check if order exists, if not create it
+      const existingOrder = orders.find(o => o.order_id === formData.order_id);
+      
+      if (!existingOrder && formData.total_amount) {
+        // Create order first
+        try {
+          await axios.post('/api/orders/create', {
+            order_id: formData.order_id,
+            customer_name: formData.customer_name,
+            customer_phone: formData.customer_phone,
+            total_amount: formData.total_amount,
+            status: 'pending'
+          });
+          console.log('✅ Order created for delivery');
+        } catch (orderError) {
+          // Order might already exist, continue with delivery
+          console.log('Order creation skipped:', orderError.response?.data?.error);
+        }
+      }
+
+      // Schedule delivery
       const res = await axios.post('/api/delivery/schedule', formData);
-      console.log('✅ Response:', res.data);
       
-      // Add to deliveries list
       setDeliveries(prev => [res.data, ...prev]);
-      
-      // SUCCESS FEEDBACK - VISIBLE!
       setSuccessMsg(`✅ Delivery #${res.data.order_id} scheduled!`);
       
       // Reset form
       setFormData({
         order_id: '', customer_name: '', customer_phone: '',
-        address: '', scheduled_time: '', driver_id: '', driver_name: '', lat: 17.3850, lng: 78.4867
+        address: '', scheduled_time: '', driver_id: '', driver_name: '', 
+        lat: 17.3850, lng: 78.4867, total_amount: ''
       });
       
-      // Auto-clear success message
       setTimeout(() => setSuccessMsg(''), 5000);
       
+      // Refresh all data
+      if (refreshAllData) refreshAllData();
+      
     } catch (error) {
-      console.error('❌ Error:', error.response?.data || error.message);
       setSuccessMsg(`❌ ${error.response?.data?.error || 'Failed to schedule'}`);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const pendingDeliveries = deliveries.filter(d => d.status === 'pending');
+  const displayDeliveries = showAll ? deliveries : pendingDeliveries;
+
   return (
     <section className="delivery-scheduler">
       <h2>🚚 Delivery Scheduler</h2>
       
       <div className="scheduler-grid">
-        {/* FORM */}
         <div className="form-section">
           <h3>📝 New Delivery</h3>
           
-          {/* ✅ SUCCESS/ERROR DISPLAY */}
           {successMsg && (
             <div className={`success-msg ${successMsg.includes('✅') ? 'success' : 'error'}`}>
               {successMsg}
@@ -68,27 +89,33 @@ const DeliveryScheduler = ({ deliveries, setDeliveries }) => {
           
           <form className="delivery-form" onSubmit={handleSchedule}>
             <input 
-              placeholder="Order ID " 
+              placeholder="Order ID *" 
               value={formData.order_id}
               onChange={(e) => setFormData({...formData, order_id: e.target.value})}
               required 
             />
             <input 
-              placeholder="Customer Name" 
+              placeholder="Customer Name *" 
               value={formData.customer_name}
               onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
               required
             />
             <input 
-              placeholder="Phone " 
+              placeholder="Phone" 
               value={formData.customer_phone}
               onChange={(e) => setFormData({...formData, customer_phone: e.target.value})}
             />
             <input 
-              placeholder="Full Address" 
+              placeholder="Full Address *" 
               value={formData.address}
               onChange={(e) => setFormData({...formData, address: e.target.value})}
               required
+            />
+            <input 
+              type="number"
+              placeholder="Order Amount (₹) - Creates order if new" 
+              value={formData.total_amount}
+              onChange={(e) => setFormData({...formData, total_amount: e.target.value})}
             />
             <div className="time-row">
               <input 
@@ -109,19 +136,26 @@ const DeliveryScheduler = ({ deliveries, setDeliveries }) => {
           </form>
         </div>
 
-        {/* DELIVERIES */}
         <div className="delivery-list-section">
-          <div className="deliveries-count">
-            Active: <strong>{deliveries.length}</strong>
+          <div className="deliveries-header">
+            <div className="deliveries-count">
+              Active: <strong>{pendingDeliveries.length}</strong> / Total: {deliveries.length}
+            </div>
+            <button 
+              className="toggle-btn"
+              onClick={() => setShowAll(!showAll)}
+            >
+              {showAll ? '📋 Show Active' : '📋 Show All'}
+            </button>
           </div>
           <h3>📋 Live List</h3>
           <div className="deliveries-list">
-            {deliveries.length === 0 ? (
+            {displayDeliveries.length === 0 ? (
               <div className="empty-state">
-                No deliveries yet
+                {showAll ? 'No deliveries yet. Use the form to add deliveries.' : 'No active deliveries'}
               </div>
             ) : (
-              deliveries.map(delivery => (
+              displayDeliveries.map(delivery => (
                 <div key={delivery.id} className={`delivery-item ${delivery.status || 'pending'}`}>
                   <div className="delivery-header">
                     <div className="order-id">#{delivery.order_id}</div>
@@ -129,17 +163,24 @@ const DeliveryScheduler = ({ deliveries, setDeliveries }) => {
                       {delivery.status || 'pending'}
                     </span>
                   </div>
-                  
                   <div className="delivery-details">
-                    <span>{delivery.customer_name}</span>
-                    <span>{new Date(delivery.scheduled_time).toLocaleTimeString()}</span>
+                    <span>👤 {delivery.customer_name}</span>
+                    <span>🕐 {new Date(delivery.scheduled_time).toLocaleString()}</span>
                   </div>
+                  <div className="delivery-address">
+                    📍 {delivery.address}
+                  </div>
+                  {/* Show linked order info */}
+                  {orders.find(o => o.order_id === delivery.order_id) && (
+                    <div style={{ marginTop: '5px', fontSize: '12px', color: '#666' }}>
+                      💰 Order Value: ₹{orders.find(o => o.order_id === delivery.order_id).total_amount}
+                    </div>
+                  )}
                 </div>
               ))
             )}
           </div>
         </div>
-        
       </div>
     </section>
   );

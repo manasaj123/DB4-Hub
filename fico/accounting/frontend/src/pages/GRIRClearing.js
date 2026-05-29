@@ -399,12 +399,12 @@ const GRIRClearing = () => {
               <thead>
                 <tr>
                   <th>PO</th>
-                  <th>Vendor/Customer</th>
+                  <th>Ven/Cus</th>
                   <th>PO Amt</th>
                   <th>Cleared</th>
                   <th>Pending</th>
                   <th>Status</th>
-                  <th>Narration</th>
+                  <th>Narrat</th>
                 </tr>
               </thead>
               <tbody>
