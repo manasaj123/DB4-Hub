@@ -211,6 +211,37 @@ exports.getInquiryById = asyncHandler(async (req, res) => {
   res.json(inquiry);
 });
 
+// POST /api/inquiries/:id/convert-to-order
+exports.convertToOrder = asyncHandler(async (req, res) => {
+  const inquiry = await db.Inquiry.findByPk(req.params.id);
+  if (!inquiry) {
+    return res.status(404).json({ message: "Inquiry not found" });
+  }
+  if (inquiry.isDeleted) {
+    return res.status(400).json({ message: "Inquiry is deleted" });
+  }
+
+  // Build sales order data from inquiry
+  const orderData = {
+    orderType: inquiry.inquiryType, // you may map "IN" → "OR" if needed
+    salesOrg: inquiry.salesOrg,
+    distributionChannel: inquiry.distributionChannel,
+    division: inquiry.division,
+    salesOffice: null, // inquiry doesn't have these; can leave blank
+    salesGroup: null,
+    soldToPartyId: inquiry.soldToPartyId,
+    shipToPartyId: inquiry.shipToPartyId,
+    itemsJson: inquiry.itemsJson, // directly copy the items
+    referenceInquiryId: inquiry.id,
+  };
+
+  // Optional: perform credit check here using checkCreditLimit helper
+  // ...
+
+  const salesOrder = await db.SalesOrder.create(orderData);
+  res.status(201).json(salesOrder);
+});
+
 // POST /api/inquiries
 // controllers/inquiryController.js
 exports.createInquiry = asyncHandler(async (req, res) => {

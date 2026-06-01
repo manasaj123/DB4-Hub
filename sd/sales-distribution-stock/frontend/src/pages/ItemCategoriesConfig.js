@@ -92,14 +92,14 @@ const ItemCategoriesConfig = () => {
     }
 
     // valid category group
-    const validGroups = ["HIGH", "MID", "LOW"];
+    // const validGroups = ["HIGH", "MID", "LOW"];
 
-    if (
-      !validGroups.includes(formData.itemCategoryGroup.trim().toUpperCase())
-    ) {
-      alert("Item Category Group must be HIGH, MID or LOW");
-      return;
-    }
+    // if (
+    //   !validGroups.includes(formData.itemCategoryGroup.trim().toUpperCase())
+    // ) {
+    //   alert("Item Category Group must be HIGH, MID or LOW");
+    //   return;
+    // }
 
     const payload = { ...formData };
 

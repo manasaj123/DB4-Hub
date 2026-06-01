@@ -346,6 +346,7 @@ db.Shipping = sequelize.define(
     },
     description: { type: DataTypes.STRING(100) },
     defaultRoute: { type: DataTypes.STRING(10) },
+    plant: { type: DataTypes.STRING(10) },
     planningRelevant: { type: DataTypes.BOOLEAN, defaultValue: true },
     isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
@@ -375,6 +376,7 @@ db.Delivery = sequelize.define(
     itemsJson: { type: DataTypes.TEXT },
     warehouse: { type: DataTypes.STRING(10) },
     plant: { type: DataTypes.STRING(10) },
+    route: { type: DataTypes.STRING(10) }, // ← new
     deliveryGroup: { type: DataTypes.STRING(10) },
     postGoodsIssueDate: { type: DataTypes.DATEONLY },
     status: {

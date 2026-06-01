@@ -37,10 +37,10 @@ const validateItemCategoryConfig = (data) => {
 
   // item category group
   if (data.itemCategoryGroup) {
-    const validGroups = ["HIGH", "MID", "LOW"];
+    const alphaNumericRegex = /^[A-Za-z0-9]+$/;
 
-    if (!validGroups.includes(data.itemCategoryGroup.toUpperCase())) {
-      errors.itemCategoryGroup = "Item Category Group must be HIGH, MID or LOW";
+    if (!alphaNumericRegex.test(data.itemCategoryGroup)) {
+      errors.itemCategoryGroup = "Item Category Group must be alphanumeric only";
     }
 
     if (data.itemCategoryGroup.length > 10) {

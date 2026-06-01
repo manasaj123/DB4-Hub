@@ -8,6 +8,7 @@ import {
   softDeleteBilling,
   restoreBilling,
   getDeliveries,
+  getUnbilledDeliveries, // new
 } from "../services/billingService";
 
 const initialForm = {
@@ -24,6 +25,10 @@ const Billing = () => {
   const [billings, setBillings] = useState([]);
   const [deletedBillings, setDeletedBillings] = useState([]);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [activeTab, setActiveTab] = useState("manual"); // "manual" or "generate"
+
+  // NEW state for unbilled deliveries
+  const [unbilledDeliveries, setUnbilledDeliveries] = useState([]);
 
   const [formData, setFormData] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
@@ -32,14 +37,16 @@ const Billing = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [delRes, activeRes, deletedRes] = await Promise.all([
+      const [delRes, activeRes, deletedRes, unbilledRes] = await Promise.all([
         getDeliveries(),
         getBillings(),
         getDeletedBillings(),
+        getUnbilledDeliveries(),
       ]);
       setDeliveries(delRes.data);
       setBillings(activeRes.data);
       setDeletedBillings(deletedRes.data);
+      setUnbilledDeliveries(unbilledRes.data);
     } catch (err) {
       console.error("Error loading billing data", err);
     } finally {
@@ -161,12 +168,30 @@ const Billing = () => {
     }
   };
 
-  const currentList = showDeleted ? deletedBillings : billings;
+  const handleGenerateInvoice = async (deliveryId) => {
+    if (!window.confirm("Create invoice for this delivery?")) return;
+    try {
+      await createBilling({
+        referenceDeliveryId: deliveryId,
+        billingType: "F2", // default invoice type – change as needed
+        billingDate: new Date().toISOString().slice(0, 10),
+        // totalAmount is omitted; backend will auto‑calculate it
+      });
+      alert("Invoice created successfully");
+      loadData(); // refresh all lists
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to create billing");
+    }
+  };
 
+  // Helper for displaying delivery reference in manual table
   const displayDeliveryRef = (id) => {
     const d = deliveries.find((x) => x.id === id);
     return d ? `DEL-${d.id}` : id;
   };
+
+  const currentList = showDeleted ? deletedBillings : billings;
+
 
   return (
     <div className="page-container">
@@ -306,147 +331,228 @@ const Billing = () => {
 
       <h2>Billing</h2>
 
-      <form className="form-card" onSubmit={handleSubmit}>
-        <h4>Header</h4>
-        <div className="form-row">
-          <label>Billing Type</label>
-          <input
-            name="billingType"
-            value={formData.billingType}
-            onChange={handleChange}
-            placeholder="e.g. F2"
-            required
-          />
-        </div>
-        <div className="form-row">
-          <label>Billing Date</label>
-          <input
-            type="date"
-            name="billingDate"
-            value={formData.billingDate}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <h4>Reference</h4>
-        <div className="form-row">
-          <label>Reference Delivery</label>
-          <select
-            name="referenceDeliveryId"
-            value={formData.referenceDeliveryId}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select Delivery</option>
-            {deliveries.map((d) => (
-              <option key={d.id} value={d.id}>
-                DEL-{d.id}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <h4>Amounts</h4>
-        <div className="form-row">
-          <label>Billing Document Number</label>
-          <input
-            name="documentNumber"
-            value={formData.documentNumber}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="form-row">
-          <label>Total Amount</label>
-          <input
-            type="number"
-            min="0.01"
-            step="0.01"
-            name="totalAmount"
-            value={formData.totalAmount}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="form-row">
-          <label>Currency</label>
-          <input
-            name="currency"
-            value={formData.currency}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="form-actions">
-          <button type="submit">
-            {editingId ? "Update Billing" : "Create Billing"}
-          </button>
-          {editingId && (
-            <button type="button" onClick={handleCancelEdit}>
-              Cancel
-            </button>
-          )}
-        </div>
-      </form>
-
-      <div className="list-header">
-        <h3>{showDeleted ? "Recycle Bin" : "Active Billing Documents"}</h3>
-        <button onClick={() => setShowDeleted((v) => !v)}>
-          {showDeleted ? "Show Active" : "Show Recycle Bin"}
+      {/* ===== TAB SWITCHER ===== */}
+      <div style={{ marginBottom: 16 }}>
+        <button
+          onClick={() => setActiveTab("manual")}
+          style={{
+            padding: "6px 14px",
+            background: activeTab === "manual" ? "#2563eb" : "#e5e7eb",
+            color: activeTab === "manual" ? "white" : "black",
+            border: "none",
+            borderRadius: 4,
+            marginRight: 8,
+            cursor: "pointer",
+          }}
+        >
+          Manual Entry
+        </button>
+        <button
+          onClick={() => setActiveTab("generate")}
+          style={{
+            padding: "6px 14px",
+            background: activeTab === "generate" ? "#2563eb" : "#e5e7eb",
+            color: activeTab === "generate" ? "white" : "black",
+            border: "none",
+            borderRadius: 4,
+            cursor: "pointer",
+          }}
+        >
+          Generate from PGI
         </button>
       </div>
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : currentList.length === 0 ? (
-        <p>No records.</p>
-      ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Billing Type</th>
-              <th>Billing Date</th>
-              <th>Delivery</th>
-              <th>Document No.</th>
-              <th>Total Amount</th>
-              <th>Currency</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentList.map((b) => (
-              <tr key={b.id}>
-                <td>{b.billingType}</td>
-                <td>{b.billingDate}</td>
-                <td>{displayDeliveryRef(b.referenceDeliveryId)}</td>
-                <td>{b.documentNumber}</td>
-                <td>{b.totalAmount}</td>
-                <td>{b.currency}</td>
-                <td>
-                  {!showDeleted && (
-                    <>
-                      <button type="button" onClick={() => handleEdit(b)}>
-                        Edit
+      {/* ===== MANUAL ENTRY TAB (your existing code) ===== */}
+      {activeTab === "manual" && (
+        <>
+          {/* ----- YOUR EXISTING MANUAL FORM ----- */}
+          <form className="form-card" onSubmit={handleSubmit}>
+            <h4>Header</h4>
+            <div className="form-row">
+              <label>Billing Type</label>
+              <input
+                name="billingType"
+                value={formData.billingType}
+                onChange={handleChange}
+                placeholder="e.g. F2"
+                required
+              />
+            </div>
+            <div className="form-row">
+              <label>Billing Date</label>
+              <input
+                type="date"
+                name="billingDate"
+                value={formData.billingDate}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <h4>Reference</h4>
+            <div className="form-row">
+              <label>Reference Delivery</label>
+              <select
+                name="referenceDeliveryId"
+                value={formData.referenceDeliveryId}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select Delivery</option>
+                {deliveries.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    DEL-{d.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <h4>Amounts</h4>
+            <div className="form-row">
+              <label>Billing Document Number</label>
+              <input
+                name="documentNumber"
+                value={formData.documentNumber}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="form-row">
+              <label>Total Amount</label>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                name="totalAmount"
+                value={formData.totalAmount}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="form-row">
+              <label>Currency</label>
+              <input
+                name="currency"
+                value={formData.currency}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-actions">
+              <button type="submit">
+                {editingId ? "Update Billing" : "Create Billing"}
+              </button>
+              {editingId && (
+                <button type="button" onClick={handleCancelEdit}>
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* ----- YOUR EXISTING LIST HEADER AND TABLE ----- */}
+          <div className="list-header">
+            <h3>{showDeleted ? "Recycle Bin" : "Active Billing Documents"}</h3>
+            <button onClick={() => setShowDeleted((v) => !v)}>
+              {showDeleted ? "Show Active" : "Show Recycle Bin"}
+            </button>
+          </div>
+
+          {loading ? (
+            <p>Loading...</p>
+          ) : currentList.length === 0 ? (
+            <p>No records.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Billing Type</th>
+                  <th>Billing Date</th>
+                  <th>Delivery</th>
+                  <th>Document No.</th>
+                  <th>Total Amount</th>
+                  <th>Currency</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentList.map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.billingType}</td>
+                    <td>{b.billingDate}</td>
+                    <td>{displayDeliveryRef(b.referenceDeliveryId)}</td>
+                    <td>{b.documentNumber}</td>
+                    <td>{b.totalAmount}</td>
+                    <td>{b.currency}</td>
+                    <td>
+                      {!showDeleted && (
+                        <>
+                          <button type="button" onClick={() => handleEdit(b)}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSoftDelete(b.id)}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                      {showDeleted && (
+                        <button
+                          type="button"
+                          onClick={() => handleRestore(b.id)}
+                        >
+                          Restore
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+
+      {/* ===== GENERATE FROM PGI TAB (NEW) ===== */}
+      {activeTab === "generate" && (
+        <div>
+          <h4>Unbilled Deliveries (PGI Done)</h4>
+          {unbilledDeliveries.length === 0 ? (
+            <p>All PGI'd deliveries have been billed.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Delivery ID</th>
+                  <th>Shipping Point</th>
+                  <th>Customer</th>
+                  <th>PGI Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unbilledDeliveries.map((d) => (
+                  <tr key={d.id}>
+                    <td>{d.id}</td>
+                    <td>{d.shippingPoint}</td>
+                    <td>
+                      {d.SalesOrder?.soldToParty?.name} (
+                      {d.SalesOrder?.soldToParty?.customerCode})
+                    </td>
+                    <td>{d.postGoodsIssueDate || "N/A"}</td>
+                    <td>
+                      <button onClick={() => handleGenerateInvoice(d.id)}>
+                        Generate Invoice
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSoftDelete(b.id)}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                  {showDeleted && (
-                    <button type="button" onClick={() => handleRestore(b.id)}>
-                      Restore
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </div>
   );

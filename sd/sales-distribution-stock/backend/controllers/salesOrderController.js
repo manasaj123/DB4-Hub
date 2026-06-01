@@ -2,6 +2,8 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const db = require("../models");
 const { Op } = require("sequelize");
+const checkCreditLimit = require("../helpers/creditCheck");
+const determineItemCategory = require("../helpers/itemCategoryDetermination");
 
 // validation
 const validateSalesOrder = (data) => {
@@ -227,6 +229,64 @@ exports.createSalesOrder = asyncHandler(async (req, res) => {
       return res.status(400).json({ errors });
     }
 
+    // ======================== Sales Document Config lookup ========================
+    const docConfig = await db.SalesDocumentConfig.findOne({
+      where: { documentType: req.body.orderType, isDeleted: false },
+    });
+    // ===========================================================================
+
+    // ---- Credit limit check (configurable) ----
+    let orderAmount = 0;
+    try {
+      const items = JSON.parse(req.body.itemsJson || "[]");
+      for (const item of items) {
+        const condition = await db.Condition.findOne({
+          where: { materialId: item.materialId, isDeleted: false },
+          order: [["validFrom", "DESC"]],
+        });
+        const price = condition ? Number(condition.price) : 0;
+        orderAmount += price * Number(item.quantity);
+      }
+    } catch {
+      return res
+        .status(400)
+        .json({ message: "Invalid itemsJson in order update" });
+    }
+
+    const shouldCheckCredit =
+      !docConfig || docConfig.checkCreditLimit !== false;
+    if (shouldCheckCredit) {
+      const creditCheck = await checkCreditLimit(
+        req.body.soldToPartyId,
+        orderAmount,
+      );
+      if (!creditCheck.allowed) {
+        return res.status(400).json({ message: creditCheck.message });
+      }
+    }
+    // ---- End credit check ----
+
+    // Enrich items with item category
+    let parsedItems;
+    try {
+      parsedItems = JSON.parse(req.body.itemsJson);
+    } catch {
+      return res.status(400).json({ message: "Invalid itemsJson" });
+    }
+
+    const enrichedItems = [];
+    for (const item of parsedItems) {
+      const cat = await determineItemCategory(
+        req.body.orderType,
+        item.materialId,
+        req.body.salesOrg,
+        req.body.distributionChannel,
+        req.body.division,
+      );
+      enrichedItems.push({ ...item, itemCategory: cat || "" });
+    }
+    req.body.itemsJson = JSON.stringify(enrichedItems);
+
     const order = await db.SalesOrder.create(req.body);
 
     res.status(201).json(order);
@@ -246,17 +306,12 @@ exports.updateSalesOrder = asyncHandler(async (req, res) => {
 
   try {
     req.body.orderType = (req.body.orderType || "").trim().toUpperCase();
-
     req.body.salesOrg = (req.body.salesOrg || "").trim().toUpperCase();
-
     req.body.distributionChannel = (req.body.distributionChannel || "")
       .trim()
       .toUpperCase();
-
     req.body.division = (req.body.division || "").trim().toUpperCase();
-
     req.body.salesOffice = (req.body.salesOffice || "").trim().toUpperCase();
-
     req.body.salesGroup = (req.body.salesGroup || "").trim().toUpperCase();
 
     const errors = validateSalesOrder(req.body);
@@ -265,6 +320,43 @@ exports.updateSalesOrder = asyncHandler(async (req, res) => {
       return res.status(400).json({ errors });
     }
 
+    // ======================== Sales Document Config lookup ========================
+    const docConfig = await db.SalesDocumentConfig.findOne({
+      where: { documentType: req.body.orderType, isDeleted: false },
+    });
+    // ===========================================================================
+
+    // ---- Credit limit check (configurable) ----
+    let orderAmount = 0;
+    try {
+      const items = JSON.parse(req.body.itemsJson || "[]");
+      for (const item of items) {
+        const condition = await db.Condition.findOne({
+          where: { materialId: item.materialId, isDeleted: false },
+          order: [["validFrom", "DESC"]],
+        });
+        const price = condition ? Number(condition.price) : 0;
+        orderAmount += price * Number(item.quantity);
+      }
+    } catch {
+      return res
+        .status(400)
+        .json({ message: "Invalid itemsJson in order update" });
+    }
+
+    const shouldCheckCredit =
+      !docConfig || docConfig.checkCreditLimit !== false;
+    if (shouldCheckCredit) {
+      const creditCheck = await checkCreditLimit(
+        req.body.soldToPartyId,
+        orderAmount,
+      );
+      if (!creditCheck.allowed) {
+        return res.status(400).json({ message: creditCheck.message });
+      }
+    }
+    // ---- End credit check ----
+
     await order.update(req.body);
 
     res.json(order);
@@ -272,7 +364,6 @@ exports.updateSalesOrder = asyncHandler(async (req, res) => {
     throw err;
   }
 });
-
 // DELETE /api/sales-orders/:id
 exports.softDeleteSalesOrder = asyncHandler(async (req, res) => {
   const order = await db.SalesOrder.findByPk(req.params.id);
