@@ -1,25 +1,23 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const pool = require("../utils/db");
+const pool = require('../utils/db');
 
 // GET all deliveries
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const [deliveries] = await pool.execute(
-      "SELECT * FROM deliveries ORDER BY created_at DESC"
+    const [rows] = await pool.execute(
+      'SELECT * FROM deliveries ORDER BY created_at DESC'
     );
-    res.json(deliveries);
+    res.json(rows);
   } catch (error) {
-    console.error("GET /delivery ERROR:", error);
+    console.error('GET /delivery error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // POST schedule new delivery
-router.post("/schedule", async (req, res) => {
+router.post('/schedule', async (req, res) => {
   try {
-    console.log("📦 RAW REQUEST:", req.body);
-
     const {
       order_id,
       customer_name,
@@ -32,25 +30,50 @@ router.post("/schedule", async (req, res) => {
       lng
     } = req.body;
 
-    // Validation
-    if (!order_id?.trim() || !customer_name?.trim() || !address?.trim() || !scheduled_time) {
-      console.log("❌ VALIDATION FAILED:", { order_id, customer_name, address, scheduled_time });
-      return res.status(400).json({ error: "Order ID, Name, Address, Time required" });
+    console.log('📦 Received delivery data:', req.body);
+
+    // Validation - check only the fields we need
+    if (!order_id || !customer_name || !address || !scheduled_time) {
+      const missingFields = [];
+      if (!order_id) missingFields.push('Order ID');
+      if (!customer_name) missingFields.push('Customer Name');
+      if (!address) missingFields.push('Address');
+      if (!scheduled_time) missingFields.push('Scheduled Time');
+      
+      return res.status(400).json({ 
+        error: `Missing required fields: ${missingFields.join(', ')}` 
+      });
     }
 
-    console.log("✅ INSERTING:", { order_id, customer_name, address, scheduled_time });
+    // Check for duplicate delivery
+    const [existing] = await pool.execute(
+      'SELECT id FROM deliveries WHERE order_id = ?',
+      [order_id]
+    );
 
-    // Insert with ALL columns including status
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'Delivery already exists for this order' });
+    }
+
+    // Insert delivery - database will auto-generate the id
     const [result] = await pool.execute(
       `INSERT INTO deliveries (
-        order_id, customer_name, customer_phone, address, 
-        scheduled_time, driver_id, driver_name, lat, lng, status
+        order_id, 
+        customer_name, 
+        customer_phone, 
+        address,
+        scheduled_time, 
+        driver_id, 
+        driver_name, 
+        lat, 
+        lng, 
+        status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
-        order_id.trim(),
-        customer_name.trim(),
+        order_id,
+        customer_name,
         customer_phone || null,
-        address.trim(),
+        address,
         scheduled_time,
         driver_id || null,
         driver_name || null,
@@ -59,53 +82,93 @@ router.post("/schedule", async (req, res) => {
       ]
     );
 
-    // Get the created delivery using insertId
-    const [rows] = await pool.execute(
-      "SELECT * FROM deliveries WHERE id = ?",
+    // Fetch the created delivery with all fields
+    const [newDelivery] = await pool.execute(
+      'SELECT * FROM deliveries WHERE id = ?',
       [result.insertId]
     );
 
-    if (rows.length === 0) {
-      return res.status(500).json({ error: "Failed to fetch created delivery" });
+    if (newDelivery.length === 0) {
+      return res.status(500).json({ error: 'Failed to create delivery' });
     }
 
-    const delivery = rows[0];
-    console.log("✅ DELIVERY CREATED:", delivery);
+    console.log('✅ Delivery created:', newDelivery[0]);
 
-    // Emit socket event
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('deliveryScheduled', delivery);
-    }
-
-    res.status(201).json(delivery);
+    res.status(201).json(newDelivery[0]);
   } catch (error) {
-    console.error("🚨 FULL ERROR:", error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Schedule delivery error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage
+    });
+    
+    res.status(500).json({ 
+      error: error.sqlMessage || error.message || 'Failed to schedule delivery' 
+    });
   }
 });
 
 // PUT update delivery status
-router.put("/:id/status", async (req, res) => {
+router.put('/:id/status', async (req, res) => {
   try {
-    const db = req.app.get('db');
     const { id } = req.params;
-    const { status, driver_id, driver_name } = req.body;
+    const { status } = req.body;
 
-    await db.execute(
-      `UPDATE deliveries 
-       SET status = ?, driver_id = ?, driver_name = ?, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ?`,
-      [status, driver_id, driver_name, id]
+    console.log(`Updating delivery ${id} to status: ${status}`);
+
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    // Check if delivery exists
+    const [existing] = await pool.execute(
+      'SELECT * FROM deliveries WHERE id = ?',
+      [id]
     );
 
-    const [rows] = await db.execute('SELECT * FROM deliveries WHERE id = ?', [id]);
-    
-    if (rows.length === 0) {
+    if (existing.length === 0) {
       return res.status(404).json({ error: 'Delivery not found' });
     }
-    
-    res.json(rows[0]);
+
+    // Update delivery status
+    await pool.execute(
+      'UPDATE deliveries SET status = ? WHERE id = ?',
+      [status, id]
+    );
+
+    // If delivery is marked as delivered, update the order status
+    if (status === 'delivered') {
+      try {
+        await pool.execute(
+          "UPDATE orders SET status = 'delivered' WHERE order_id = ?",
+          [existing[0].order_id]
+        );
+      } catch (orderError) {
+        console.log('Order update skipped:', orderError.message);
+      }
+    }
+
+    // If delivery is cancelled, update the order status
+    if (status === 'cancelled') {
+      try {
+        await pool.execute(
+          "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
+          [existing[0].order_id]
+        );
+      } catch (orderError) {
+        console.log('Order update skipped:', orderError.message);
+      }
+    }
+
+    // Fetch updated delivery
+    const [updated] = await pool.execute(
+      'SELECT * FROM deliveries WHERE id = ?',
+      [id]
+    );
+
+    res.json(updated[0]);
   } catch (error) {
     console.error('Status update error:', error);
     res.status(500).json({ error: error.message });

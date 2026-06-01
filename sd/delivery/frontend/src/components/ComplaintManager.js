@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import "./Styles.css";  
+import "./Styles.css"; 
 
 const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refreshAllData }) => {
   const [formData, setFormData] = useState({
@@ -38,7 +38,19 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
     setSubmitting(true);
     setSuccessMsg('');
     try {
-      await axios.post("/api/complaints", formData);
+      const linkedOrder = orders.find(o => o.order_id === formData.order_id);
+      
+      const complaintData = {
+        customer_name: linkedOrder ? linkedOrder.customer_name : formData.customer_name,
+        customer_phone: linkedOrder ? linkedOrder.customer_phone : formData.customer_phone,
+        order_id: formData.order_id || null,
+        subject: formData.subject,
+        description: formData.description,
+        priority: formData.priority
+      };
+
+      await axios.post("/api/complaints", complaintData);
+      
       setFormData({
         customer_name: "",
         customer_phone: "",
@@ -47,42 +59,58 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
         description: "",
         priority: "medium",
       });
+      
       setSuccessMsg('✅ Complaint registered successfully!');
       setTimeout(() => setSuccessMsg(''), 3000);
       fetchComplaints();
       if (refreshAllData) refreshAllData();
     } catch (err) {
-      setSuccessMsg('❌ Failed to create complaint');
+      setSuccessMsg('❌ ' + (err.response?.data?.error || 'Failed to create complaint'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleEscalate = async (id) => {
+  const handleEscalate = async (id, level) => {
     try {
+      // Use valid status values: 'assigned' or 'in_progress'
+      const status = level === 1 ? 'assigned' : 'in_progress';
+      const assigned_to = level === 1 ? 'team_lead' : 'manager';
+      
       await axios.put(`/api/complaints/${id}/escalate`, {
-        escalation_level: 2,
-        assigned_to: "manager",
+        escalation_level: level,
+        assigned_to: assigned_to,
+        status: status  // Don't use 'escalated' as it's not in the ENUM
       });
+      
       fetchComplaints();
       if (refreshAllData) refreshAllData();
     } catch (err) {
       console.error("Escalation failed", err);
+      alert('Failed to update complaint: ' + (err.response?.data?.error || err.message));
     }
   };
 
-  // Get linked order info
+  const handleResolve = async (id) => {
+    try {
+      await axios.put(`/api/complaints/${id}/resolve`);
+      fetchComplaints();
+      if (refreshAllData) refreshAllData();
+    } catch (err) {
+      console.error("Resolution failed", err);
+      alert('Failed to resolve complaint');
+    }
+  };
+
   const getLinkedOrder = (orderId) => {
     return orders?.find(o => o.order_id === orderId);
   };
 
-  // Get linked delivery info
   const getLinkedDelivery = (orderId) => {
     return deliveries?.find(d => d.order_id === orderId);
   };
 
-  // Filter and search complaints
   const filteredComplaints = complaints.filter(c => {
     const matchesStatus = filterStatus === 'all' || c.status === filterStatus;
     const matchesSearch = searchTerm === '' || 
@@ -107,73 +135,76 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
           )}
           
           <form onSubmit={handleSubmitComplaint}>
-            <input
-              placeholder="Customer Name *"
-              value={formData.customer_name}
-              onChange={(e) =>
-                setFormData({ ...formData, customer_name: e.target.value })
-              }
-              required
-              style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
-            />
-            <input
-              placeholder="Phone"
-              value={formData.customer_phone}
-              onChange={(e) =>
-                setFormData({ ...formData, customer_phone: e.target.value })
-              }
-              style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
-            />
             <select
               value={formData.order_id}
-              onChange={(e) =>
-                setFormData({ ...formData, order_id: e.target.value })
-              }
+              onChange={(e) => {
+                const orderId = e.target.value;
+                const linkedOrder = orders.find(o => o.order_id === orderId);
+                setFormData({
+                  ...formData,
+                  order_id: orderId,
+                  customer_name: linkedOrder ? linkedOrder.customer_name : '',
+                  customer_phone: linkedOrder ? linkedOrder.customer_phone : ''
+                });
+              }}
               style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
             >
-              <option value="">Select Order (Optional)</option>
+              <option value="">Select Order (Auto-fills customer info)</option>
               {orders?.map(order => (
                 <option key={order.order_id} value={order.order_id}>
                   #{order.order_id} - {order.customer_name} (₹{order.total_amount})
                 </option>
               ))}
             </select>
+            
             <input
-              placeholder="Subject *"
-              value={formData.subject}
-              onChange={(e) =>
-                setFormData({ ...formData, subject: e.target.value })
-              }
+              placeholder="Customer Name *"
+              value={formData.customer_name}
+              onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
               required
               style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
             />
+            
+            <input
+              placeholder="Phone"
+              value={formData.customer_phone}
+              onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+              style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
+            />
+            
+            <input
+              placeholder="Subject *"
+              value={formData.subject}
+              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+              required
+              style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
+            />
+            
             <textarea
               placeholder="Description *"
               value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
               rows="3"
               style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd', resize: 'vertical' }}
             />
+            
             <select
               value={formData.priority}
-              onChange={(e) =>
-                setFormData({ ...formData, priority: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
               style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
             >
               <option value="low">Low Priority</option>
               <option value="medium">Medium Priority</option>
               <option value="high">High Priority</option>
             </select>
+            
             <button 
               className="submit-btn" 
               disabled={submitting}
               style={{ width: '100%' }}
             >
-              {submitting ? "⏳ Creating..." : "🚨 Add Complaint"}
+              {submitting ? "⏳ Creating..." : "🚨 Register Complaint"}
             </button>
           </form>
         </div>
@@ -182,7 +213,6 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
             <h3 style={{ margin: 0 }}>📋 Complaints ({filteredComplaints.length})</h3>
             
-            {/* Search and Filter */}
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <input
                 type="text"
@@ -209,25 +239,24 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
               >
                 <option value="all">All Status</option>
                 <option value="new">New</option>
-                <option value="escalated">Escalated</option>
+                <option value="assigned">Assigned</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
               </select>
             </div>
           </div>
 
-          {/* Scrollable List */}
           <div style={{
             maxHeight: '500px',
             overflowY: 'auto',
-            paddingRight: '5px',
-            scrollbarWidth: 'thin',
-            scrollbarColor: '#888 #f1f1f1'
+            paddingRight: '5px'
           }}>
             {loading ? (
               <p style={{ textAlign: 'center', padding: '20px' }}>Loading complaints...</p>
             ) : filteredComplaints.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '30px', color: '#666' }}>
                 <p>📭 No complaints found</p>
-                {searchTerm && <p>Try different search terms</p>}
               </div>
             ) : (
               filteredComplaints.map((c) => {
@@ -237,50 +266,66 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
                 return (
                   <div
                     key={c.id}
-                    className={`complaint-item priority-${c.priority || "medium"}`}
                     style={{
                       background: 'white',
                       padding: '15px',
                       borderRadius: '8px',
                       marginBottom: '10px',
                       border: '1px solid #e0e0e0',
-                      borderLeft: `4px solid ${c.priority === 'high' ? '#dc3545' : c.priority === 'medium' ? '#ffc107' : '#28a745'}`,
-                      transition: 'all 0.3s ease'
+                      borderLeft: `4px solid ${
+                        c.priority === 'high' ? '#dc3545' : 
+                        c.priority === 'medium' ? '#ffc107' : '#28a745'
+                      }`
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
-                      <strong style={{ fontSize: '16px' }}>{c.subject || 'No Subject'}</strong>
-                      <span className={`status-badge status-${c.status}`} style={{
+                      <strong>{c.subject || 'No Subject'}</strong>
+                      <span style={{
                         padding: '4px 8px',
                         borderRadius: '12px',
                         fontSize: '12px',
                         fontWeight: 'bold',
-                        background: c.status === 'new' ? '#007bff' : '#dc3545',
+                        background: 
+                          c.status === 'new' ? '#007bff' :
+                          c.status === 'assigned' ? '#17a2b8' :
+                          c.status === 'in_progress' ? '#ffc107' :
+                          c.status === 'resolved' ? '#28a745' : '#6c757d',
                         color: 'white'
                       }}>
-                        {c.status || "new"}
+                        {(c.status || 'new').replace('_', ' ')}
                       </span>
                     </div>
                     
-                    <p style={{ margin: '5px 0', color: '#333' }}>
+                    <p style={{ margin: '5px 0' }}>
                       👤 <strong>{c.customer_name}</strong>
                       {c.customer_phone && <span style={{ marginLeft: '10px', color: '#666' }}>📱 {c.customer_phone}</span>}
                     </p>
                     
-                    {c.order_id && (
+                    {c.order_id && linkedOrder && (
                       <p style={{ margin: '5px 0', fontSize: '14px' }}>
                         📦 Order: <strong>#{c.order_id}</strong>
-                        {linkedOrder && (
-                          <span style={{ marginLeft: '8px', color: '#007bff' }}>
-                            (₹{linkedOrder.total_amount} - {linkedOrder.status})
-                          </span>
-                        )}
+                        <span style={{ marginLeft: '8px' }}>₹{linkedOrder.total_amount}</span>
+                        <span style={{ 
+                          marginLeft: '8px',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          fontSize: '11px',
+                          background: linkedOrder.status === 'delivered' ? '#d4edda' : '#fff3cd',
+                          color: linkedOrder.status === 'delivered' ? '#155724' : '#856404'
+                        }}>
+                          {linkedOrder.status}
+                        </span>
                       </p>
                     )}
                     
                     {linkedDelivery && (
                       <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                        🚚 Delivery: <strong>{linkedDelivery.status}</strong>
+                        🚚 Delivery: <strong>{(linkedDelivery.status || '').replace('_', ' ')}</strong>
+                        {linkedDelivery.driver_name && (
+                          <span style={{ marginLeft: '8px', color: '#007bff' }}>
+                            Driver: {linkedDelivery.driver_name}
+                          </span>
+                        )}
                         <span style={{ marginLeft: '8px', color: '#666' }}>
                           {new Date(linkedDelivery.scheduled_time).toLocaleDateString()}
                         </span>
@@ -291,27 +336,60 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
                       📝 "{c.description}"
                     </p>
                     
-                    {c.status === "new" && (
-                      <button
-                        className="escalate-btn"
-                        onClick={() => handleEscalate(c.id)}
-                        style={{
-                          marginTop: '8px',
-                          padding: '8px 16px',
-                          background: '#ffc107',
-                          color: '#000',
-                          border: 'none',
-                          borderRadius: '5px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        ⬆️ Escalate to Manager
-                      </button>
-                    )}
+                    <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      {c.status === 'new' && (
+                        <button
+                          onClick={() => handleEscalate(c.id, 1)}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#17a2b8',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          👤 Assign to Team Lead
+                        </button>
+                      )}
+                      
+                      {c.status === 'assigned' && (
+                        <button
+                          onClick={() => handleEscalate(c.id, 2)}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#ffc107',
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          ⬆️ Escalate to Manager
+                        </button>
+                      )}
+                      
+                      {(c.status === 'assigned' || c.status === 'in_progress') && (
+                        <button
+                          onClick={() => handleResolve(c.id)}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#28a745',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ✅ Resolve
+                        </button>
+                      )}
+                    </div>
                     
                     <div style={{ marginTop: '8px', fontSize: '11px', color: '#999' }}>
                       ID: {c.id} | Created: {new Date(c.created_at).toLocaleString()}
+                      {c.assigned_to && <span> | Assigned to: {c.assigned_to}</span>}
                     </div>
                   </div>
                 );
@@ -320,24 +398,6 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
           </div>
         </div>
       </div>
-
-      {/* Custom Scrollbar Styles */}
-      <style jsx>{`
-        .complaint-list-section::-webkit-scrollbar {
-          width: 8px;
-        }
-        .complaint-list-section::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 10px;
-        }
-        .complaint-list-section::-webkit-scrollbar-thumb {
-          background: #888;
-          border-radius: 10px;
-        }
-        .complaint-list-section::-webkit-scrollbar-thumb:hover {
-          background: #555;
-        }
-      `}</style>
     </section>
   );
 };
