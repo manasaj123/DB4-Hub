@@ -4,15 +4,16 @@ import DeliveryScheduler from "./components/DeliveryScheduler";
 import ReturnsHandler from "./components/ReturnsHandler";
 import ComplaintManager from "./components/ComplaintManager";
 import RevenueDashboard from "./components/RevenueDashboard";
+import DriverManagement from "./components/DriverManagement"; // NEW
 import "./App.css";
 
 export default function App() {
   const [deliveries, setDeliveries] = useState([]);
   const [orders, setOrders] = useState([]);
   const [complaints, setComplaints] = useState([]);
+  const [drivers, setDrivers] = useState([]); // NEW
   const [activeTab, setActiveTab] = useState('all');
 
-  // Fetch all data on mount
   useEffect(() => {
     fetchAllData();
   }, []);
@@ -21,7 +22,8 @@ export default function App() {
     await Promise.all([
       fetchDeliveries(),
       fetchOrders(),
-      fetchComplaints()
+      fetchComplaints(),
+      fetchDrivers() // NEW
     ]);
   };
 
@@ -52,14 +54,22 @@ export default function App() {
     }
   };
 
-  // Refresh all data after any change
+  const fetchDrivers = async () => { // NEW
+    try {
+      const res = await axios.get('/api/drivers');
+      setDrivers(res.data || []);
+    } catch (error) {
+      console.error('Fetch drivers failed:', error);
+    }
+  };
+
   const refreshAllData = useCallback(() => {
     fetchAllData();
   }, []);
 
   return (
     <div className="app-container">
-      <h1>📦 Delivery Order Management System</h1>
+      <h1 style={{ color: "#017eb3" }}>📦 Delivery Order Management System</h1>
       
       {/* Stats Overview */}
       <div className="stats-overview">
@@ -68,19 +78,21 @@ export default function App() {
           <div className="overview-number">{orders.length}</div>
         </div>
         <div className="overview-card">
-          <h3>🚚 Deliveries</h3>
-          <div className="overview-number">{deliveries.filter(d => d.status === 'pending').length}</div>
-          <small>Active / {deliveries.length} Total</small>
+          <h3>🚚 Active Deliveries</h3>
+          <div className="overview-number">{deliveries.filter(d => d.status === 'pending' || d.status === 'in_transit').length}</div>
+          <small>Out of {deliveries.length} Total</small>
         </div>
         <div className="overview-card">
           <h3>📞 Complaints</h3>
-          <div className="overview-number">{complaints.filter(c => c.status === 'new').length}</div>
-          <small>New / {complaints.length} Total</small>
+          <div className="overview-number">{complaints.filter(c => c.status === 'new' || c.status === 'assigned').length}</div>
+          <small>Active / {complaints.length} Total</small>
         </div>
         <div className="overview-card">
           <h3>💰 Revenue</h3>
           <div className="overview-number">
-            ₹{orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0).toLocaleString()}
+            ₹{orders.filter(o => o.status === 'delivered')
+              .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0)
+              .toLocaleString()}
           </div>
         </div>
       </div>
@@ -93,12 +105,7 @@ export default function App() {
         >
           📋 All
         </button>
-        <button 
-          className={`nav-tab ${activeTab === 'delivery' ? 'active' : ''}`}
-          onClick={() => setActiveTab('delivery')}
-        >
-          🚚 Delivery
-        </button>
+        
         <button 
           className={`nav-tab ${activeTab === 'orders' ? 'active' : ''}`}
           onClick={() => setActiveTab('orders')}
@@ -106,10 +113,22 @@ export default function App() {
           📦 Orders
         </button>
         <button 
+          className={`nav-tab ${activeTab === 'delivery' ? 'active' : ''}`}
+          onClick={() => setActiveTab('delivery')}
+        >
+          🚚 Delivery
+        </button>
+        <button 
           className={`nav-tab ${activeTab === 'complaints' ? 'active' : ''}`}
           onClick={() => setActiveTab('complaints')}
         >
           📞 Complaints
+        </button>
+        <button 
+          className={`nav-tab ${activeTab === 'drivers' ? 'active' : ''}`}
+          onClick={() => setActiveTab('drivers')}
+        >
+          👨‍✈️ Drivers
         </button>
         <button 
           className={`nav-tab ${activeTab === 'revenue' ? 'active' : ''}`}
@@ -119,16 +138,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* Conditional Rendering based on active tab */}
-      {(activeTab === 'all' || activeTab === 'delivery') && (
-        <DeliveryScheduler 
-          deliveries={deliveries} 
-          setDeliveries={setDeliveries}
-          orders={orders}
-          setOrders={setOrders}
-          refreshAllData={refreshAllData}
-        />
-      )}
+      
       
       {(activeTab === 'all' || activeTab === 'orders') && (
         <ReturnsHandler 
@@ -136,6 +146,18 @@ export default function App() {
           setOrders={setOrders}
           deliveries={deliveries}
           setDeliveries={setDeliveries}
+          refreshAllData={refreshAllData}
+        />
+      )}
+
+      {/* Conditional Rendering */}
+      {(activeTab === 'all' || activeTab === 'delivery') && (
+        <DeliveryScheduler 
+          deliveries={deliveries} 
+          setDeliveries={setDeliveries}
+          orders={orders}
+          setOrders={setOrders}
+          drivers={drivers}
           refreshAllData={refreshAllData}
         />
       )}
@@ -150,12 +172,21 @@ export default function App() {
         />
       )}
       
+      {(activeTab === 'all' || activeTab === 'drivers') && (
+        <DriverManagement 
+          drivers={drivers}
+          setDrivers={setDrivers}
+          refreshAllData={refreshAllData}
+        />
+      )}
+      
       {(activeTab === 'all' || activeTab === 'revenue') && (
-  <RevenueDashboard 
-    orders={orders}
-    deliveries={deliveries}
-  />
-)}
+        <RevenueDashboard 
+          orders={orders}
+          deliveries={deliveries}
+          complaints={complaints}
+        />
+      )}
     </div>
   );
 }
