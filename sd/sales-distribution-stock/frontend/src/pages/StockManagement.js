@@ -44,6 +44,10 @@ const StockManagement = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const selectedMaterial = materials.find(
+    (m) => m.id === Number(formData.materialId),
+  );
+
   const validateForm = () => {
     const { materialId, plant, quantity } = formData;
     if (!materialId) {
@@ -105,7 +109,12 @@ const StockManagement = () => {
         <div className="form-row-3">
           <div className="form-field">
             <label>Material</label>
-            <select name="materialId" value={formData.materialId} onChange={handleChange} required>
+            <select
+              name="materialId"
+              value={formData.materialId}
+              onChange={handleChange}
+              required
+            >
               <option value="">-- Select Material --</option>
               {materials.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -116,21 +125,50 @@ const StockManagement = () => {
           </div>
           <div className="form-field">
             <label>Plant</label>
-            <input name="plant" value={formData.plant} onChange={handleChange} placeholder="e.g. PL01" required maxLength={10} />
+            <input
+              name="plant"
+              value={formData.plant}
+              onChange={handleChange}
+              placeholder="e.g. PL01"
+              required
+              maxLength={10}
+            />
           </div>
           <div className="form-field">
             <label>Warehouse</label>
-            <input name="warehouse" value={formData.warehouse} onChange={handleChange} placeholder="e.g. WH01" />
+            <input
+              name="warehouse"
+              value={formData.warehouse}
+              onChange={handleChange}
+              placeholder="e.g. WH01"
+            />
           </div>
         </div>
         <div className="form-row-3">
           <div className="form-field">
             <label>Storage Location</label>
-            <input name="storageLocation" value={formData.storageLocation} onChange={handleChange} placeholder="e.g. RackA" />
+            <input
+              name="storageLocation"
+              value={formData.storageLocation}
+              onChange={handleChange}
+              placeholder="e.g. RackA"
+            />
           </div>
           <div className="form-field">
-            <label>Quantity</label>
-            <input name="quantity" type="number" value={formData.quantity} onChange={handleChange} min="1" step="any" required />
+            <label>
+              Quantity
+              {selectedMaterial && ` (${selectedMaterial.baseUom})`}
+            </label>
+
+            <input
+              name="quantity"
+              type="number"
+              value={formData.quantity}
+              onChange={handleChange}
+              min="1"
+              step="any"
+              required
+            />
           </div>
           <div className="form-field" /> {/* empty for alignment */}
         </div>
@@ -157,7 +195,9 @@ const StockManagement = () => {
           <tbody>
             {stockRecords.map((s) => (
               <tr key={s.id}>
-                <td>{s.Material?.materialCode} - {s.Material?.description}</td>
+                <td>
+                  {s.Material?.materialCode} - {s.Material?.description}
+                </td>
                 <td>{s.plant}</td>
                 <td>{s.warehouse || "-"}</td>
                 <td>{s.storageLocation || "-"}</td>

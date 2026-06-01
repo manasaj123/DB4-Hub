@@ -52,6 +52,17 @@ const validateShipping = (data) => {
     }
   }
 
+  if (!data.plant || !data.plant.trim()) {
+    errors.plant = "Plant is required";
+  } else {
+    if (!alphaNumericRegex.test(data.plant)) {
+      errors.plant = "Plant must be alphanumeric only";
+    }
+    if (data.plant.length > 10) {
+      errors.plant = "Plant cannot exceed 10 characters";
+    }
+  }
+
   return errors;
 };
 
@@ -87,6 +98,8 @@ exports.createShippingConfig = asyncHandler(async (req, res) => {
     req.body.description = (req.body.description || "").trim();
 
     req.body.defaultRoute = (req.body.defaultRoute || "").trim().toUpperCase();
+
+    req.body.plant = (req.body.plant || "").trim().toUpperCase();
 
     const errors = validateShipping(req.body);
 
@@ -144,6 +157,8 @@ exports.updateShippingConfig = asyncHandler(async (req, res) => {
     req.body.description = (req.body.description || "").trim();
 
     req.body.defaultRoute = (req.body.defaultRoute || "").trim().toUpperCase();
+
+    req.body.plant = (req.body.plant || "").trim().toUpperCase();
 
     const errors = validateShipping(req.body);
 

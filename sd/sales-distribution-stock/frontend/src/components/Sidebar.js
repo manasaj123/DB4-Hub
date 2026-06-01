@@ -36,10 +36,14 @@ const Sidebar = () => {
 
         {/* PRE SALES */}
         <NavLink to="/pre-sales-activities" className={linkClass}>
-          Pre-Sales Activities
+          Inquiries
         </NavLink>
 
-        <NavLink to="/inquiry" className={linkClass}>
+        {/* <NavLink to="/inquiry" className={linkClass}>
+          Create Quotations
+        </NavLink> */}
+
+        <NavLink to="/quotations" className={linkClass}>
           Create Quotations
         </NavLink>
 

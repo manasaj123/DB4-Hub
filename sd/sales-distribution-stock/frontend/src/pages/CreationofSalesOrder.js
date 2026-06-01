@@ -158,6 +158,18 @@ const SalesOrders = () => {
   const handleItemChange = (e) => {
     const { name, value } = e.target;
 
+    if (name === "materialId") {
+      const selectedMaterial = materials.find((m) => m.id === Number(value));
+
+      setItemForm((prev) => ({
+        ...prev,
+        materialId: value,
+        uom: selectedMaterial?.baseUom?.toUpperCase() || "",
+      }));
+
+      return;
+    }
+
     // quantity validation
     if (name === "quantity") {
       if (value && (!/^\d+(\.\d{0,3})?$/.test(value) || Number(value) <= 0)) {
@@ -391,6 +403,16 @@ const SalesOrders = () => {
     }
   };
 
+  const displayItemCategoriesSummary = (order) => {
+    try {
+      const arr = order.itemsJson ? JSON.parse(order.itemsJson) : [];
+      if (!Array.isArray(arr) || arr.length === 0) return "—";
+      return arr.map((it) => it.itemCategory || "—").join(", ");
+    } catch {
+      return "—";
+    }
+  };
+
   return (
     <div className="page-container">
       <style>{`
@@ -559,7 +581,6 @@ const SalesOrders = () => {
       <h2>Creation of Sales Order</h2>
 
       <form className="form-card" onSubmit={handleSubmit}>
-
         {/* Common Error Display */}
         {/* {Object.keys(errors).length > 0 && (
           <div
@@ -716,14 +737,7 @@ const SalesOrders = () => {
             onChange={handleItemChange}
           />
 
-          <select name="uom" value={itemForm.uom} onChange={handleItemChange}>
-            <option value="">Select UoM</option>
-            <option value="KG">KG</option>
-            <option value="LITERS">LITERS</option>
-            <option value="PACKETS">PACKETS</option>
-            <option value="PIECES">PIECES</option>
-            <option value="NOS">NOS</option>
-          </select>
+          <input value={itemForm.uom} readOnly placeholder="UoM" />
 
           <button type="button" onClick={addItem}>
             Add Item
@@ -809,6 +823,7 @@ const SalesOrders = () => {
               <th>Sales Office</th>
               <th>Sales Group</th>
               <th>Items</th>
+              <th>Item Cat.</th> {/* ← new */}
               <th>Actions</th>
             </tr>
           </thead>
@@ -825,6 +840,7 @@ const SalesOrders = () => {
                 <td>{order.salesOffice}</td>
                 <td>{order.salesGroup}</td>
                 <td>{displayItemsSummary(order)}</td>
+                <td>{displayItemCategoriesSummary(order)}</td>
 
                 <td>
                   {!showDeleted && (

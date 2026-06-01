@@ -116,14 +116,18 @@ exports.performPGI = asyncHandler(async (req, res) => {
       });
 
       stock.availableQty = Number(stock.availableQty) - item.quantity;
+      stock.reservedQty = Math.max(
+        0,
+        Number(stock.reservedQty) - item.quantity,
+      );
       await stock.save({ transaction: t });
 
       // Also update material.availableStock total for convenience
-    //   const material = await db.Material.findByPk(item.materialId, {
-    //     transaction: t,
-    //   });
-    //   material.availableStock = Number(material.availableStock) - item.quantity;
-    //   await material.save({ transaction: t });
+      //   const material = await db.Material.findByPk(item.materialId, {
+      //     transaction: t,
+      //   });
+      //   material.availableStock = Number(material.availableStock) - item.quantity;
+      //   await material.save({ transaction: t });
 
       await db.PostGoodsIssue.create(
         {

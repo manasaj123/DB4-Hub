@@ -10,4 +10,6 @@ router.put('/:id', quotationController.updateQuotation);
 router.delete('/:id', quotationController.softDeleteQuotation);
 router.put('/:id/restore', quotationController.restoreQuotation);
 
+router.post('/:id/convert-to-order', quotationController.convertToOrder);
+
 module.exports = router;

@@ -100,11 +100,14 @@ exports.createSalesView = asyncHandler(async (req, res) => {
   }
 
   // optional item category validation (ONLY IF PRESENT)
-  const validItemCategories = ["001", "002"];
-  if (itemCategoryGroup && !validItemCategories.includes(itemCategoryGroup)) {
-    return res.status(400).json({
-      message: "Item Category Group must be 001 or 002",
-    });
+  // const validItemCategories = ["001", "002"];
+  // if (itemCategoryGroup && !validItemCategories.includes(itemCategoryGroup)) {
+  //   return res.status(400).json({
+  //     message: "Item Category Group must be 001 or 002",
+  //   });
+  // }
+  if (itemCategoryGroup && !/^[A-Za-z0-9]+$/.test(itemCategoryGroup)) {
+    return res.status(400).json({ message: "Invalid Item Category Group" });
   }
 
   // regex
@@ -214,13 +217,16 @@ exports.updateSalesView = asyncHandler(async (req, res) => {
     });
   }
 
-  const validItemCategories = ["001", "002"];
-  if (itemCategoryGroup && !validItemCategories.includes(itemCategoryGroup)) {
-    return res.status(400).json({
-      message: "Item Category Group must be 001 or 002",
-    });
-  }
+  // const validItemCategories = ["001", "002"];
+  // if (itemCategoryGroup && !validItemCategories.includes(itemCategoryGroup)) {
+  //   return res.status(400).json({
+  //     message: "Item Category Group must be 001 or 002",
+  //   });
+  // }
 
+  if (itemCategoryGroup && !/^[A-Za-z0-9]+$/.test(itemCategoryGroup)) {
+    return res.status(400).json({ message: "Invalid Item Category Group" });
+  }
   const alphaNumRegex = /^[A-Za-z0-9]+$/;
 
   if (!alphaNumRegex.test(salesOrg)) {

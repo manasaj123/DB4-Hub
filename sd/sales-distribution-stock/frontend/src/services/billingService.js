@@ -11,3 +11,7 @@ export const restoreBilling = id => api.put(`/billings/${id}/restore`);
 
 // helpers
 export const getDeliveries = () => api.get('/deliveries');
+
+//new
+
+export const getUnbilledDeliveries = () => api.get('/billings/unbilled-deliveries');

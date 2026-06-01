@@ -27,6 +27,7 @@ import Conditions from "./pages/Conditions";
 import PreSalesActivities from "./pages/PreSalesActivities";
 import PostGoodsIssue from "./pages/PostGoodsIssue";
 import StockManagement from "./pages/StockManagement";
+import Quotation from "./pages/Quotation";
 // (0‑byte placeholder pages you can wire later if you want)
 
 const App = () => {
@@ -62,6 +63,8 @@ const App = () => {
               element={<SalesDocumentConfig />}
             />
 
+            <Route path="/quotations" element={<Quotation />} />
+
             <Route path="/stock-management" element={<StockManagement />} />
 
             <Route
@@ -74,7 +77,7 @@ const App = () => {
             <Route path="/pgi" element={<PostGoodsIssue />} />
             <Route path="/shipping" element={<Shipping />} />
 
-            <Route path="/inquiry" element={<Inquiry />} />
+            {/* <Route path="/inquiry" element={<Inquiry />} /> */}
             <Route path="/agreement" element={<Agreement />} />
             <Route path="/route" element={<RoutePage />} />
             <Route path="/conditions" element={<Conditions />} />

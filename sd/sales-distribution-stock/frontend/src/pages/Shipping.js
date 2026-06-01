@@ -13,6 +13,7 @@ const initialForm = {
   shippingPoint: "",
   description: "",
   defaultRoute: "",
+  plant: "", // ← new
   planningRelevant: true,
 };
 
@@ -118,6 +119,7 @@ const Shipping = () => {
       shippingPoint: s.shippingPoint || "",
       description: s.description || "",
       defaultRoute: s.defaultRoute || "",
+      plant: s.plant || "", // ← new
       planningRelevant: !!s.planningRelevant,
     });
   };
@@ -330,6 +332,17 @@ const Shipping = () => {
               required
             />
           </div>
+          <div className="form-field">
+            <label>Plant</label>
+            <input
+              name="plant"
+              value={formData.plant}
+              onChange={handleChange}
+              type="text"
+              maxLength={10}
+              required
+            />
+          </div>
         </div>
 
         <div className="form-row-3">
@@ -377,6 +390,7 @@ const Shipping = () => {
               <th>Shipping Point</th>
               <th>Description</th>
               <th>Default Route</th>
+              <th>Plant</th> {/* ← new */}
               <th>Planning Relevant</th>
               <th>Actions</th>
             </tr>
@@ -387,6 +401,7 @@ const Shipping = () => {
                 <td>{s.shippingPoint}</td>
                 <td>{s.description}</td>
                 <td>{s.defaultRoute}</td>
+                <td>{s.plant}</td> {/* ← new */}
                 <td>{s.planningRelevant ? "Yes" : "No"}</td>
                 <td>
                   {!showDeleted && (

@@ -1,6 +1,9 @@
 // backend/controllers/deliveryController.js
 const asyncHandler = require("../middleware/asyncHandler");
 const db = require("../models");
+const determineShipping = require("../helpers/shippingDetermination");
+const determineWarehouse = require("../helpers/warehouseDetermination");
+const reserveStock = require("../helpers/reserveStock");
 
 // GET /api/deliveries
 exports.getDeliveries = asyncHandler(async (req, res) => {
@@ -33,25 +36,82 @@ exports.getDeliveryById = asyncHandler(async (req, res) => {
 });
 
 // POST /api/deliveries
-// POST /api/deliveries
 exports.createDelivery = asyncHandler(async (req, res) => {
+  // 1. Normalise fields
   req.body.shippingPoint = (req.body.shippingPoint || "").trim().toUpperCase();
   req.body.warehouse = (req.body.warehouse || "").trim().toUpperCase();
   req.body.plant = (req.body.plant || "").trim().toUpperCase();
   req.body.deliveryGroup = (req.body.deliveryGroup || "").trim().toUpperCase();
 
-  const {
-    shippingPoint,
-    salesOrderId,
-    warehouse,
-    plant,
-    deliveryGroup,
-    postGoodsIssueDate,
-  } = req.body;
+  // 2. Fetch the sales order (we'll need it for itemsJson and the sales area)
+  const { salesOrderId } = req.body;
+  const order = await db.SalesOrder.findByPk(salesOrderId);
+  if (!order) {
+    return res.status(400).json({ message: "Sales order not found" });
+  }
+
+  // 3. Auto‑determine shipping point & plant from the material's delivering plant
+  let deliveringPlant = null;
+  if (order.itemsJson) {
+    try {
+      const items = JSON.parse(order.itemsJson);
+      if (items.length > 0) {
+        const firstMaterialId = items[0].materialId;
+        const salesView = await db.SalesView.findOne({
+          where: {
+            materialId: firstMaterialId,
+            salesOrg: order.salesOrg,
+            distributionChannel: order.distributionChannel,
+            division: order.division,
+            isDeleted: false,
+          },
+        });
+        if (salesView) {
+          deliveringPlant = salesView.deliveringPlant;
+        }
+      }
+    } catch {
+      // ignore malformed JSON
+    }
+  }
+
+  if (deliveringPlant) {
+    const shippingInfo = await determineShipping(deliveringPlant);
+    if (shippingInfo) {
+      req.body.shippingPoint = shippingInfo.shippingPoint;
+      req.body.plant = deliveringPlant; // set plant to the delivering plant
+      req.body.route = shippingInfo.routeCode; // ← add this
+    }
+  }
+
+  // 4. Auto‑determine warehouse from stock (if not provided)
+  if (!req.body.warehouse || req.body.warehouse.trim() === "") {
+    // Use the first material from the order items
+    let materialId = null;
+    try {
+      const items = JSON.parse(order.itemsJson);
+      if (items.length > 0) {
+        materialId = items[0].materialId;
+      }
+    } catch {
+      /* ignore */
+    }
+
+    if (materialId && req.body.plant) {
+      const wh = await determineWarehouse(materialId, req.body.plant);
+      if (wh) {
+        req.body.warehouse = wh;
+      }
+    }
+  }
+
+  // 4. Destructure (after possible overrides)
+  const { shippingPoint, warehouse, plant, deliveryGroup, postGoodsIssueDate } =
+    req.body;
 
   const alphaNumRegex = /^[A-Za-z0-9\s-]+$/;
 
-  // --- validations (exactly as before) ---
+  // 5. Validations
   if (!shippingPoint || !shippingPoint.trim()) {
     return res.status(400).json({ message: "Shipping Point is required" });
   }
@@ -89,7 +149,7 @@ exports.createDelivery = asyncHandler(async (req, res) => {
     }
   }
 
-  // duplicate delivery check
+  // 6. Duplicate delivery check
   const existing = await db.Delivery.findOne({
     where: { salesOrderId, isDeleted: false },
   });
@@ -99,22 +159,33 @@ exports.createDelivery = asyncHandler(async (req, res) => {
       .json({ message: "Delivery already exists for this Sales Order" });
   }
 
-  // ========== NEW: copy itemsJson from the sales order ==========
-  const order = await db.SalesOrder.findByPk(salesOrderId);
-  if (!order) {
-    return res.status(400).json({ message: "Sales order not found" });
-  }
-  const itemsJson = order.itemsJson; // the actual items list
-  // ==============================================================
-
+  // 7. Create delivery (itemsJson copied from the order)
   const delivery = await db.Delivery.create({
     ...req.body,
-    itemsJson, // override whatever came from the frontend
+    itemsJson: order.itemsJson,
   });
+
+  // ---- Reserve stock for each item in the delivery ----
+  try {
+    const items = JSON.parse(delivery.itemsJson);
+    for (const item of items) {
+      await reserveStock(
+        item.materialId,
+        delivery.plant,
+        delivery.warehouse,
+        item.quantity,
+      );
+    }
+  } catch (reserveErr) {
+    // If reservation fails, we could delete the delivery to roll back,
+    // but for now we just log the error and continue (the delivery is still created).
+    console.error("Stock reservation failed:", reserveErr.message);
+    // Optionally: await delivery.destroy(); return res.status(400).json(...);
+  }
+  // ------------------------------------------------------------
 
   res.status(201).json(delivery);
 });
-
 // PUT /api/deliveries/:id
 exports.updateDelivery = asyncHandler(async (req, res) => {
   req.body.shippingPoint = (req.body.shippingPoint || "").trim().toUpperCase();

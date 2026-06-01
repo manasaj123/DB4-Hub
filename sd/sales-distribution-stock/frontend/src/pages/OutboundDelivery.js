@@ -82,24 +82,24 @@ const Deliveries = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.shippingPoint) {
-      alert("Enter shipping point");
-      return;
-    }
+    // if (!formData.shippingPoint) {
+    //   alert("Enter shipping point");
+    //   return;
+    // }
     if (!formData.salesOrderId) {
       alert("Select sales order");
       return;
     }
 
-    if (!formData.plant.trim()) {
-      alert("Enter Plant");
-      return;
-    }
+    // if (!formData.plant.trim()) {
+    //   alert("Enter Plant");
+    //   return;
+    // }
 
-    if (!formData.warehouse.trim()) {
-      alert("Enter Warehouse");
-      return;
-    }
+    // if (!formData.warehouse.trim()) {
+    //   alert("Enter Warehouse");
+    //   return;
+    // }
 
     if (formData.postGoodsIssueDate) {
       const selectedDate = new Date(formData.postGoodsIssueDate);
@@ -323,7 +323,7 @@ const Deliveries = () => {
             value={formData.shippingPoint}
             onChange={handleChange}
             maxLength={10}
-            required
+            
           />
         </div>
         <div className="form-row">
