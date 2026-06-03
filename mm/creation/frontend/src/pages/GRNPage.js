@@ -7,7 +7,7 @@ const titleStyle = {
   fontSize: "18px",
   fontWeight: "600",
   marginBottom: "12px",
-  color: "#111827"
+  color: "#111827",
 };
 
 const cardStyle = {
@@ -15,14 +15,14 @@ const cardStyle = {
   borderRadius: "6px",
   padding: "16px",
   boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-  marginBottom: "16px"
+  marginBottom: "16px",
 };
 
 const formRowStyle = {
   display: "flex",
   gap: "8px",
   marginBottom: "8px",
-  flexWrap: "wrap"
+  flexWrap: "wrap",
 };
 
 const labelStyle = {
@@ -31,14 +31,14 @@ const labelStyle = {
   fontSize: "12px",
   color: "#4b5563",
   flex: 1,
-  minWidth: "160px"
+  minWidth: "160px",
 };
 
 const inputStyle = {
   padding: "6px 8px",
   fontSize: "13px",
   borderRadius: "4px",
-  border: "1px solid #d1d5db"
+  border: "1px solid #d1d5db",
 };
 
 const inputErrorStyle = {
@@ -46,13 +46,13 @@ const inputErrorStyle = {
   fontSize: "13px",
   borderRadius: "4px",
   border: "2px solid #dc2626",
-  backgroundColor: "#fef2f2"
+  backgroundColor: "#fef2f2",
 };
 
 const errorTextStyle = {
   color: "#dc2626",
   fontSize: "11px",
-  marginTop: "4px"
+  marginTop: "4px",
 };
 
 const buttonStyle = {
@@ -63,32 +63,32 @@ const buttonStyle = {
   border: "none",
   backgroundColor: "#2563eb",
   color: "#ffffff",
-  cursor: "pointer"
+  cursor: "pointer",
 };
 
 const secondaryButtonStyle = {
   ...buttonStyle,
   backgroundColor: "#6b7280",
-  marginLeft: "8px"
+  marginLeft: "8px",
 };
 
 const tableStyle = {
   width: "100%",
   borderCollapse: "collapse",
   fontSize: "13px",
-  marginTop: "12px"
+  marginTop: "12px",
 };
 
 const thStyle = {
   backgroundColor: "#e5e7eb",
   padding: "6px",
   border: "1px solid #d1d5db",
-  textAlign: "left"
+  textAlign: "left",
 };
 
 const tdStyle = {
   padding: "6px",
-  border: "1px solid #e5e7eb"
+  border: "1px solid #e5e7eb",
 };
 
 const smallBtn = {
@@ -97,15 +97,15 @@ const smallBtn = {
   borderRadius: "4px",
   border: "none",
   cursor: "pointer",
-  marginRight: "4px"
+  marginRight: "4px",
 };
 
 // Get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
   const today = new Date();
   const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -115,8 +115,8 @@ const toLocalDateString = (date) => {
   const d = new Date(date);
   if (isNaN(d.getTime())) return "";
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -134,7 +134,7 @@ export default function GRNPage() {
     vendor_id: "",
     po_id: "",
     location_id: 1,
-    status: "POSTED"
+    status: "POSTED",
   });
 
   const [items, setItems] = useState([]);
@@ -186,7 +186,7 @@ export default function GRNPage() {
       vendor_id: "",
       po_id: "",
       location_id: 1,
-      status: "POSTED"
+      status: "POSTED",
     });
     setItems([]);
     setSelectedPoId("");
@@ -208,7 +208,7 @@ export default function GRNPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     selectedDate.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
       return `${fieldName} cannot be a past date`;
     }
@@ -246,7 +246,7 @@ export default function GRNPage() {
     setHeader((h) => ({
       ...h,
       po_id: poId,
-      vendor_id: poHeader.vendor_id
+      vendor_id: poHeader.vendor_id,
     }));
 
     setItems(
@@ -259,96 +259,98 @@ export default function GRNPage() {
         batch_no: "",
         mfg_date: "",
         expiry_date: "",
-        unit_cost: it.price
-      }))
+        unit_cost: it.price,
+      })),
     );
   };
 
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
     setHeader((h) => ({ ...h, [name]: value }));
-    
+
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleItemChange = (index, field, value) => {
     let processedValue = value;
-    
+
     if (field === "batch_no") {
-      processedValue = value.replace(/[^A-Za-z0-9\s-]/g, '');
+      processedValue = value.replace(/[^A-Za-z0-9\s-]/g, "");
     }
-    
+
     // Auto-calculate rejected quantity when accepted changes
     if (field === "accepted_qty") {
       const received = Number(items[index]?.received_qty) || 0;
       const accepted = Number(value) || 0;
       const rejected = received - accepted;
-      
+
       setItems((prev) =>
-        prev.map((it, i) => 
-          i === index 
-            ? { 
-                ...it, 
+        prev.map((it, i) =>
+          i === index
+            ? {
+                ...it,
                 accepted_qty: processedValue,
-                rejected_qty: rejected >= 0 ? rejected : 0
-              } 
-            : it
-        )
+                rejected_qty: rejected >= 0 ? rejected : 0,
+              }
+            : it,
+        ),
       );
-      
+
       // Clear related errors
       if (errors[`item_${index}_accepted_qty`]) {
-        setErrors(prev => ({ ...prev, [`item_${index}_accepted_qty`]: "" }));
+        setErrors((prev) => ({ ...prev, [`item_${index}_accepted_qty`]: "" }));
       }
       if (errors[`item_${index}_rejected_qty`]) {
-        setErrors(prev => ({ ...prev, [`item_${index}_rejected_qty`]: "" }));
+        setErrors((prev) => ({ ...prev, [`item_${index}_rejected_qty`]: "" }));
       }
       return;
     }
-    
+
     // Auto-calculate accepted quantity when rejected changes
     if (field === "rejected_qty") {
       const received = Number(items[index]?.received_qty) || 0;
       const rejected = Number(value) || 0;
       const accepted = received - rejected;
-      
+
       setItems((prev) =>
-        prev.map((it, i) => 
-          i === index 
-            ? { 
-                ...it, 
+        prev.map((it, i) =>
+          i === index
+            ? {
+                ...it,
                 rejected_qty: processedValue,
-                accepted_qty: accepted >= 0 ? accepted : 0
-              } 
-            : it
-        )
+                accepted_qty: accepted >= 0 ? accepted : 0,
+              }
+            : it,
+        ),
       );
-      
+
       // Clear related errors
       if (errors[`item_${index}_accepted_qty`]) {
-        setErrors(prev => ({ ...prev, [`item_${index}_accepted_qty`]: "" }));
+        setErrors((prev) => ({ ...prev, [`item_${index}_accepted_qty`]: "" }));
       }
       if (errors[`item_${index}_rejected_qty`]) {
-        setErrors(prev => ({ ...prev, [`item_${index}_rejected_qty`]: "" }));
+        setErrors((prev) => ({ ...prev, [`item_${index}_rejected_qty`]: "" }));
       }
       return;
     }
-    
+
     setItems((prev) =>
-      prev.map((it, i) => (i === index ? { ...it, [field]: processedValue } : it))
+      prev.map((it, i) =>
+        i === index ? { ...it, [field]: processedValue } : it,
+      ),
     );
-    
+
     // Clear error for this item field
     if (errors[`item_${index}_${field}`]) {
-      setErrors(prev => ({ ...prev, [`item_${index}_${field}`]: "" }));
+      setErrors((prev) => ({ ...prev, [`item_${index}_${field}`]: "" }));
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Validate GRN Date
     if (!header.grn_date) {
       newErrors.grn_date = "GRN Date is required";
@@ -356,84 +358,107 @@ export default function GRNPage() {
       const pastDateError = validateNotPastDate(header.grn_date, "GRN Date");
       if (pastDateError) newErrors.grn_date = pastDateError;
     }
-    
+
     // Validate items
     items.forEach((item, idx) => {
       // Validate received quantity
-      const receivedQtyError = validateQuantity(item.received_qty, "Received Qty");
-      if (receivedQtyError) newErrors[`item_${idx}_received_qty`] = receivedQtyError;
-      
+      const receivedQtyError = validateQuantity(
+        item.received_qty,
+        "Received Qty",
+      );
+      if (receivedQtyError)
+        newErrors[`item_${idx}_received_qty`] = receivedQtyError;
+
       // Validate accepted quantity
-      const acceptedQtyError = validateQuantity(item.accepted_qty, "Accepted Qty");
-      if (acceptedQtyError) newErrors[`item_${idx}_accepted_qty`] = acceptedQtyError;
-      
+      const acceptedQtyError = validateQuantity(
+        item.accepted_qty,
+        "Accepted Qty",
+      );
+      if (acceptedQtyError)
+        newErrors[`item_${idx}_accepted_qty`] = acceptedQtyError;
+
       // Validate rejected quantity
-      const rejectedQtyError = validateQuantity(item.rejected_qty, "Rejected Qty");
-      if (rejectedQtyError) newErrors[`item_${idx}_rejected_qty`] = rejectedQtyError;
-      
+      const rejectedQtyError = validateQuantity(
+        item.rejected_qty,
+        "Rejected Qty",
+      );
+      if (rejectedQtyError)
+        newErrors[`item_${idx}_rejected_qty`] = rejectedQtyError;
+
       // Validate that accepted + rejected = received (with tolerance)
       const received = Number(item.received_qty) || 0;
       const accepted = Number(item.accepted_qty) || 0;
       const rejected = Number(item.rejected_qty) || 0;
-      
+
       if (Math.abs(accepted + rejected - received) > 0.01) {
-        newErrors[`item_${idx}_qty_sum`] = `Accepted (${accepted}) + Rejected (${rejected}) must equal Received (${received})`;
+        newErrors[`item_${idx}_qty_sum`] =
+          `Accepted (${accepted}) + Rejected (${rejected}) must equal Received (${received})`;
       }
-      
+
       // Validate batch number (no special characters)
       if (item.batch_no) {
         const batchError = validateNoSpecialChars(item.batch_no, "Batch No");
         if (batchError) newErrors[`item_${idx}_batch_no`] = batchError;
       }
-      
+
       // Validate manufacturing date not past
       if (item.mfg_date) {
-        const pastDateError = validateNotPastDate(item.mfg_date, "Manufacturing Date");
+        const pastDateError = validateNotPastDate(
+          item.mfg_date,
+          "Manufacturing Date",
+        );
         if (pastDateError) newErrors[`item_${idx}_mfg_date`] = pastDateError;
       }
-      
+
       // Validate expiry date not past and not before mfg date
       if (item.expiry_date) {
-        const pastDateError = validateNotPastDate(item.expiry_date, "Expiry Date");
+        const pastDateError = validateNotPastDate(
+          item.expiry_date,
+          "Expiry Date",
+        );
         if (pastDateError) {
           newErrors[`item_${idx}_expiry_date`] = pastDateError;
         } else {
-          const expiryError = validateExpiryDate(item.expiry_date, item.mfg_date, "Expiry Date");
+          const expiryError = validateExpiryDate(
+            item.expiry_date,
+            item.mfg_date,
+            "Expiry Date",
+          );
           if (expiryError) newErrors[`item_${idx}_expiry_date`] = expiryError;
         }
       }
-      
+
       // Validate unit cost
       if (item.unit_cost && Number(item.unit_cost) < 0) {
         newErrors[`item_${idx}_unit_cost`] = "Unit Cost cannot be negative";
       }
     });
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       alert("Please fix the validation errors before submitting");
       return;
     }
-    
+
     try {
       const payload = {
         header: {
           ...header,
-          grn_date: header.grn_date
+          grn_date: header.grn_date,
         },
         items: items.map((it) => ({
           ...it,
           received_qty: Number(it.received_qty),
           accepted_qty: Number(it.accepted_qty),
           rejected_qty: Number(it.rejected_qty),
-          unit_cost: Number(it.unit_cost)
-        }))
+          unit_cost: Number(it.unit_cost),
+        })),
       };
 
       if (editingId) {
@@ -464,7 +489,7 @@ export default function GRNPage() {
       vendor_id: h.vendor_id,
       po_id: h.po_id,
       location_id: h.location_id,
-      status: h.status || "POSTED"
+      status: h.status || "POSTED",
     });
     setSelectedPoId(String(h.po_id || ""));
     setItems(
@@ -477,8 +502,8 @@ export default function GRNPage() {
         batch_no: it.batch_no || "",
         mfg_date: toLocalDateString(it.mfg_date),
         expiry_date: toLocalDateString(it.expiry_date),
-        unit_cost: String(it.unit_cost || 0)
-      }))
+        unit_cost: String(it.unit_cost || 0),
+      })),
     );
   };
 
@@ -505,9 +530,7 @@ export default function GRNPage() {
               <input
                 style={inputStyle}
                 value={
-                  editingId
-                    ? header.grn_no
-                    : header.grn_no || "Auto Generated"
+                  editingId ? header.grn_no : header.grn_no || "Auto Generated"
                 }
                 disabled
               />
@@ -523,7 +546,9 @@ export default function GRNPage() {
                 max={getTodayDate()}
                 required
               />
-              {errors.grn_date && <div style={errorTextStyle}>{errors.grn_date}</div>}
+              {errors.grn_date && (
+                <div style={errorTextStyle}>{errors.grn_date}</div>
+              )}
             </label>
             <label style={labelStyle}>
               Location Id
@@ -548,11 +573,13 @@ export default function GRNPage() {
                 required
               >
                 <option value="">Select PO</option>
-                {poList.map((po) => (
-                  <option key={po.id} value={po.id}>
-                    {po.po_no} - {po.vendor_name}
-                  </option>
-                ))}
+                {poList
+                  .filter((po) => po.status !== "COMPLETED") // hide fully received POs
+                  .map((po) => (
+                    <option key={po.id} value={po.id}>
+                      {po.po_no} - {po.vendor_name}
+                    </option>
+                  ))}
               </select>
             </label>
             <label style={labelStyle}>
@@ -593,7 +620,7 @@ export default function GRNPage() {
                 style={{
                   fontSize: "13px",
                   fontWeight: 500,
-                  margin: "8px 0"
+                  margin: "8px 0",
                 }}
               >
                 GRN Lines *
@@ -602,10 +629,19 @@ export default function GRNPage() {
                 const received = Number(it.received_qty) || 0;
                 const accepted = Number(it.accepted_qty) || 0;
                 const rejected = Number(it.rejected_qty) || 0;
-                const isValidSum = Math.abs(accepted + rejected - received) <= 0.01;
-                
+                const isValidSum =
+                  Math.abs(accepted + rejected - received) <= 0.01;
+
                 return (
-                  <div key={idx} style={{ marginBottom: "16px", padding: "8px", border: "1px solid #e5e7eb", borderRadius: "4px" }}>
+                  <div
+                    key={idx}
+                    style={{
+                      marginBottom: "16px",
+                      padding: "8px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "4px",
+                    }}
+                  >
                     <div style={formRowStyle}>
                       <label style={labelStyle}>
                         Material ID
@@ -625,7 +661,11 @@ export default function GRNPage() {
                           value={it.received_qty}
                           disabled
                         />
-                        {errors[`item_${idx}_received_qty`] && <div style={errorTextStyle}>{errors[`item_${idx}_received_qty`]}</div>}
+                        {errors[`item_${idx}_received_qty`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_received_qty`]}
+                          </div>
+                        )}
                       </label>
                       <label style={labelStyle}>
                         Accepted Qty *
@@ -636,10 +676,18 @@ export default function GRNPage() {
                           min="0"
                           value={it.accepted_qty}
                           onChange={(e) =>
-                            handleItemChange(idx, "accepted_qty", e.target.value)
+                            handleItemChange(
+                              idx,
+                              "accepted_qty",
+                              e.target.value,
+                            )
                           }
                         />
-                        {errors[`item_${idx}_accepted_qty`] && <div style={errorTextStyle}>{errors[`item_${idx}_accepted_qty`]}</div>}
+                        {errors[`item_${idx}_accepted_qty`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_accepted_qty`]}
+                          </div>
+                        )}
                       </label>
                       <label style={labelStyle}>
                         Rejected Qty
@@ -650,13 +698,21 @@ export default function GRNPage() {
                           min="0"
                           value={it.rejected_qty}
                           onChange={(e) =>
-                            handleItemChange(idx, "rejected_qty", e.target.value)
+                            handleItemChange(
+                              idx,
+                              "rejected_qty",
+                              e.target.value,
+                            )
                           }
                         />
-                        {errors[`item_${idx}_rejected_qty`] && <div style={errorTextStyle}>{errors[`item_${idx}_rejected_qty`]}</div>}
+                        {errors[`item_${idx}_rejected_qty`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_rejected_qty`]}
+                          </div>
+                        )}
                       </label>
                     </div>
-                    
+
                     <div style={formRowStyle}>
                       <label style={labelStyle}>
                         Batch No
@@ -668,7 +724,11 @@ export default function GRNPage() {
                           }
                           placeholder="Letters, numbers, spaces and hyphens only"
                         />
-                        {errors[`item_${idx}_batch_no`] && <div style={errorTextStyle}>{errors[`item_${idx}_batch_no`]}</div>}
+                        {errors[`item_${idx}_batch_no`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_batch_no`]}
+                          </div>
+                        )}
                       </label>
                       <label style={labelStyle}>
                         Mfg Date
@@ -681,7 +741,11 @@ export default function GRNPage() {
                           }
                           max={getTodayDate()}
                         />
-                        {errors[`item_${idx}_mfg_date`] && <div style={errorTextStyle}>{errors[`item_${idx}_mfg_date`]}</div>}
+                        {errors[`item_${idx}_mfg_date`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_mfg_date`]}
+                          </div>
+                        )}
                       </label>
                       <label style={labelStyle}>
                         Expiry Date
@@ -694,7 +758,11 @@ export default function GRNPage() {
                           }
                           min={it.mfg_date || getTodayDate()}
                         />
-                        {errors[`item_${idx}_expiry_date`] && <div style={errorTextStyle}>{errors[`item_${idx}_expiry_date`]}</div>}
+                        {errors[`item_${idx}_expiry_date`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_expiry_date`]}
+                          </div>
+                        )}
                       </label>
                       <label style={labelStyle}>
                         Unit Cost
@@ -708,25 +776,52 @@ export default function GRNPage() {
                             handleItemChange(idx, "unit_cost", e.target.value)
                           }
                         />
-                        {errors[`item_${idx}_unit_cost`] && <div style={errorTextStyle}>{errors[`item_${idx}_unit_cost`]}</div>}
+                        {errors[`item_${idx}_unit_cost`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_unit_cost`]}
+                          </div>
+                        )}
                       </label>
                     </div>
-                    
+
                     {errors[`item_${idx}_qty_sum`] && (
-                      <div style={{ ...errorTextStyle, marginLeft: "8px", backgroundColor: "#fee2e2", padding: "4px 8px", borderRadius: "4px" }}>
+                      <div
+                        style={{
+                          ...errorTextStyle,
+                          marginLeft: "8px",
+                          backgroundColor: "#fee2e2",
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                        }}
+                      >
                         ⚠️ {errors[`item_${idx}_qty_sum`]}
                       </div>
                     )}
-                    
+
                     {isValidSum && accepted === received && rejected === 0 && (
-                      <div style={{ marginLeft: "8px", marginTop: "4px", fontSize: "11px", color: "#10b981" }}>
+                      <div
+                        style={{
+                          marginLeft: "8px",
+                          marginTop: "4px",
+                          fontSize: "11px",
+                          color: "#10b981",
+                        }}
+                      >
                         ✓ All quantities matched - Full receipt
                       </div>
                     )}
-                    
+
                     {isValidSum && accepted < received && accepted > 0 && (
-                      <div style={{ marginLeft: "8px", marginTop: "4px", fontSize: "11px", color: "#f59e0b" }}>
-                        ⚡ Partial receipt - {accepted} accepted, {rejected} rejected
+                      <div
+                        style={{
+                          marginLeft: "8px",
+                          marginTop: "4px",
+                          fontSize: "11px",
+                          color: "#f59e0b",
+                        }}
+                      >
+                        ⚡ Partial receipt - {accepted} accepted, {rejected}{" "}
+                        rejected
                       </div>
                     )}
                   </div>
@@ -736,11 +831,7 @@ export default function GRNPage() {
           )}
 
           <div>
-            <button
-              type="submit"
-              style={buttonStyle}
-              disabled={!items.length}
-            >
+            <button type="submit" style={buttonStyle} disabled={!items.length}>
               {editingId ? "Update GRN" : "Save GRN"}
             </button>
             <button
@@ -781,13 +872,21 @@ export default function GRNPage() {
                 <td style={tdStyle}>{g.status}</td>
                 <td style={tdStyle}>
                   <button
-                    style={{ ...smallBtn, backgroundColor: "#2563eb", color: "#fff" }}
+                    style={{
+                      ...smallBtn,
+                      backgroundColor: "#2563eb",
+                      color: "#fff",
+                    }}
                     onClick={() => handleEdit(g)}
                   >
                     Edit
                   </button>
                   <button
-                    style={{ ...smallBtn, backgroundColor: "#dc2626", color: "#fff" }}
+                    style={{
+                      ...smallBtn,
+                      backgroundColor: "#dc2626",
+                      color: "#fff",
+                    }}
                     onClick={() => handleDelete(g.id)}
                   >
                     Delete
@@ -808,3 +907,4 @@ export default function GRNPage() {
     </div>
   );
 }
+

@@ -3,6 +3,7 @@ import poApi from "../api/poApi";
 import vendorApi from "../api/vendorApi";
 import materialApi from "../api/materialApi";
 import prApi from "../api/prApi";
+import rfqApi from "../api/rfqApi";
 
 // Helper to normalize date to yyyy-MM-dd for <input type="date"> - FIXED TIMEZONE
 const formatDateYMD = (value) => {
@@ -13,8 +14,8 @@ const formatDateYMD = (value) => {
     if (Number.isNaN(d.getTime())) return "";
     // Fix timezone issue - use local date
     const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   } catch {
     return "";
@@ -27,7 +28,7 @@ const formatAmount = (amount) => {
   const num = Number(amount);
   if (isNaN(num)) return "0";
   // Remove extra decimals, show only up to 2 decimal places if needed
-  return num.toFixed(2).replace(/\.00$/, '');
+  return num.toFixed(2).replace(/\.00$/, "");
 };
 
 // Format amount with 2 decimal places
@@ -42,8 +43,8 @@ const formatAmountWithDecimals = (amount) => {
 const getTodayDate = () => {
   const today = new Date();
   const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -53,8 +54,8 @@ const toLocalDateString = (date) => {
   const d = new Date(date);
   if (isNaN(d.getTime())) return "";
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -62,7 +63,7 @@ const titleStyle = {
   fontSize: "18px",
   fontWeight: "600",
   marginBottom: "12px",
-  color: "#111827"
+  color: "#111827",
 };
 
 const cardStyle = {
@@ -70,14 +71,14 @@ const cardStyle = {
   borderRadius: "6px",
   padding: "16px",
   boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-  marginBottom: "16px"
+  marginBottom: "16px",
 };
 
 const formRowStyle = {
   display: "flex",
   gap: "8px",
   marginBottom: "8px",
-  flexWrap: "wrap"
+  flexWrap: "wrap",
 };
 
 const labelStyle = {
@@ -86,14 +87,14 @@ const labelStyle = {
   fontSize: "12px",
   color: "#4b5563",
   flex: 1,
-  minWidth: "150px"
+  minWidth: "150px",
 };
 
 const inputStyle = {
   padding: "6px 8px",
   fontSize: "13px",
   borderRadius: "4px",
-  border: "1px solid #d1d5db"
+  border: "1px solid #d1d5db",
 };
 
 const inputErrorStyle = {
@@ -101,13 +102,13 @@ const inputErrorStyle = {
   fontSize: "13px",
   borderRadius: "4px",
   border: "2px solid #dc2626",
-  backgroundColor: "#fef2f2"
+  backgroundColor: "#fef2f2",
 };
 
 const errorTextStyle = {
   color: "#dc2626",
   fontSize: "11px",
-  marginTop: "4px"
+  marginTop: "4px",
 };
 
 const buttonStyle = {
@@ -118,19 +119,19 @@ const buttonStyle = {
   border: "none",
   backgroundColor: "#2563eb",
   color: "#ffffff",
-  cursor: "pointer"
+  cursor: "pointer",
 };
 
 const cancelButtonStyle = {
   ...buttonStyle,
   backgroundColor: "#6b7280",
-  marginLeft: "8px"
+  marginLeft: "8px",
 };
 
 const tableStyle = {
   width: "100%",
   borderCollapse: "collapse",
-  fontSize: "13px"
+  fontSize: "13px",
 };
 
 const thStyle = {
@@ -138,12 +139,12 @@ const thStyle = {
   padding: "6px 8px",
   backgroundColor: "#f3f4f6",
   color: "#374151",
-  borderBottom: "2px solid #e5e7eb"
+  borderBottom: "2px solid #e5e7eb",
 };
 
 const tdStyle = {
   padding: "6px 8px",
-  borderBottom: "1px solid #f3f4f6"
+  borderBottom: "1px solid #f3f4f6",
 };
 
 const summaryLabelStyle = {
@@ -151,7 +152,7 @@ const summaryLabelStyle = {
   fontWeight: "500",
   color: "#374151",
   textAlign: "right",
-  padding: "4px 8px"
+  padding: "4px 8px",
 };
 
 const summaryValueStyle = {
@@ -159,7 +160,7 @@ const summaryValueStyle = {
   fontWeight: "600",
   color: "#111827",
   padding: "4px 8px",
-  textAlign: "right"
+  textAlign: "right",
 };
 
 export default function POPage() {
@@ -169,6 +170,11 @@ export default function POPage() {
   const [pos, setPOs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const [rfqs, setRFQs] = useState([]);
+  const [selectedRfqId, setSelectedRfqId] = useState("");
+  const [selectedRfqVendorId, setSelectedRfqVendorId] = useState("");
+  const [rfqVendorsList, setRfqVendorsList] = useState([]);
 
   const [editingId, setEditingId] = useState(null);
 
@@ -180,11 +186,11 @@ export default function POPage() {
     currency: "INR",
     po_type: "STOCK",
     source_type: "DIRECT",
-    freight_charges: "0"
+    freight_charges: "0",
   });
 
   const [items, setItems] = useState([
-    { material_id: "", qty: "", price: "", tax_percent: "", delivery_date: "" }
+    { material_id: "", qty: "", price: "", tax_percent: "", delivery_date: "" },
   ]);
 
   const [selectedPrId, setSelectedPrId] = useState("");
@@ -199,7 +205,7 @@ export default function POPage() {
       if (item.material_id && item.qty && item.price) {
         const itemTotal = Number(item.qty) * Number(item.price);
         subtotal += itemTotal;
-        
+
         if (item.tax_percent) {
           totalTax += itemTotal * (Number(item.tax_percent) / 100);
         }
@@ -213,16 +219,32 @@ export default function POPage() {
       subtotal,
       totalTax,
       freight,
-      grandTotal
+      grandTotal,
     };
   }, [items, header.freight_charges]);
+
+  const loadRFQs = async () => {
+    try {
+      const res = await rfqApi.getAll(); // assuming you have this
+      setRFQs(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Add to useEffect
+  useEffect(() => {
+    loadRefs();
+    loadPOs();
+    loadRFQs(); // new
+  }, []);
 
   const loadRefs = async () => {
     try {
       const [vRes, mRes, prRes] = await Promise.all([
         vendorApi.getAll(),
         materialApi.getAll(),
-        prApi.getAll()
+        prApi.getAll(),
       ]);
       setVendors(vRes.data);
       setMaterials(mRes.data);
@@ -244,10 +266,10 @@ export default function POPage() {
     }
   };
 
-  useEffect(() => {
-    loadRefs();
-    loadPOs();
-  }, []);
+  // useEffect(() => {
+  //   loadRefs();
+  //   loadPOs();
+  // }, []);
 
   // Validation functions
   const validateNoSpecialChars = (value, fieldName) => {
@@ -264,7 +286,7 @@ export default function POPage() {
     const selectedDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
       return `${fieldName} cannot be a past date`;
     }
@@ -307,55 +329,74 @@ export default function POPage() {
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
     let processedValue = value;
-    
+
     // Remove special characters from text fields
     if (name === "payment_terms") {
-      processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
+      processedValue = value.replace(/[^A-Za-z0-9\s]/g, "");
     }
     if (name === "currency") {
-      processedValue = value.replace(/[^A-Za-z]/g, '').toUpperCase();
+      processedValue = value.replace(/[^A-Za-z]/g, "").toUpperCase();
     }
     if (name === "freight_charges") {
-      processedValue = value.replace(/[^0-9.]/g, '');
+      processedValue = value.replace(/[^0-9.]/g, "");
     }
-    
+
     setHeader((h) => ({ ...h, [name]: processedValue }));
-    
+
     // Clear error for this field
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
 
     if (name === "source_type" && value !== "PR") {
       setSelectedPrId("");
       setSelectedPrDetails(null);
+
+      setSelectedRfqId("");
+      setSelectedRfqVendorId("");
+      setRfqVendorsList([]);
+
       setItems([
-        { material_id: "", qty: "", price: "", tax_percent: "", delivery_date: "" }
+        {
+          material_id: "",
+          qty: "",
+          price: "",
+          tax_percent: "",
+          delivery_date: "",
+        },
       ]);
     }
   };
 
   const handleItemChange = (index, field, value) => {
     let processedValue = value;
-    
+
     if (field === "qty" && value < 0) processedValue = "";
     if (field === "price" && value < 0) processedValue = "";
     if (field === "tax_percent" && value < 0) processedValue = "";
-    
+
     setItems((prev) =>
-      prev.map((it, i) => (i === index ? { ...it, [field]: processedValue } : it))
+      prev.map((it, i) =>
+        i === index ? { ...it, [field]: processedValue } : it,
+      ),
     );
-    
+
     // Clear error for this item field
     if (errors[`item_${index}_${field}`]) {
-      setErrors(prev => ({ ...prev, [`item_${index}_${field}`]: "" }));
+      setErrors((prev) => ({ ...prev, [`item_${index}_${field}`]: "" }));
     }
   };
 
   const addRow = () => {
     setItems((prev) => [
       ...prev,
-      { material_id: "", qty: "", price: "", tax_percent: "", delivery_date: "" }
+      {
+        material_id: "",
+        qty: "",
+        price: "",
+        tax_percent: "",
+        delivery_date: "",
+      },
     ]);
   };
 
@@ -363,6 +404,9 @@ export default function POPage() {
     setEditingId(null);
     setSelectedPrId("");
     setSelectedPrDetails(null);
+    setSelectedRfqId("");
+    setSelectedRfqVendorId("");
+    setRfqVendorsList([]);
     setErrors({});
     setHeader({
       po_no: "",
@@ -372,16 +416,22 @@ export default function POPage() {
       currency: "INR",
       po_type: "STOCK",
       source_type: "DIRECT",
-      freight_charges: "0"
+      freight_charges: "0",
     });
     setItems([
-      { material_id: "", qty: "", price: "", tax_percent: "", delivery_date: "" }
+      {
+        material_id: "",
+        qty: "",
+        price: "",
+        tax_percent: "",
+        delivery_date: "",
+      },
     ]);
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Validate PO Date
     if (!header.po_date) {
       newErrors.po_date = "PO Date is required";
@@ -389,75 +439,84 @@ export default function POPage() {
       const pastDateError = validateNotPastDate(header.po_date, "PO Date");
       if (pastDateError) newErrors.po_date = pastDateError;
     }
-    
+
     // Validate Vendor
     if (!header.vendor_id) {
       newErrors.vendor_id = "Vendor is required";
     }
-    
+
     // Validate Payment Terms
     if (header.payment_terms) {
-      const specialCharError = validateNoSpecialChars(header.payment_terms, "Payment Terms");
+      const specialCharError = validateNoSpecialChars(
+        header.payment_terms,
+        "Payment Terms",
+      );
       if (specialCharError) newErrors.payment_terms = specialCharError;
     }
-    
+
     // Validate Currency
     if (!header.currency) {
       newErrors.currency = "Currency is required";
     } else if (header.currency.length !== 3) {
       newErrors.currency = "Currency must be 3 letters (e.g., INR, USD, EUR)";
     }
-    
+
     // Validate freight charges
     const freightError = validateFreight(header.freight_charges);
     if (freightError) newErrors.freight_charges = freightError;
-    
+
     // Validate items
     let hasValidItem = false;
     items.forEach((item, idx) => {
       if (item.material_id && item.qty && item.price) {
         hasValidItem = true;
-        
+
         // Validate quantity
         const qtyError = validateQuantity(item.qty);
         if (qtyError) newErrors[`item_${idx}_qty`] = qtyError;
-        
+
         // Validate price
         const priceError = validatePrice(item.price);
         if (priceError) newErrors[`item_${idx}_price`] = priceError;
-        
+
         // Validate tax
         const taxError = validateTax(item.tax_percent);
         if (taxError) newErrors[`item_${idx}_tax`] = taxError;
-        
+
         // Validate delivery date
         if (item.delivery_date) {
-          const pastDateError = validateNotPastDate(item.delivery_date, "Delivery Date");
-          if (pastDateError) newErrors[`item_${idx}_delivery_date`] = pastDateError;
+          const pastDateError = validateNotPastDate(
+            item.delivery_date,
+            "Delivery Date",
+          );
+          if (pastDateError)
+            newErrors[`item_${idx}_delivery_date`] = pastDateError;
         }
       } else if (item.material_id || item.qty || item.price) {
-        if (!item.material_id) newErrors[`item_${idx}_material`] = "Please select material";
+        if (!item.material_id)
+          newErrors[`item_${idx}_material`] = "Please select material";
         if (!item.qty) newErrors[`item_${idx}_qty`] = "Quantity is required";
         if (!item.price) newErrors[`item_${idx}_price`] = "Price is required";
       }
     });
-    
+
     if (!hasValidItem) {
-      newErrors.general = "At least one item with material, quantity and price is required";
+      newErrors.general =
+        "At least one item with material, quantity and price is required";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       alert("Please fix the validation errors before submitting");
       return;
     }
-    
+
     try {
       const payload = {
         header: {
@@ -468,7 +527,13 @@ export default function POPage() {
           currency: header.currency,
           po_type: header.po_type,
           source_type: header.source_type,
-          freight_charges: Number(header.freight_charges) || 0
+          source_id:
+            header.source_type === "PR" && selectedPrId
+              ? Number(selectedPrId)
+              : header.source_type === "RFQ" && selectedRfqId
+                ? Number(selectedRfqId)
+                : null,
+          freight_charges: Number(header.freight_charges) || 0,
         },
         items: items
           .filter((i) => i.material_id && i.qty && i.price)
@@ -478,8 +543,8 @@ export default function POPage() {
             qty: Number(i.qty),
             price: Number(i.price),
             tax_percent: Number(i.tax_percent) || 0,
-            delivery_date: i.delivery_date || null
-          }))
+            delivery_date: i.delivery_date || null,
+          })),
       };
 
       if (editingId) {
@@ -515,8 +580,10 @@ export default function POPage() {
           qty: it.qty,
           price: "",
           tax_percent: "",
-          delivery_date: it.required_date ? toLocalDateString(it.required_date) : ""
-        }))
+          delivery_date: it.required_date
+            ? toLocalDateString(it.required_date)
+            : "",
+        })),
       );
     } catch (e) {
       console.error(e);
@@ -534,13 +601,15 @@ export default function POPage() {
       const { header: fullHeader, items: fullItems } = res.data;
       setHeader({
         po_no: fullHeader.po_no || "",
-        po_date: fullHeader.po_date ? toLocalDateString(fullHeader.po_date) : "",
+        po_date: fullHeader.po_date
+          ? toLocalDateString(fullHeader.po_date)
+          : "",
         vendor_id: fullHeader.vendor_id || "",
         payment_terms: fullHeader.payment_terms || "",
         currency: fullHeader.currency || "INR",
         po_type: fullHeader.po_type || "STOCK",
         source_type: fullHeader.source_type || "DIRECT",
-        freight_charges: fullHeader.freight_charges || "0"
+        freight_charges: fullHeader.freight_charges || "0",
       });
       setItems(
         (fullItems || []).map((it) => ({
@@ -548,8 +617,10 @@ export default function POPage() {
           qty: it.qty || "",
           price: it.price || "",
           tax_percent: it.tax_percent || "",
-          delivery_date: it.delivery_date ? toLocalDateString(it.delivery_date) : ""
-        }))
+          delivery_date: it.delivery_date
+            ? toLocalDateString(it.delivery_date)
+            : "",
+        })),
       );
     } catch (e) {
       console.error(e);
@@ -602,7 +673,9 @@ export default function POPage() {
                 max={getTodayDate()}
                 required
               />
-              {errors.po_date && <div style={errorTextStyle}>{errors.po_date}</div>}
+              {errors.po_date && (
+                <div style={errorTextStyle}>{errors.po_date}</div>
+              )}
             </label>
             <label style={labelStyle}>
               Vendor *
@@ -620,7 +693,9 @@ export default function POPage() {
                   </option>
                 ))}
               </select>
-              {errors.vendor_id && <div style={errorTextStyle}>{errors.vendor_id}</div>}
+              {errors.vendor_id && (
+                <div style={errorTextStyle}>{errors.vendor_id}</div>
+              )}
             </label>
           </div>
 
@@ -634,7 +709,9 @@ export default function POPage() {
                 onChange={handleHeaderChange}
                 placeholder="Letters, numbers and spaces only"
               />
-              {errors.payment_terms && <div style={errorTextStyle}>{errors.payment_terms}</div>}
+              {errors.payment_terms && (
+                <div style={errorTextStyle}>{errors.payment_terms}</div>
+              )}
             </label>
             <label style={labelStyle}>
               Currency *
@@ -646,7 +723,9 @@ export default function POPage() {
                 placeholder="3 letters (INR, USD, EUR)"
                 maxLength="3"
               />
-              {errors.currency && <div style={errorTextStyle}>{errors.currency}</div>}
+              {errors.currency && (
+                <div style={errorTextStyle}>{errors.currency}</div>
+              )}
             </label>
 
             <label style={labelStyle}>
@@ -691,7 +770,9 @@ export default function POPage() {
                 onChange={handleHeaderChange}
                 placeholder="0.00"
               />
-              {errors.freight_charges && <div style={errorTextStyle}>{errors.freight_charges}</div>}
+              {errors.freight_charges && (
+                <div style={errorTextStyle}>{errors.freight_charges}</div>
+              )}
             </label>
             <div style={{ ...labelStyle, flex: 2 }}></div>
           </div>
@@ -727,8 +808,8 @@ export default function POPage() {
                   </div>
                   <div style={{ marginBottom: "4px" }}>
                     PR No: {selectedPrDetails.header.req_no} | Date:{" "}
-                    {toLocalDateString(selectedPrDetails.header.req_date)} | Requester:{" "}
-                    {selectedPrDetails.header.requester}
+                    {toLocalDateString(selectedPrDetails.header.req_date)} |
+                    Requester: {selectedPrDetails.header.requester}
                   </div>
                   <table style={tableStyle}>
                     <thead>
@@ -744,7 +825,9 @@ export default function POPage() {
                         <tr key={idx}>
                           <td style={tdStyle}>{it.material_id}</td>
                           <td style={tdStyle}>{it.qty}</td>
-                          <td style={tdStyle}>{toLocalDateString(it.required_date)}</td>
+                          <td style={tdStyle}>
+                            {toLocalDateString(it.required_date)}
+                          </td>
                           <td style={tdStyle}>{it.remarks}</td>
                         </tr>
                       ))}
@@ -752,6 +835,97 @@ export default function POPage() {
                   </table>
                 </div>
               )}
+            </>
+          )}
+
+          {header.source_type === "RFQ" && (
+            <>
+              <div style={formRowStyle}>
+                <label style={labelStyle}>
+                  Source RFQ
+                  <select
+                    style={inputStyle}
+                    value={selectedRfqId}
+                    onChange={async (e) => {
+                      const rfqId = e.target.value;
+                      setSelectedRfqId(rfqId);
+                      setSelectedRfqVendorId("");
+                      setRfqVendorsList([]);
+                      if (rfqId) {
+                        const res = await rfqApi.getRFQWithQuotes(rfqId);
+                        const vendors = res.data.vendors || [];
+                        setRfqVendorsList(vendors);
+                        // Do NOT load items yet – wait for vendor selection
+                      } else {
+                        setItems([
+                          {
+                            material_id: "",
+                            qty: "",
+                            price: "",
+                            tax_percent: "",
+                            delivery_date: "",
+                          },
+                        ]);
+                      }
+                    }}
+                  >
+                    <option value="">-- Select RFQ --</option>
+                    {rfqs
+                      .filter((rfq) => rfq.status !== "Closed")
+                      .map((rfq) => (
+                        <option key={rfq.id} value={rfq.id}>
+                          {rfq.rfq_no} - {rfq.rfq_type}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <label style={labelStyle}>
+                  Vendor (with quote)
+                  <select
+                    style={inputStyle}
+                    value={selectedRfqVendorId}
+                    onChange={async (e) => {
+                      const vendorId = e.target.value;
+                      setSelectedRfqVendorId(vendorId);
+                      if (vendorId && selectedRfqId) {
+                        const res =
+                          await rfqApi.getRFQWithQuotes(selectedRfqId);
+                        const vendorQuotes = res.data.quotes.filter(
+                          (q) => q.vendor_id == vendorId,
+                        );
+                        const newItems = res.data.items.map((item) => {
+                          const quote = vendorQuotes.find(
+                            (q) => q.rfq_item_id === item.id,
+                          );
+                          return {
+                            material_id: item.material_id,
+                            qty: quote ? quote.quoted_qty : item.qty,
+                            price: quote ? quote.quoted_price : "",
+                            tax_percent: "",
+                            delivery_date: "",
+                          };
+                        });
+                        setItems(newItems);
+                        // Auto‑fill header fields from RFQ
+                        setHeader((prev) => ({
+                          ...prev,
+                          currency: res.data.header.currency,
+                          payment_terms: res.data.header.payment_terms,
+                          vendor_id: Number(vendorId),
+                        }));
+                      }
+                    }}
+                  >
+                    <option value="">-- Select Vendor --</option>
+                    {rfqVendorsList.map((v) => (
+                      <option key={v.vendor_id} value={v.vendor_id}>
+                        {v.vendor_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </>
           )}
 
@@ -764,7 +938,11 @@ export default function POPage() {
               <label style={labelStyle}>
                 Material *
                 <select
-                  style={errors[`item_${idx}_material`] ? inputErrorStyle : inputStyle}
+                  style={
+                    errors[`item_${idx}_material`]
+                      ? inputErrorStyle
+                      : inputStyle
+                  }
                   value={it.material_id}
                   onChange={(e) =>
                     handleItemChange(idx, "material_id", e.target.value)
@@ -777,27 +955,35 @@ export default function POPage() {
                     </option>
                   ))}
                 </select>
-                {errors[`item_${idx}_material`] && <div style={errorTextStyle}>{errors[`item_${idx}_material`]}</div>}
+                {errors[`item_${idx}_material`] && (
+                  <div style={errorTextStyle}>
+                    {errors[`item_${idx}_material`]}
+                  </div>
+                )}
               </label>
               <label style={labelStyle}>
                 Qty *
                 <input
-                  style={errors[`item_${idx}_qty`] ? inputErrorStyle : inputStyle}
+                  style={
+                    errors[`item_${idx}_qty`] ? inputErrorStyle : inputStyle
+                  }
                   type="number"
                   step="1"
                   min="1"
                   value={it.qty}
-                  onChange={(e) =>
-                    handleItemChange(idx, "qty", e.target.value)
-                  }
+                  onChange={(e) => handleItemChange(idx, "qty", e.target.value)}
                   placeholder="Quantity"
                 />
-                {errors[`item_${idx}_qty`] && <div style={errorTextStyle}>{errors[`item_${idx}_qty`]}</div>}
+                {errors[`item_${idx}_qty`] && (
+                  <div style={errorTextStyle}>{errors[`item_${idx}_qty`]}</div>
+                )}
               </label>
               <label style={labelStyle}>
                 Price *
                 <input
-                  style={errors[`item_${idx}_price`] ? inputErrorStyle : inputStyle}
+                  style={
+                    errors[`item_${idx}_price`] ? inputErrorStyle : inputStyle
+                  }
                   type="number"
                   step="0.01"
                   min="0"
@@ -807,12 +993,18 @@ export default function POPage() {
                   }
                   placeholder="Price"
                 />
-                {errors[`item_${idx}_price`] && <div style={errorTextStyle}>{errors[`item_${idx}_price`]}</div>}
+                {errors[`item_${idx}_price`] && (
+                  <div style={errorTextStyle}>
+                    {errors[`item_${idx}_price`]}
+                  </div>
+                )}
               </label>
               <label style={labelStyle}>
                 Tax %
                 <input
-                  style={errors[`item_${idx}_tax`] ? inputErrorStyle : inputStyle}
+                  style={
+                    errors[`item_${idx}_tax`] ? inputErrorStyle : inputStyle
+                  }
                   type="number"
                   step="0.01"
                   min="0"
@@ -823,12 +1015,18 @@ export default function POPage() {
                   }
                   placeholder="0-100"
                 />
-                {errors[`item_${idx}_tax`] && <div style={errorTextStyle}>{errors[`item_${idx}_tax`]}</div>}
+                {errors[`item_${idx}_tax`] && (
+                  <div style={errorTextStyle}>{errors[`item_${idx}_tax`]}</div>
+                )}
               </label>
               <label style={labelStyle}>
                 Delivery Date
                 <input
-                  style={errors[`item_${idx}_delivery_date`] ? inputErrorStyle : inputStyle}
+                  style={
+                    errors[`item_${idx}_delivery_date`]
+                      ? inputErrorStyle
+                      : inputStyle
+                  }
                   type="date"
                   value={it.delivery_date}
                   onChange={(e) =>
@@ -836,14 +1034,26 @@ export default function POPage() {
                   }
                   min={getTodayDate()}
                 />
-                {errors[`item_${idx}_delivery_date`] && <div style={errorTextStyle}>{errors[`item_${idx}_delivery_date`]}</div>}
+                {errors[`item_${idx}_delivery_date`] && (
+                  <div style={errorTextStyle}>
+                    {errors[`item_${idx}_delivery_date`]}
+                  </div>
+                )}
               </label>
-              <label style={{ ...labelStyle, flex: "0 0 auto", minWidth: "80px" }}>
+              <label
+                style={{ ...labelStyle, flex: "0 0 auto", minWidth: "80px" }}
+              >
                 Total
                 <input
                   style={{ ...inputStyle, backgroundColor: "#f9fafb" }}
                   type="text"
-                  value={it.material_id && it.qty && it.price ? formatAmountWithDecimals(Number(it.qty) * Number(it.price)) : "0.00"}
+                  value={
+                    it.material_id && it.qty && it.price
+                      ? formatAmountWithDecimals(
+                          Number(it.qty) * Number(it.price),
+                        )
+                      : "0.00"
+                  }
                   readOnly
                 />
               </label>
@@ -851,38 +1061,62 @@ export default function POPage() {
           ))}
 
           {errors.general && (
-            <div style={{ ...errorTextStyle, marginBottom: "8px" }}>{errors.general}</div>
+            <div style={{ ...errorTextStyle, marginBottom: "8px" }}>
+              {errors.general}
+            </div>
           )}
 
           {/* Totals Summary */}
-          <div style={{ marginTop: "16px", borderTop: "1px solid #e5e7eb", paddingTop: "12px" }}>
+          <div
+            style={{
+              marginTop: "16px",
+              borderTop: "1px solid #e5e7eb",
+              paddingTop: "12px",
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <table style={{ width: "300px", fontSize: "13px" }}>
                 <tbody>
                   <tr>
                     <td style={summaryLabelStyle}>Subtotal:</td>
                     <td style={summaryValueStyle}>
-                      {header.currency} {formatAmountWithDecimals(totals.subtotal)}
+                      {header.currency}{" "}
+                      {formatAmountWithDecimals(totals.subtotal)}
                     </td>
                   </tr>
                   <tr>
                     <td style={summaryLabelStyle}>Tax Amount:</td>
                     <td style={summaryValueStyle}>
-                      {header.currency} {formatAmountWithDecimals(totals.totalTax)}
+                      {header.currency}{" "}
+                      {formatAmountWithDecimals(totals.totalTax)}
                     </td>
                   </tr>
                   <tr>
                     <td style={summaryLabelStyle}>Freight Charges:</td>
                     <td style={summaryValueStyle}>
-                      {header.currency} {formatAmountWithDecimals(totals.freight)}
+                      {header.currency}{" "}
+                      {formatAmountWithDecimals(totals.freight)}
                     </td>
                   </tr>
                   <tr style={{ borderTop: "2px solid #374151" }}>
-                    <td style={{ ...summaryLabelStyle, fontSize: "14px", fontWeight: "600" }}>
+                    <td
+                      style={{
+                        ...summaryLabelStyle,
+                        fontSize: "14px",
+                        fontWeight: "600",
+                      }}
+                    >
                       Grand Total:
                     </td>
-                    <td style={{ ...summaryValueStyle, fontSize: "14px", fontWeight: "700" }}>
-                      {header.currency} {formatAmountWithDecimals(totals.grandTotal)}
+                    <td
+                      style={{
+                        ...summaryValueStyle,
+                        fontSize: "14px",
+                        fontWeight: "700",
+                      }}
+                    >
+                      {header.currency}{" "}
+                      {formatAmountWithDecimals(totals.grandTotal)}
                     </td>
                   </tr>
                 </tbody>
@@ -895,7 +1129,7 @@ export default function POPage() {
             style={{
               ...buttonStyle,
               backgroundColor: "#6b7280",
-              marginRight: "8px"
+              marginRight: "8px",
             }}
             onClick={addRow}
           >
@@ -959,7 +1193,7 @@ export default function POPage() {
                         ...buttonStyle,
                         padding: "4px 8px",
                         marginRight: "4px",
-                        fontSize: "12px"
+                        fontSize: "12px",
                       }}
                       type="button"
                       onClick={() => editPO(po)}
@@ -971,7 +1205,7 @@ export default function POPage() {
                         ...buttonStyle,
                         padding: "4px 8px",
                         fontSize: "12px",
-                        backgroundColor: "#dc2626"
+                        backgroundColor: "#dc2626",
                       }}
                       type="button"
                       onClick={() => deletePO(po.id)}
