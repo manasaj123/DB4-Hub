@@ -23,41 +23,15 @@ export default function MaterialManagement() {
     }
   };
 
-  // ✅ SMART UNIT LOGIC
   const getSuggestedUnit = (materialName) => {
     const nameLower = materialName.toLowerCase();
-
-    // Liquids
     const liquids = ["milk", "water", "oil", "juice"];
     if (liquids.some((item) => nameLower.includes(item))) {
       return "Liters";
     }
-
-    // Fruits (scalable list)
-    const fruits = [
-      "apple",
-      "banana",
-      "mango",
-      "orange",
-      "grape",
-      "papaya",
-      "pineapple",
-      "guava",
-      "pomegranate",
-      "strawberry",
-      "watermelon",
-      "lemon",
-    ];
-
-    if (fruits.some((item) => nameLower.includes(item))) {
-      return "Kg";
-    }
-
-    // Default
     return "Kg";
   };
 
-  // ✅ VALIDATION
   const validate = () => {
     if (!/^[A-Za-z\s]+$/.test(name)) {
       alert("Material Name should contain only letters");
@@ -74,9 +48,7 @@ export default function MaterialManagement() {
       return false;
     }
 
-    // ✅ UNIT CHECK
     const correctUnit = getSuggestedUnit(name);
-
     if (unit !== correctUnit) {
       alert(`Invalid unit! ${name} should be in ${correctUnit}`);
       return false;
@@ -101,11 +73,10 @@ export default function MaterialManagement() {
         qty: Number(qty),
         unit,
         shelfLife: Number(shelfLife),
-        issueType: "FIFO",
+        issueType: "FIFO", // Always FIFO for food materials
       });
 
       fetchMaterials();
-
       setName("");
       setQty("");
       setUnit("Kg");
@@ -129,7 +100,7 @@ export default function MaterialManagement() {
           value={name}
           onChange={(e) => {
             setName(e.target.value);
-            setUnit(getSuggestedUnit(e.target.value)); // auto adjust unit
+            setUnit(getSuggestedUnit(e.target.value));
           }}
         />
 
@@ -167,9 +138,12 @@ export default function MaterialManagement() {
             <tr>
               <th>ID</th>
               <th>Material</th>
-              <th>Quantity</th>
+              <th>Total Qty</th>
+              <th>Available Qty</th>
+              <th>Reserved Qty</th>
               <th>Unit</th>
               <th>Shelf Life</th>
+              <th>Issue Type</th>
             </tr>
           </thead>
 
@@ -179,8 +153,13 @@ export default function MaterialManagement() {
                 <td>{m.id}</td>
                 <td>{m.name}</td>
                 <td>{m.qty}</td>
+                <td style={{ color: (m.available_qty || m.qty) > 0 ? 'green' : 'red' }}>
+                  {m.available_qty || m.qty}
+                </td>
+                <td>{m.reserved_qty || 0}</td>
                 <td>{m.unit}</td>
-                <td>{m.shelf_life}</td>
+                <td>{m.shelf_life} days</td>
+                <td>{m.issue_type || 'FIFO'}</td>
               </tr>
             ))}
           </tbody>

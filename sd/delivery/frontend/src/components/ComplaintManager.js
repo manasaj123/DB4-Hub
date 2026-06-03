@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import "./Styles.css"; 
+import "./Styles.css";
 
 const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refreshAllData }) => {
   const [formData, setFormData] = useState({
@@ -74,21 +74,20 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
 
   const handleEscalate = async (id, level) => {
     try {
-      // Use valid status values: 'assigned' or 'in_progress'
       const status = level === 1 ? 'assigned' : 'in_progress';
       const assigned_to = level === 1 ? 'team_lead' : 'manager';
       
       await axios.put(`/api/complaints/${id}/escalate`, {
         escalation_level: level,
         assigned_to: assigned_to,
-        status: status  // Don't use 'escalated' as it's not in the ENUM
+        status: status
       });
       
       fetchComplaints();
       if (refreshAllData) refreshAllData();
     } catch (err) {
       console.error("Escalation failed", err);
-      alert('Failed to update complaint: ' + (err.response?.data?.error || err.message));
+      alert('Failed to update complaint');
     }
   };
 
@@ -103,12 +102,84 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
     }
   };
 
+  const handleClose = async (id) => {
+    try {
+      await axios.put(`/api/complaints/${id}/close`);
+      fetchComplaints();
+      if (refreshAllData) refreshAllData();
+    } catch (err) {
+      console.error("Close failed", err);
+      alert('Failed to close complaint');
+    }
+  };
+
   const getLinkedOrder = (orderId) => {
     return orders?.find(o => o.order_id === orderId);
   };
 
   const getLinkedDelivery = (orderId) => {
     return deliveries?.find(d => d.order_id === orderId);
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      'new': '#007bff',
+      'assigned': '#17a2b8',
+      'in_progress': '#ffc107',
+      'resolved': '#28a745',
+      'closed': '#6c757d'
+    };
+    return colors[status] || '#6c757d';
+  };
+
+  const getComplaintActions = (complaint) => {
+    const actions = [];
+    
+    switch(complaint.status) {
+      case 'new':
+        actions.push({
+          action: () => handleEscalate(complaint.id, 1),
+          label: '👤 Assign to Team',
+          color: '#17a2b8'
+        });
+        break;
+        
+      case 'assigned':
+        actions.push({
+          action: () => handleEscalate(complaint.id, 2),
+          label: '⬆️ Escalate to Manager',
+          color: '#ffc107'
+        });
+        actions.push({
+          action: () => handleResolve(complaint.id),
+          label: '✅ Resolve',
+          color: '#28a745'
+        });
+        break;
+        
+      case 'in_progress':
+        actions.push({
+          action: () => handleResolve(complaint.id),
+          label: '✅ Mark Resolved',
+          color: '#28a745'
+        });
+        actions.push({
+          action: () => handleClose(complaint.id),
+          label: '🔒 Close',
+          color: '#6c757d'
+        });
+        break;
+        
+      case 'resolved':
+        actions.push({
+          action: () => handleClose(complaint.id),
+          label: '🔒 Close Complaint',
+          color: '#6c757d'
+        });
+        break;
+    }
+    
+    return actions;
   };
 
   const filteredComplaints = complaints.filter(c => {
@@ -129,7 +200,14 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
           <h3>📝 New Complaint</h3>
           
           {successMsg && (
-            <div className={`success-msg ${successMsg.includes('✅') ? 'success' : 'error'}`}>
+            <div style={{
+              padding: '10px',
+              borderRadius: '5px',
+              marginBottom: '15px',
+              fontWeight: 'bold',
+              background: successMsg.includes('✅') ? '#d4edda' : '#f8d7da',
+              color: successMsg.includes('✅') ? '#155724' : '#721c24'
+            }}>
               {successMsg}
             </div>
           )}
@@ -200,9 +278,18 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
             </select>
             
             <button 
-              className="submit-btn" 
               disabled={submitting}
-              style={{ width: '100%' }}
+              style={{ 
+                width: '100%',
+                padding: '12px',
+                background: submitting ? '#6c757d' : '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold',
+                fontSize: '16px'
+              }}
             >
               {submitting ? "⏳ Creating..." : "🚨 Register Complaint"}
             </button>
@@ -247,11 +334,7 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
             </div>
           </div>
 
-          <div style={{
-            maxHeight: '500px',
-            overflowY: 'auto',
-            paddingRight: '5px'
-          }}>
+          <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '5px' }}>
             {loading ? (
               <p style={{ textAlign: 'center', padding: '20px' }}>Loading complaints...</p>
             ) : filteredComplaints.length === 0 ? (
@@ -285,11 +368,7 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
                         borderRadius: '12px',
                         fontSize: '12px',
                         fontWeight: 'bold',
-                        background: 
-                          c.status === 'new' ? '#007bff' :
-                          c.status === 'assigned' ? '#17a2b8' :
-                          c.status === 'in_progress' ? '#ffc107' :
-                          c.status === 'resolved' ? '#28a745' : '#6c757d',
+                        background: getStatusColor(c.status),
                         color: 'white'
                       }}>
                         {(c.status || 'new').replace('_', ' ')}
@@ -326,9 +405,6 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
                             Driver: {linkedDelivery.driver_name}
                           </span>
                         )}
-                        <span style={{ marginLeft: '8px', color: '#666' }}>
-                          {new Date(linkedDelivery.scheduled_time).toLocaleDateString()}
-                        </span>
                       </p>
                     )}
                     
@@ -337,54 +413,23 @@ const ComplaintManager = ({ complaints, setComplaints, orders, deliveries, refre
                     </p>
                     
                     <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                      {c.status === 'new' && (
+                      {getComplaintActions(c).map((action, index) => (
                         <button
-                          onClick={() => handleEscalate(c.id, 1)}
+                          key={index}
+                          onClick={action.action}
                           style={{
                             padding: '8px 16px',
-                            background: '#17a2b8',
+                            background: action.color,
                             color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          👤 Assign to Team Lead
-                        </button>
-                      )}
-                      
-                      {c.status === 'assigned' && (
-                        <button
-                          onClick={() => handleEscalate(c.id, 2)}
-                          style={{
-                            padding: '8px 16px',
-                            background: '#ffc107',
-                            color: '#000',
                             border: 'none',
                             borderRadius: '5px',
                             cursor: 'pointer',
                             fontWeight: 'bold'
                           }}
                         >
-                          ⬆️ Escalate to Manager
+                          {action.label}
                         </button>
-                      )}
-                      
-                      {(c.status === 'assigned' || c.status === 'in_progress') && (
-                        <button
-                          onClick={() => handleResolve(c.id)}
-                          style={{
-                            padding: '8px 16px',
-                            background: '#28a745',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          ✅ Resolve
-                        </button>
-                      )}
+                      ))}
                     </div>
                     
                     <div style={{ marginTop: '8px', fontSize: '11px', color: '#999' }}>

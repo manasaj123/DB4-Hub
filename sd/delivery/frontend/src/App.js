@@ -4,27 +4,30 @@ import DeliveryScheduler from "./components/DeliveryScheduler";
 import ReturnsHandler from "./components/ReturnsHandler";
 import ComplaintManager from "./components/ComplaintManager";
 import RevenueDashboard from "./components/RevenueDashboard";
-import DriverManagement from "./components/DriverManagement"; // NEW
+import DriverManagement from "./components/DriverManagement";
 import "./App.css";
 
 export default function App() {
   const [deliveries, setDeliveries] = useState([]);
   const [orders, setOrders] = useState([]);
   const [complaints, setComplaints] = useState([]);
-  const [drivers, setDrivers] = useState([]); // NEW
+  const [drivers, setDrivers] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchAllData();
   }, []);
 
   const fetchAllData = async () => {
+    setLoading(true);
     await Promise.all([
       fetchDeliveries(),
       fetchOrders(),
       fetchComplaints(),
-      fetchDrivers() // NEW
+      fetchDrivers()
     ]);
+    setLoading(false);
   };
 
   const fetchDeliveries = async () => {
@@ -54,7 +57,7 @@ export default function App() {
     }
   };
 
-  const fetchDrivers = async () => { // NEW
+  const fetchDrivers = async () => {
     try {
       const res = await axios.get('/api/drivers');
       setDrivers(res.data || []);
@@ -67,33 +70,45 @@ export default function App() {
     fetchAllData();
   }, []);
 
+  // Calculate stats for overview cards
+  const deliveredOrders = orders.filter(o => o.status === 'delivered');
+  const activeDeliveries = deliveries.filter(d => 
+    d.status === 'pending' || d.status === 'in_transit'
+  );
+  const activeComplaints = complaints.filter(c => 
+    c.status === 'new' || c.status === 'assigned' || c.status === 'in_progress'
+  );
+  const totalRevenue = deliveredOrders.reduce((sum, o) => 
+    sum + (parseFloat(o.total_amount) || 0), 0
+  );
+
   return (
     <div className="app-container">
-      <h1 style={{ color: "#017eb3" }}>📦 Delivery Order Management System</h1>
+      <h1>📦 Delivery Order Management System</h1>
       
       {/* Stats Overview */}
       <div className="stats-overview">
         <div className="overview-card">
           <h3>📦 Orders</h3>
           <div className="overview-number">{orders.length}</div>
+          <small>{deliveredOrders.length} delivered</small>
         </div>
         <div className="overview-card">
           <h3>🚚 Active Deliveries</h3>
-          <div className="overview-number">{deliveries.filter(d => d.status === 'pending' || d.status === 'in_transit').length}</div>
+          <div className="overview-number">{activeDeliveries.length}</div>
           <small>Out of {deliveries.length} Total</small>
         </div>
         <div className="overview-card">
-          <h3>📞 Complaints</h3>
-          <div className="overview-number">{complaints.filter(c => c.status === 'new' || c.status === 'assigned').length}</div>
-          <small>Active / {complaints.length} Total</small>
+          <h3>📞 Active Complaints</h3>
+          <div className="overview-number">{activeComplaints.length}</div>
+          <small>Out of {complaints.length} Total</small>
         </div>
         <div className="overview-card">
           <h3>💰 Revenue</h3>
           <div className="overview-number">
-            ₹{orders.filter(o => o.status === 'delivered')
-              .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0)
-              .toLocaleString()}
+            ₹{totalRevenue.toLocaleString()}
           </div>
+          <small>From delivered orders</small>
         </div>
       </div>
 
@@ -105,7 +120,6 @@ export default function App() {
         >
           📋 All
         </button>
-        
         <button 
           className={`nav-tab ${activeTab === 'orders' ? 'active' : ''}`}
           onClick={() => setActiveTab('orders')}
@@ -118,6 +132,7 @@ export default function App() {
         >
           🚚 Delivery
         </button>
+        
         <button 
           className={`nav-tab ${activeTab === 'complaints' ? 'active' : ''}`}
           onClick={() => setActiveTab('complaints')}
@@ -138,8 +153,8 @@ export default function App() {
         </button>
       </div>
 
-      
-      
+      {/* Conditional Rendering based on active tab */}
+
       {(activeTab === 'all' || activeTab === 'orders') && (
         <ReturnsHandler 
           orders={orders} 
@@ -149,8 +164,6 @@ export default function App() {
           refreshAllData={refreshAllData}
         />
       )}
-
-      {/* Conditional Rendering */}
       {(activeTab === 'all' || activeTab === 'delivery') && (
         <DeliveryScheduler 
           deliveries={deliveries} 
@@ -161,6 +174,8 @@ export default function App() {
           refreshAllData={refreshAllData}
         />
       )}
+      
+      
       
       {(activeTab === 'all' || activeTab === 'complaints') && (
         <ComplaintManager 
@@ -176,6 +191,7 @@ export default function App() {
         <DriverManagement 
           drivers={drivers}
           setDrivers={setDrivers}
+          deliveries={deliveries}
           refreshAllData={refreshAllData}
         />
       )}
