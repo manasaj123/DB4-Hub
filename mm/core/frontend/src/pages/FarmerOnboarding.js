@@ -4,8 +4,13 @@ import axios from "axios";
 export default function FarmerOnboarding() {
   const [farmers, setFarmers] = useState([]);
   const [farmerName, setFarmerName] = useState("");
+  const [farmerCode, setFarmerCode] = useState("");
+  const [village, setVillage] = useState("");
+  const [district, setDistrict] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -15,85 +20,146 @@ export default function FarmerOnboarding() {
   }, []);
 
   const fetchFarmers = async () => {
-    const res = await axios.get("http://localhost:5001/api/farmers");
-    setFarmers(res.data);
+    try {
+      const res = await axios.get("http://localhost:5001/api/farmers");
+      const validFarmers = res.data.filter(f => {
+        return f.name && f.name.length >= 3 && /^[A-Za-z]/.test(f.name);
+      });
+      setFarmers(validFarmers);
+      
+      // Generate next code
+      const nextCode = generateNextCode(validFarmers);
+      setFarmerCode(nextCode);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setFarmers([]);
+      setFarmerCode('FARM-00001');
+    }
+  };
+
+  const generateNextCode = (existingFarmers) => {
+    if (!existingFarmers || existingFarmers.length === 0) {
+      return 'FARM-00001';
+    }
+    
+    let maxNumber = 0;
+    existingFarmers.forEach(farmer => {
+      if (farmer.farmer_code) {
+        const match = farmer.farmer_code.match(/FARM-(\d+)/);
+        if (match) {
+          const num = parseInt(match[1]);
+          if (num > maxNumber) maxNumber = num;
+        }
+      }
+    });
+    
+    return `FARM-${String(maxNumber + 1).padStart(5, '0')}`;
   };
 
   const validateField = (field, value) => {
     let msg = "";
 
     if (field === "name") {
-      if (!value) {
+      if (!value || !value.trim()) {
         msg = "Farmer name is required";
-      } else if (value.length < 6) {
-        msg = "Name must be at least 6 characters";
-      } else if (value.length > 50) {
+      } else if (value.trim().length < 3) {
+        msg = "Name must be at least 3 characters";
+      } else if (value.trim().length > 50) {
         msg = "Name must be less than 50 characters";
-      } else if (/^[^a-zA-Z]+$/.test(value)) {
-        msg = "Name must contain letters";
-      } else if (/[<>{}[\]\\|`~^]/.test(value)) {
-        msg = "Name contains invalid characters";
-      } else if (/^[a-zA-Z]{1,2}[!@#$%&*()_+=:;'",.?/\\-]/.test(value)) {
-        msg = "Name must start with a proper name";
-      } else if (/([!@#$%&*()_+=:;'",.?/\\-]){3,}/.test(value)) {
-        msg = "Too many consecutive special characters";
-      } else if (value.replace(/[a-zA-Z]/g, '').length > value.length * 0.5) {
-        msg = "Name must contain mostly letters";
-      } else if (
-        farmers.some(
-          (f) => f.name.toLowerCase() === value.toLowerCase()
-        )
-      ) {
-        msg = "Farmer already exists";
+      } else if (!/^[A-Za-z]/.test(value.trim())) {
+        msg = "Name must start with a letter";
+      } else if (!/^[A-Za-z][A-Za-z\s'-]*$/.test(value.trim())) {
+        msg = "Name can only contain letters, spaces, hyphens, and apostrophes";
+      } else if (/\s{2,}/.test(value)) {
+        msg = "Name cannot have multiple consecutive spaces";
+      }
+    }
+
+    if (field === "village") {
+      if (value && value.trim().length < 2) {
+        msg = "Village name must be at least 2 characters";
+      } else if (value && !/^[A-Za-z][A-Za-z\s]*$/.test(value.trim())) {
+        msg = "Village name can only contain letters";
+      }
+    }
+
+    if (field === "district") {
+      if (value && value.trim().length < 2) {
+        msg = "District name must be at least 2 characters";
+      } else if (value && !/^[A-Za-z][A-Za-z\s]*$/.test(value.trim())) {
+        msg = "District name can only contain letters";
+      }
+    }
+
+    if (field === "bankAccount") {
+      if (value && !/^\d+$/.test(value)) {
+        msg = "Bank account must contain only numbers";
+      } else if (value && (value.length < 9 || value.length > 18)) {
+        msg = "Bank account must be between 9 and 18 digits";
       }
     }
 
     if (field === "address") {
-      if (!value) {
+      if (!value || !value.trim()) {
         msg = "Address is required";
-      } else if (value.length < 5) {
-        msg = "Address must be at least 5 characters";
-      } else if (value.length > 200) {
+      } else if (value.trim().length < 3) {
+        msg = "Address must be at least 3 characters";
+      } else if (value.trim().length > 200) {
         msg = "Address must be less than 200 characters";
       } else if (/[<>{}[\]\\|`~^]/.test(value)) {
         msg = "Address contains invalid characters";
-      } else if (/^[a-zA-Z0-9]{1,3}[!@#$%&*()_+=:;'",.?/\\-]/.test(value)) {
-        // Block addresses that START with 1-3 letters/numbers followed by special chars (like "hyd@#")
-        msg = "Address must start with a proper address";
-      } else if (/([!@#$%&*()_+=:;'",.?/\\-]){4,}/.test(value)) {
-        msg = "Too many consecutive special characters";
-      } else if (value.replace(/[a-zA-Z0-9\s]/g, '').length > value.replace(/\s/g, '').length * 0.3) {
-        msg = "Address contains too many special characters";
+      } else if (/[@#$%^&*]/.test(value)) {
+        msg = "Address cannot contain @, #, $, %, ^, &, *";
       }
     }
 
     if (field === "contact") {
-      if (!value) {
+      if (!value || !value.trim()) {
         msg = "Contact is required";
       } else if (!/^\d+$/.test(value)) {
         msg = "Only numbers allowed";
       } else if (value.length !== 10) {
         msg = "Must be exactly 10 digits";
-      } else if (/^0{5,}/.test(value)) {
-        msg = "Invalid contact number (too many leading zeros)";
+      } else if (!/^[6-9]/.test(value)) {
+        msg = "Must start with 6, 7, 8, or 9";
       } else if (/^(\d)\1{9}$/.test(value)) {
-        msg = "Invalid contact number (all same digits)";
+        msg = "Invalid contact number";
       }
     }
 
     setErrors((prev) => ({ ...prev, [field]: msg }));
+    return msg;
   };
 
   const handleChange = (field, value) => {
+    // Block invalid characters
     if (field === "contact" && !/^\d*$/.test(value)) return;
+    if (field === "bankAccount" && !/^\d*$/.test(value)) return;
     
-    if (field === "name" && /[<>{}[\]\\|`~^]/.test(value)) return;
+    if (field === "name") {
+      if (/[0-9@#$%^&*()_+=:;'"`,.?/\\|<>{}[\]~`]/.test(value)) return;
+      if (value.startsWith(' ') || value.startsWith('-') || value.startsWith("'")) return;
+    }
+    
+    if ((field === "village" || field === "district")) {
+      if (/[0-9@#$%^&*()_+=:;'"`,.?/\\|<>{}[\]~`-]/.test(value)) return;
+    }
+    
+    if (field === "address") {
+      if (/[<>{}[\]\\|`~^@#$%^&*]/.test(value)) return;
+    }
 
     if (field === "name") setFarmerName(value);
+    if (field === "village") setVillage(value);
+    if (field === "district") setDistrict(value);
+    if (field === "bankAccount") setBankAccount(value);
     if (field === "address") setAddress(value);
     if (field === "contact") setContact(value);
 
-    if (touched[field]) validateField(field, value);
+    // Clear error when user types
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
   };
 
   const handleBlur = (field, value) => {
@@ -101,114 +167,232 @@ export default function FarmerOnboarding() {
     validateField(field, value);
   };
 
-  const isValidField = (field) =>
-    touched[field] && !errors[field] && getValue(field);
-
-  const getValue = (field) => {
-    if (field === "name") return farmerName;
-    if (field === "address") return address;
-    if (field === "contact") return contact;
+  // Simple check if form can be submitted
+  const canSubmit = () => {
+    return (
+      farmerName.trim().length >= 3 &&
+      /^[A-Za-z]/.test(farmerName.trim()) &&
+      address.trim().length >= 3 &&
+      !/[@#$%^&*]/.test(address) &&
+      contact.length === 10 &&
+      /^[6-9]/.test(contact) &&
+      !isSubmitting
+    );
   };
 
   const addFarmer = async () => {
-    setTouched({ name: true, address: true, contact: true });
+    // Mark all as touched
+    setTouched({ 
+      name: true, 
+      village: true,
+      district: true,
+      bankAccount: true,
+      address: true, 
+      contact: true 
+    });
 
-    validateField("name", farmerName);
-    validateField("address", address);
-    validateField("contact", contact);
+    // Validate all fields
+    const nameError = validateField("name", farmerName);
+    const addressError = validateField("address", address);
+    const contactError = validateField("contact", contact);
+    validateField("village", village);
+    validateField("district", district);
+    validateField("bankAccount", bankAccount);
 
-    if (
-      errors.name ||
-      errors.address ||
-      errors.contact ||
-      !farmerName ||
-      !address ||
-      !contact
-    ) return;
+    // Check if required fields have errors
+    if (nameError || addressError || contactError) {
+      return;
+    }
+
+    // Final check
+    if (!farmerName.trim() || !address.trim() || !contact.trim()) {
+      alert("Please fill in all required fields (Name, Address, Contact)");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-      await axios.post("http://localhost:5001/api/farmers", {
+      const response = await axios.post("http://localhost:5001/api/farmers", {
+        farmerCode: farmerCode,
         name: farmerName.trim(),
+        village: village.trim(),
+        district: district.trim(),
+        bankAccount: bankAccount.trim(),
         address: address.trim(),
         contact: contact.trim(),
       });
 
-      fetchFarmers();
-
+      // Success
+      alert(`Farmer added successfully! Code: ${farmerCode}`);
+      
+      // Reset form
       setFarmerName("");
+      setVillage("");
+      setDistrict("");
+      setBankAccount("");
       setAddress("");
       setContact("");
       setErrors({});
       setTouched({});
+      
+      // Refresh list and generate new code
+      await fetchFarmers();
+      
     } catch (error) {
       console.error("Error adding farmer:", error);
-      setErrors(prev => ({ ...prev, general: "Failed to add farmer" }));
+      const errorMsg = error.response?.data?.error || "Failed to add farmer";
+      
+      if (errorMsg.includes("already exists")) {
+        // Generate new code and retry
+        const newCode = generateNextCode(farmers);
+        setFarmerCode(newCode);
+        alert(`${errorMsg}\nNew code generated: ${newCode}. Please try again.`);
+      } else {
+        alert(errorMsg);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  const isFormValid =
-    farmerName &&
-    address &&
-    contact &&
-    !errors.name &&
-    !errors.address &&
-    !errors.contact;
 
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h2 style={styles.title}>Farmer Onboarding</h2>
+        <h2 style={styles.title}>🌾 Farmer Onboarding</h2>
 
+        {/* Farmer Code */}
         <div style={styles.field}>
+          <label style={styles.label}>Farmer Code (Auto-generated)</label>
+          <input
+            style={{
+              ...styles.input,
+              backgroundColor: '#f0f0f0',
+              fontWeight: 'bold',
+              color: '#2c3e50',
+            }}
+            value={farmerCode}
+            readOnly
+          />
+        </div>
+
+        {/* Farmer Name */}
+        <div style={styles.field}>
+          <label style={styles.label}>Farmer Name *</label>
           <input
             style={{
               ...styles.input,
               borderColor: touched.name && errors.name ? "#ff4444" : 
-                          isValidField("name") ? "#4CAF50" : "#ccc"
+                          touched.name && !errors.name && farmerName ? "#4CAF50" : "#ccc"
             }}
-            placeholder="Farmer Name"
+            placeholder="Enter farmer's full name"
             value={farmerName}
             onChange={(e) => handleChange("name", e.target.value)}
             onBlur={(e) => handleBlur("name", e.target.value)}
           />
-          {isValidField("name") && <span style={styles.tick}>✔</span>}
+          {touched.name && !errors.name && farmerName && <span style={styles.tick}>✔</span>}
           {touched.name && errors.name && (
             <div style={styles.error}>{errors.name}</div>
           )}
         </div>
 
+        {/* Village */}
         <div style={styles.field}>
+          <label style={styles.label}>Village (Optional)</label>
+          <input
+            style={{
+              ...styles.input,
+              borderColor: touched.village && errors.village ? "#ff4444" : 
+                          touched.village && !errors.village && village ? "#4CAF50" : "#ccc"
+            }}
+            placeholder="Enter village name"
+            value={village}
+            onChange={(e) => handleChange("village", e.target.value)}
+            onBlur={(e) => handleBlur("village", e.target.value)}
+          />
+          {touched.village && !errors.village && village && <span style={styles.tick}>✔</span>}
+          {touched.village && errors.village && (
+            <div style={styles.error}>{errors.village}</div>
+          )}
+        </div>
+
+        {/* District */}
+        <div style={styles.field}>
+          <label style={styles.label}>District (Optional)</label>
+          <input
+            style={{
+              ...styles.input,
+              borderColor: touched.district && errors.district ? "#ff4444" : 
+                          touched.district && !errors.district && district ? "#4CAF50" : "#ccc"
+            }}
+            placeholder="Enter district name"
+            value={district}
+            onChange={(e) => handleChange("district", e.target.value)}
+            onBlur={(e) => handleBlur("district", e.target.value)}
+          />
+          {touched.district && !errors.district && district && <span style={styles.tick}>✔</span>}
+          {touched.district && errors.district && (
+            <div style={styles.error}>{errors.district}</div>
+          )}
+        </div>
+
+        {/* Bank Account */}
+        <div style={styles.field}>
+          <label style={styles.label}>Bank Account (Optional)</label>
+          <input
+            style={{
+              ...styles.input,
+              borderColor: touched.bankAccount && errors.bankAccount ? "#ff4444" : 
+                          touched.bankAccount && !errors.bankAccount && bankAccount ? "#4CAF50" : "#ccc"
+            }}
+            placeholder="Enter bank account number"
+            value={bankAccount}
+            maxLength={18}
+            onChange={(e) => handleChange("bankAccount", e.target.value)}
+            onBlur={(e) => handleBlur("bankAccount", e.target.value)}
+          />
+          {touched.bankAccount && !errors.bankAccount && bankAccount && <span style={styles.tick}>✔</span>}
+          {touched.bankAccount && errors.bankAccount && (
+            <div style={styles.error}>{errors.bankAccount}</div>
+          )}
+        </div>
+
+        {/* Address */}
+        <div style={styles.field}>
+          <label style={styles.label}>Address *</label>
           <input
             style={{
               ...styles.input,
               borderColor: touched.address && errors.address ? "#ff4444" : 
-                          isValidField("address") ? "#4CAF50" : "#ccc"
+                          touched.address && !errors.address && address ? "#4CAF50" : "#ccc"
             }}
-            placeholder="Address"
+            placeholder="Enter complete address"
             value={address}
             onChange={(e) => handleChange("address", e.target.value)}
             onBlur={(e) => handleBlur("address", e.target.value)}
           />
-          {isValidField("address") && <span style={styles.tick}>✔</span>}
+          {touched.address && !errors.address && address && <span style={styles.tick}>✔</span>}
           {touched.address && errors.address && (
             <div style={styles.error}>{errors.address}</div>
           )}
         </div>
 
+        {/* Contact */}
         <div style={styles.field}>
+          <label style={styles.label}>Contact Number *</label>
           <input
             style={{
               ...styles.input,
               borderColor: touched.contact && errors.contact ? "#ff4444" : 
-                          isValidField("contact") ? "#4CAF50" : "#ccc"
+                          touched.contact && !errors.contact && contact.length === 10 ? "#4CAF50" : "#ccc"
             }}
-            placeholder="Contact Number"
+            placeholder="Enter 10-digit mobile number"
             value={contact}
             maxLength={10}
             onChange={(e) => handleChange("contact", e.target.value)}
             onBlur={(e) => handleBlur("contact", e.target.value)}
           />
-          {isValidField("contact") && <span style={styles.tick}>✔</span>}
+          {touched.contact && !errors.contact && contact.length === 10 && <span style={styles.tick}>✔</span>}
           {touched.contact && errors.contact && (
             <div style={styles.error}>{errors.contact}</div>
           )}
@@ -217,25 +401,44 @@ export default function FarmerOnboarding() {
         <button
           style={{
             ...styles.button,
-            backgroundColor: isFormValid ? "#4CAF50" : "#ccc",
-            cursor: isFormValid ? "pointer" : "not-allowed",
+            backgroundColor: canSubmit() ? "#4CAF50" : "#ccc",
+            cursor: canSubmit() ? "pointer" : "not-allowed",
+            opacity: isSubmitting ? 0.7 : 1,
           }}
           onClick={addFarmer}
-          disabled={!isFormValid}
+          disabled={!canSubmit()}
         >
-          Add Farmer
+          {isSubmitting ? "⏳ Adding..." : "✅ Add Farmer"}
         </button>
       </div>
 
+      {/* Farmers List */}
       <div style={styles.listCard}>
-        <h3>Farmers List</h3>
-        <ul>
-          {farmers.map((f) => (
-            <li key={f.id} style={styles.listItem}>
-              <b>{f.name}</b> | {f.address} | {f.contact}
-            </li>
-          ))}
-        </ul>
+        <h3>🌾 Farmers List ({farmers.length})</h3>
+        {farmers.length === 0 ? (
+          <p style={styles.emptyMessage}>No farmers registered yet</p>
+        ) : (
+          <ul style={styles.list}>
+            {farmers.map((f) => (
+              <li key={f.id} style={styles.listItem}>
+                <div style={styles.farmerHeader}>
+                  <b style={styles.farmerName}>{f.name}</b>
+                  <span style={styles.code}>({f.farmer_code || 'N/A'})</span>
+                </div>
+                {f.village && f.district && (
+                  <div style={styles.detail}>
+                    📍 {f.village}, {f.district}
+                  </div>
+                )}
+                <div style={styles.detail}>📞 {f.contact}</div>
+                <div style={styles.detail}>🏠 {f.address}</div>
+                {f.bank_account && (
+                  <div style={styles.detail}>🏦 A/C: {f.bank_account}</div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
@@ -247,71 +450,129 @@ const styles = {
     flexWrap: "wrap",
     gap: "30px",
     justifyContent: "center",
-    padding: "40px",
-    background: "#f4f6f8",
+    padding: "10px",
+    background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
     minHeight: "100vh",
-    fontFamily: "Arial",
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     boxSizing: "border-box",
   },
   card: {
     width: "100%",
-    maxWidth: "380px",
+    maxWidth: "500px",
     background: "#fff",
-    padding: "20px",
-    borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    padding: "30px",
+    borderRadius: "15px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
     boxSizing: "border-box",
   },
   title: {
     textAlign: "center",
-    marginBottom: "20px",
+    marginBottom: "25px",
+    color: "#2c3e50",
+    fontSize: "24px",
+    fontWeight: "700",
+  },
+  label: {
+    display: "block",
+    marginBottom: "5px",
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "#495057",
   },
   field: {
-    marginBottom: "15px",
+    marginBottom: "18px",
     position: "relative",
     width: "100%",
   },
   input: {
     width: "100%",
-    padding: "10px",
-    paddingRight: "30px",
-    borderRadius: "6px",
+    padding: "12px",
+    paddingRight: "35px",
+    borderRadius: "8px",
     border: "1px solid #ccc",
     boxSizing: "border-box",
-    transition: "border-color 0.3s",
+    transition: "border-color 0.3s, box-shadow 0.3s",
+    fontSize: "14px",
+    outline: "none",
   },
   error: {
-    color: "red",
+    color: "#dc3545",
     fontSize: "12px",
-    marginTop: "4px",
+    marginTop: "5px",
+    fontWeight: "500",
   },
   tick: {
-    color: "green",
+    color: "#28a745",
     position: "absolute",
-    right: "10px",
-    top: "10px",
+    right: "12px",
+    top: "38px",
     fontWeight: "bold",
+    fontSize: "16px",
   },
   button: {
     width: "100%",
-    padding: "10px",
+    padding: "14px",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "8px",
     color: "#fff",
     fontWeight: "bold",
-    transition: "background-color 0.3s",
+    fontSize: "16px",
+    transition: "all 0.3s ease",
+    marginTop: "10px",
   },
   listCard: {
     width: "100%",
-    maxWidth: "320px",
+    maxWidth: "450px",
     background: "#fff",
-    padding: "20px",
-    borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    padding: "25px",
+    borderRadius: "15px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
     boxSizing: "border-box",
+    maxHeight: "1000px",
+    overflowY: "auto",
+     height: "900px",
+  },
+  list: {
+    listStyle: "none",
+    padding: "0",
+    margin: "0",
   },
   listItem: {
-    padding: "8px 0",
-    borderBottom: "1px solid #eee",
+    padding: "15px",
+    borderBottom: "1px solid #e9ecef",
+    transition: "background-color 0.3s",
+    borderRadius: "8px",
+    marginBottom: "8px",
+  },
+  farmerHeader: {
+    display: "flex",
+    alignItems: "center",
+    marginBottom: "5px",
+  },
+  farmerName: {
+    fontSize: "16px",
+    color: "#2c3e50",
+  },
+  code: {
+    color: "#6c757d",
+    fontSize: "12px",
+    marginLeft: "10px",
+    background: "#f8f9fa",
+    padding: "2px 8px",
+    borderRadius: "4px",
+  },
+  detail: {
+    fontSize: "13px",
+    color: "#495057",
+    marginTop: "4px",
+    display: "flex",
+    alignItems: "center",
+    gap: "5px",
+  },
+  emptyMessage: {
+    textAlign: "center",
+    color: "#6c757d",
+    padding: "40px 20px",
+    fontSize: "16px",
   },
 };

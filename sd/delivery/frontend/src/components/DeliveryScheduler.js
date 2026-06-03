@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import "./Styles.css"; 
+import "./Styles.css";
 
 const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drivers, refreshAllData }) => {
   const [formData, setFormData] = useState({
@@ -29,7 +29,6 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
     setError('');
     setSuccessMsg('');
     
-    // Validation
     if (!formData.order_id || !formData.customer_name || !formData.address || !formData.scheduled_time) {
       setError('❌ Please fill all required fields: Order ID, Customer Name, Address, and Scheduled Time');
       setTimeout(() => setError(''), 5000);
@@ -42,7 +41,6 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
       return;
     }
 
-    // Check for duplicate delivery
     const existingDelivery = deliveries.find(d => d.order_id === formData.order_id);
     if (existingDelivery) {
       setError('❌ Delivery already exists for this order');
@@ -53,7 +51,6 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
     setSubmitting(true);
     
     try {
-      // Auto-create order if doesn't exist
       const existingOrder = orders.find(o => o.order_id === formData.order_id);
       
       if (!existingOrder && formData.total_amount) {
@@ -65,17 +62,13 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
             total_amount: parseFloat(formData.total_amount),
             status: 'pending'
           });
-          console.log('✅ Order created successfully');
         } catch (orderError) {
           console.error('Order creation error:', orderError.response?.data);
-          // Continue even if order exists
         }
       }
 
-      // Get driver name if driver_id selected
       const selectedDriver = drivers.find(d => d.driver_id === formData.driver_id);
       
-      // Prepare delivery data (without id - database will auto-generate)
       const deliveryData = {
         order_id: formData.order_id,
         customer_name: formData.customer_name,
@@ -88,17 +81,11 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
         lng: formData.lng || 78.4867
       };
       
-      console.log('📦 Sending delivery data:', deliveryData);
-      
-      // Schedule delivery
       const res = await axios.post('/api/delivery/schedule', deliveryData);
-      
-      console.log('✅ Delivery created:', res.data);
       
       setDeliveries(prev => [res.data, ...prev]);
       setSuccessMsg(`✅ Delivery #${res.data.order_id} scheduled successfully!`);
       
-      // Generate new order ID for next entry
       const nextOrderId = generateOrderId();
       
       setFormData({
@@ -120,14 +107,7 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
       }
       
     } catch (error) {
-      console.error('❌ Schedule error:', error);
-      console.error('Error response:', error.response?.data);
-      
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.message || 
-                          error.message || 
-                          'Failed to schedule delivery';
-      
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to schedule delivery';
       setSuccessMsg(`❌ ${errorMessage}`);
       setTimeout(() => setSuccessMsg(''), 5000);
     } finally {
@@ -150,6 +130,38 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
     }
   };
 
+  const getAvailableActions = (status) => {
+    switch(status) {
+      case 'pending':
+        return [
+          { action: 'in_transit', label: '🚀 Start Delivery', color: '#007bff' },
+          { action: 'cancelled', label: '❌ Cancel', color: '#dc3545' }
+        ];
+      case 'in_transit':
+        return [
+          { action: 'delivered', label: '✅ Mark Delivered', color: '#28a745' },
+          { action: 'cancelled', label: '❌ Cancel', color: '#dc3545' }
+        ];
+      case 'return_pickup_pending':
+        return [
+          { action: 'in_transit', label: '🚀 Start Pickup', color: '#007bff' }
+        ];
+      default:
+        return [];
+    }
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      'pending': '#ffc107',
+      'in_transit': '#007bff',
+      'delivered': '#28a745',
+      'cancelled': '#dc3545',
+      'return_pickup_pending': '#6f42c1'
+    };
+    return colors[status] || '#6c757d';
+  };
+
   const activeDeliveries = deliveries.filter(d => 
     d.status === 'pending' || d.status === 'in_transit'
   );
@@ -164,7 +176,7 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
           <h3>📝 Schedule New Delivery</h3>
           
           {error && (
-            <div className="error-msg" style={{
+            <div style={{
               padding: '10px',
               background: '#f8d7da',
               color: '#721c24',
@@ -177,24 +189,22 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
           )}
           
           {successMsg && (
-            <div className={`success-msg ${successMsg.includes('✅') ? 'success' : 'error'}`}
-              style={{
-                padding: '10px',
-                borderRadius: '5px',
-                marginBottom: '15px',
-                fontWeight: 'bold',
-                background: successMsg.includes('✅') ? '#d4edda' : '#f8d7da',
-                color: successMsg.includes('✅') ? '#155724' : '#721c24',
-                border: `1px solid ${successMsg.includes('✅') ? '#c3e6cb' : '#f5c6cb'}`
-              }}
-            >
+            <div style={{
+              padding: '10px',
+              borderRadius: '5px',
+              marginBottom: '15px',
+              fontWeight: 'bold',
+              background: successMsg.includes('✅') ? '#d4edda' : '#f8d7da',
+              color: successMsg.includes('✅') ? '#155724' : '#721c24',
+              border: `1px solid ${successMsg.includes('✅') ? '#c3e6cb' : '#f5c6cb'}`
+            }}>
               {successMsg}
             </div>
           )}
           
-          <form className="delivery-form" onSubmit={handleSchedule}>
-            <div className="form-group">
-              <label>Order ID *</label>
+          <form onSubmit={handleSchedule}>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Order ID *</label>
               <input 
                 placeholder="ORD-001" 
                 value={formData.order_id}
@@ -204,8 +214,8 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
               />
             </div>
             
-            <div className="form-group">
-              <label>Customer Name *</label>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Customer Name *</label>
               <input 
                 placeholder="Customer Name" 
                 value={formData.customer_name}
@@ -215,8 +225,8 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
               />
             </div>
             
-            <div className="form-group">
-              <label>Phone</label>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Phone</label>
               <input 
                 placeholder="Phone Number" 
                 value={formData.customer_phone}
@@ -225,8 +235,8 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
               />
             </div>
             
-            <div className="form-group">
-              <label>Full Address *</label>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Full Address *</label>
               <textarea 
                 placeholder="Delivery Address" 
                 value={formData.address}
@@ -237,8 +247,8 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
               />
             </div>
             
-            <div className="form-group">
-              <label>Order Amount (₹) - Optional</label>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Order Amount (₹) - Optional</label>
               <input 
                 type="number"
                 min="0"
@@ -255,9 +265,9 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
               />
             </div>
             
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <div className="form-group">
-                <label>Scheduled Time *</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Scheduled Time *</label>
                 <input 
                   type="datetime-local" 
                   value={formData.scheduled_time}
@@ -267,8 +277,8 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
                 />
               </div>
               
-              <div className="form-group">
-                <label>Assign Driver</label>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Assign Driver</label>
                 <select
                   value={formData.driver_id}
                   onChange={(e) => setFormData({...formData, driver_id: e.target.value})}
@@ -286,7 +296,6 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
             
             <button 
               type="submit" 
-              className="schedule-btn" 
               disabled={submitting}
               style={{
                 width: '100%',
@@ -297,8 +306,7 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
                 borderRadius: '10px',
                 fontSize: '16px',
                 fontWeight: 'bold',
-                cursor: submitting ? 'not-allowed' : 'pointer',
-                marginTop: '15px'
+                cursor: submitting ? 'not-allowed' : 'pointer'
               }}
             >
               {submitting ? '⏳ Scheduling...' : '📦 Schedule Delivery'}
@@ -307,17 +315,11 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
         </div>
 
         <div className="delivery-list-section">
-          <div className="deliveries-header" style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '20px'
-          }}>
-            <div className="deliveries-count">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div>
               Active: <strong>{activeDeliveries.length}</strong> / Total: {deliveries.length}
             </div>
             <button 
-              className="toggle-btn"
               onClick={() => setShowAll(!showAll)}
               style={{
                 padding: '8px 16px',
@@ -334,76 +336,58 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
           
           <h3>📋 Delivery List</h3>
           
-          <div className="deliveries-list" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+          <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
             {displayDeliveries.length === 0 ? (
-              <div className="empty-state" style={{ textAlign: 'center', padding: '30px', color: '#666' }}>
-                {showAll ? 'No deliveries yet. Use the form to schedule deliveries.' : 'No active deliveries'}
+              <div style={{ textAlign: 'center', padding: '30px', color: '#666' }}>
+                {showAll ? 'No deliveries yet' : 'No active deliveries'}
               </div>
             ) : (
               displayDeliveries.map(delivery => (
                 <div 
                   key={delivery.id} 
-                  className={`delivery-item ${delivery.status}`}
                   style={{
                     background: 'white',
                     padding: '15px',
                     borderRadius: '8px',
                     marginBottom: '10px',
                     border: '1px solid #e0e0e0',
-                    borderLeft: `4px solid ${
-                      delivery.status === 'pending' ? '#ffc107' :
-                      delivery.status === 'in_transit' ? '#007bff' :
-                      delivery.status === 'delivered' ? '#28a745' :
-                      delivery.status === 'cancelled' ? '#dc3545' : '#6f42c1'
-                    }`
+                    borderLeft: `4px solid ${getStatusColor(delivery.status)}`
                   }}
                 >
-                  <div className="delivery-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <div className="order-id" style={{ fontWeight: 'bold', color: '#667eea' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#667eea' }}>
                       #{delivery.order_id}
                     </div>
-                    <span className={`delivery-status status-${delivery.status}`}
-                      style={{
-                        padding: '4px 12px',
-                        borderRadius: '15px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        background: 
-                          delivery.status === 'pending' ? '#fff3cd' :
-                          delivery.status === 'in_transit' ? '#cce5ff' :
-                          delivery.status === 'delivered' ? '#d4edda' :
-                          delivery.status === 'cancelled' ? '#f8d7da' : '#e8daef',
-                        color:
-                          delivery.status === 'pending' ? '#856404' :
-                          delivery.status === 'in_transit' ? '#004085' :
-                          delivery.status === 'delivered' ? '#155724' :
-                          delivery.status === 'cancelled' ? '#721c24' : '#6f42c1'
-                      }}
-                    >
-                      {(delivery.status || '').replace('_', ' ')}
+                    <span style={{
+                      padding: '4px 12px',
+                      borderRadius: '15px',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      background: getStatusColor(delivery.status) + '20',
+                      color: getStatusColor(delivery.status)
+                    }}>
+                      {(delivery.status || '').replace(/_/g, ' ')}
                     </span>
                   </div>
                   
-                  <div className="delivery-details" style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}>
+                  <div style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}>
                     <div>👤 {delivery.customer_name}</div>
                     <div>🕐 {new Date(delivery.scheduled_time).toLocaleString()}</div>
-                    {delivery.driver_name && (
-                      <div>🚛 {delivery.driver_name}</div>
-                    )}
+                    {delivery.driver_name && <div>🚛 {delivery.driver_name}</div>}
                   </div>
                   
-                  <div className="delivery-address" style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>
                     📍 {delivery.address}
                   </div>
                   
-                  {/* Status Update Buttons */}
-                  <div className="delivery-actions" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                    {delivery.status === 'pending' && (
+                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                    {getAvailableActions(delivery.status).map((action, index) => (
                       <button
-                        onClick={() => handleStatusUpdate(delivery.id, 'in_transit')}
+                        key={index}
+                        onClick={() => handleStatusUpdate(delivery.id, action.action)}
                         style={{
                           padding: '5px 10px',
-                          background: '#007bff',
+                          background: action.color,
                           color: 'white',
                           border: 'none',
                           borderRadius: '3px',
@@ -411,52 +395,14 @@ const DeliveryScheduler = ({ deliveries, setDeliveries, orders, setOrders, drive
                           fontSize: '12px'
                         }}
                       >
-                        🚀 Start Delivery
+                        {action.label}
                       </button>
-                    )}
-                    
-                    {delivery.status === 'in_transit' && (
-                      <button
-                        onClick={() => handleStatusUpdate(delivery.id, 'delivered')}
-                        style={{
-                          padding: '5px 10px',
-                          background: '#28a745',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '3px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        ✅ Mark Delivered
-                      </button>
-                    )}
-                    
-                    {(delivery.status === 'pending' || delivery.status === 'in_transit') && (
-                      <button
-                        onClick={() => handleStatusUpdate(delivery.id, 'cancelled')}
-                        style={{
-                          padding: '5px 10px',
-                          background: '#dc3545',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '3px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        ❌ Cancel
-                      </button>
-                    )}
+                    ))}
                   </div>
                   
-                  {/* Linked Order Info */}
                   {orders.find(o => o.order_id === delivery.order_id) && (
                     <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
                       💰 Order: ₹{orders.find(o => o.order_id === delivery.order_id).total_amount}
-                      <span style={{ marginLeft: '10px' }}>
-                        Status: {orders.find(o => o.order_id === delivery.order_id).status}
-                      </span>
                     </div>
                   )}
                 </div>
