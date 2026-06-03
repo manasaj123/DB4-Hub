@@ -1,5 +1,6 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const db = require("../models");
+const { Op } = require("sequelize");
 
 // GET /api/pickings
 exports.getPickings = asyncHandler(async (req, res) => {
@@ -162,7 +163,7 @@ exports.updatePicking = asyncHandler(async (req, res) => {
     where: {
       deliveryId,
       isDeleted: false,
-      id: { [db.Sequelize.Op.ne]: req.params.id },
+      id: { [Op.ne]: req.params.id },
     },
   });
   if (existing) {
@@ -182,6 +183,14 @@ exports.updatePicking = asyncHandler(async (req, res) => {
   } else if (rec.pickingStatus === "PICKED") {
     await db.Delivery.update(
       { status: "PICKED" },
+      { where: { id: rec.deliveryId } },
+    );
+  }
+
+  // If both picking and packing are back to OPEN, reset delivery to OPEN
+  if (rec.packingStatus === "OPEN" && rec.pickingStatus === "OPEN") {
+    await db.Delivery.update(
+      { status: "OPEN" },
       { where: { id: rec.deliveryId } },
     );
   }

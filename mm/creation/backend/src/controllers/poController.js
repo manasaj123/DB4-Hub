@@ -40,16 +40,46 @@ export const createPO = async (req, res, next) => {
     const { header, items } = req.body;
     await conn.beginTransaction();
 
-    // If PO No empty in UI, auto-generate DB4-PO-XXX
-    const po_no =
-      header.po_no && header.po_no.trim()
-        ? header.po_no
-        : await generatePONumber();
+    // Generate PO number if not provided
+    const po_no = header.po_no?.trim()
+      ? header.po_no
+      : await generatePONumber();
 
+    //  Prevent duplicate PO for the same PR
+    if (header.source_type === "PR" && header.source_id) {
+      const [existing] = await conn.query(
+        `SELECT id FROM purchase_orders 
+         WHERE source_type = 'PR' AND source_id = ?`,
+        [header.source_id],
+      );
+      if (existing.length > 0) {
+        await conn.rollback();
+        return res
+          .status(400)
+          .json({ error: "A PO already exists for this Purchase Requisition" });
+      }
+    }
+
+    // Prevent duplicate PO for the same RFQ
+    if (header.source_type === "RFQ" && header.source_id) {
+      const [existing] = await conn.query(
+        `SELECT id FROM purchase_orders 
+     WHERE source_type = 'RFQ' AND source_id = ?`,
+        [header.source_id],
+      );
+      if (existing.length > 0) {
+        await conn.rollback();
+        return res
+          .status(400)
+          .json({ error: "A PO already exists for this RFQ" });
+      }
+    }
+
+    // Insert PO header (includes source_id)
     const [hRes] = await conn.query(
       `INSERT INTO purchase_orders
-       (po_no, po_date, vendor_id, status, payment_terms, currency, po_type, source_type, freight_charges)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (po_no, po_date, vendor_id, status, payment_terms, currency, po_type, source_type, source_id, freight_charges)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         po_no,
         header.po_date,
@@ -59,11 +89,13 @@ export const createPO = async (req, res, next) => {
         header.currency || "INR",
         header.po_type || "STOCK",
         header.source_type || "DIRECT",
+        header.source_id || null, // store the source PR id
         header.freight_charges || 0,
       ],
     );
     const poId = hRes.insertId;
 
+    // Insert PO items
     for (const item of items || []) {
       await conn.query(
         `INSERT INTO po_items
@@ -77,6 +109,22 @@ export const createPO = async (req, res, next) => {
           item.tax_percent || 0,
           item.delivery_date || null,
         ],
+      );
+    }
+
+    // Update RFQ status to 'Closed' if source is RFQ
+    if (header.source_type === "RFQ" && header.source_id) {
+      await conn.query(
+        `UPDATE rfq_headers SET status = 'Closed' WHERE id = ?`,
+        [header.source_id],
+      );
+    }
+
+    // Update PR status to 'PO_CREATED'
+    if (header.source_type === "PR" && header.source_id) {
+      await conn.query(
+        `UPDATE purchase_requisitions SET status = 'PO_CREATED' WHERE id = ?`,
+        [header.source_id],
       );
     }
 

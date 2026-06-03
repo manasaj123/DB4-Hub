@@ -15,7 +15,7 @@ export const getGRNs = async (req, res, next) => {
        FROM grn_headers g
        LEFT JOIN vendors v ON g.vendor_id = v.id
        LEFT JOIN purchase_orders p ON g.po_id = p.id
-       ORDER BY g.id DESC`
+       ORDER BY g.id DESC`,
     );
     res.json(rows);
   } catch (err) {
@@ -29,15 +29,14 @@ export const getGRNById = async (req, res, next) => {
     const id = req.params.id;
     const [[header]] = await db.query(
       `SELECT * FROM grn_headers WHERE id = ?`,
-      [id]
+      [id],
     );
     if (!header) {
       return res.status(404).json({ message: "GRN not found" });
     }
-    const [items] = await db.query(
-      `SELECT * FROM grn_items WHERE grn_id = ?`,
-      [id]
-    );
+    const [items] = await db.query(`SELECT * FROM grn_items WHERE grn_id = ?`, [
+      id,
+    ]);
     res.json({ header, items });
   } catch (err) {
     next(err);
@@ -51,23 +50,19 @@ export const createGRN = async (req, res, next) => {
     const { header, items } = req.body;
     await conn.beginTransaction();
 
-    // auto-generate GRN number like GRN-001
+    // Generate GRN number (GRN-001, GRN-002...)
     const [rows] = await conn.query(
-      `SELECT grn_no 
-       FROM grn_headers 
-       WHERE grn_no LIKE 'GRN-%'
-       ORDER BY id DESC
-       LIMIT 1`
+      `SELECT grn_no FROM grn_headers WHERE grn_no LIKE 'GRN-%' ORDER BY id DESC LIMIT 1`,
     );
     let nextSeq = 1;
-    if (rows.length > 0 && rows[0].grn_no) {
+    if (rows.length && rows[0].grn_no) {
       const parts = rows[0].grn_no.split("-");
-      if (parts.length === 2 && !isNaN(parts[1])) {
+      if (parts.length === 2 && !isNaN(parts[1]))
         nextSeq = parseInt(parts[1], 10) + 1;
-      }
     }
     const generatedGrnNo = `GRN-${String(nextSeq).padStart(3, "0")}`;
 
+    // Insert GRN header
     const [hRes] = await conn.query(
       `INSERT INTO grn_headers
        (grn_no, grn_date, po_id, vendor_id, location_id, status)
@@ -78,13 +73,38 @@ export const createGRN = async (req, res, next) => {
         header.po_id,
         header.vendor_id,
         header.location_id,
-        header.status || "POSTED"
-      ]
+        header.status || "POSTED",
+      ],
     );
     const grnId = hRes.insertId;
 
+    // Process each GRN item
     for (const item of items || []) {
-      // 1. create batch
+      // Check cumulative accepted quantity for this PO item
+      const [cumulative] = await conn.query(
+        `SELECT COALESCE(SUM(gi.accepted_qty), 0) AS already_received
+         FROM grn_items gi
+         JOIN grn_headers gh ON gi.grn_id = gh.id
+         WHERE gi.po_item_id = ? AND gh.status != 'CANCELLED'`,
+        [item.po_item_id],
+      );
+      const alreadyReceived = cumulative[0].already_received;
+
+      const [poItemRow] = await conn.query(
+        `SELECT qty FROM po_items WHERE id = ?`,
+        [item.po_item_id],
+      );
+      const orderedQty = poItemRow[0]?.qty || 0;
+      const newAccepted = Number(item.accepted_qty);
+
+      if (alreadyReceived + newAccepted > orderedQty) {
+        await conn.rollback();
+        return res.status(400).json({
+          error: `Cannot accept ${newAccepted}. Already received ${alreadyReceived} of ${orderedQty}.`,
+        });
+      }
+
+      // Create batch
       const [bRes] = await conn.query(
         `INSERT INTO batches
          (batch_no, material_id, mfg_date, expiry_date, source_type, source_id)
@@ -95,12 +115,12 @@ export const createGRN = async (req, res, next) => {
           toMysqlDate(item.mfg_date),
           toMysqlDate(item.expiry_date),
           "VENDOR",
-          header.vendor_id
-        ]
+          header.vendor_id,
+        ],
       );
       const batchId = bRes.insertId;
 
-      // 2. grn_items (NO unit_cost here)
+      // Insert GRN item
       await conn.query(
         `INSERT INTO grn_items
          (grn_id, po_item_id, material_id, received_qty, accepted_qty, rejected_qty, batch_id)
@@ -112,15 +132,14 @@ export const createGRN = async (req, res, next) => {
           item.received_qty,
           item.accepted_qty,
           item.rejected_qty,
-          batchId
-        ]
+          batchId,
+        ],
       );
 
-      // 3. stock ledger entry (keeps unit_cost here)
+      // Stock ledger entry
       await conn.query(
         `INSERT INTO stock_ledger
-         (material_id, location_id, batch_id, txn_type, qty_in, qty_out,
-          unit_cost, txn_ref_type, txn_ref_id, txn_date)
+         (material_id, location_id, batch_id, txn_type, qty_in, qty_out, unit_cost, txn_ref_type, txn_ref_id, txn_date)
          VALUES (?, ?, ?, 'GRN', ?, 0, ?, 'GRN', ?, ?)`,
         [
           item.material_id,
@@ -129,8 +148,29 @@ export const createGRN = async (req, res, next) => {
           item.accepted_qty,
           item.unit_cost || 0,
           grnId,
-          toMysqlDate(header.grn_date)
-        ]
+          toMysqlDate(header.grn_date),
+        ],
+      );
+    }
+
+    // After all items, check if PO is fully received and update status
+    const [remaining] = await conn.query(
+      `SELECT 
+          pi.id,
+          pi.qty - COALESCE(SUM(gi.accepted_qty), 0) AS remaining_qty
+       FROM po_items pi
+       LEFT JOIN grn_items gi ON gi.po_item_id = pi.id
+       LEFT JOIN grn_headers gh ON gi.grn_id = gh.id AND gh.status != 'CANCELLED'
+       WHERE pi.po_id = ?
+       GROUP BY pi.id`,
+      [header.po_id],
+    );
+
+    const allCompleted = remaining.every((r) => r.remaining_qty <= 0);
+    if (allCompleted) {
+      await conn.query(
+        `UPDATE purchase_orders SET status = 'COMPLETED' WHERE id = ?`,
+        [header.po_id],
       );
     }
 
@@ -162,27 +202,27 @@ export const updateGRN = async (req, res, next) => {
         header.vendor_id,
         header.location_id,
         header.status || "POSTED",
-        id
-      ]
+        id,
+      ],
     );
 
     // delete old items + batches + ledger
     const [oldItems] = await conn.query(
       `SELECT batch_id FROM grn_items WHERE grn_id = ?`,
-      [id]
+      [id],
     );
     const batchIds = oldItems.map((r) => r.batch_id).filter(Boolean);
 
     if (batchIds.length) {
       await conn.query(
         `DELETE FROM stock_ledger WHERE txn_ref_type = 'GRN' AND txn_ref_id = ?`,
-        [id]
+        [id],
       );
       await conn.query(
         `DELETE FROM batches WHERE id IN (${batchIds
           .map(() => "?")
           .join(",")})`,
-        batchIds
+        batchIds,
       );
     }
 
@@ -200,8 +240,8 @@ export const updateGRN = async (req, res, next) => {
           toMysqlDate(item.mfg_date),
           toMysqlDate(item.expiry_date),
           "VENDOR",
-          header.vendor_id
-        ]
+          header.vendor_id,
+        ],
       );
       const batchId = bRes.insertId;
 
@@ -216,8 +256,8 @@ export const updateGRN = async (req, res, next) => {
           item.received_qty,
           item.accepted_qty,
           item.rejected_qty,
-          batchId
-        ]
+          batchId,
+        ],
       );
 
       await conn.query(
@@ -232,8 +272,8 @@ export const updateGRN = async (req, res, next) => {
           item.accepted_qty,
           item.unit_cost || 0,
           id,
-          toMysqlDate(header.grn_date)
-        ]
+          toMysqlDate(header.grn_date),
+        ],
       );
     }
 
@@ -256,13 +296,13 @@ export const deleteGRN = async (req, res, next) => {
 
     const [items] = await conn.query(
       `SELECT batch_id FROM grn_items WHERE grn_id = ?`,
-      [id]
+      [id],
     );
     const batchIds = items.map((r) => r.batch_id).filter(Boolean);
 
     await conn.query(
       `DELETE FROM stock_ledger WHERE txn_ref_type = 'GRN' AND txn_ref_id = ?`,
-      [id]
+      [id],
     );
     await conn.query(`DELETE FROM grn_items WHERE grn_id = ?`, [id]);
 
@@ -271,14 +311,13 @@ export const deleteGRN = async (req, res, next) => {
         `DELETE FROM batches WHERE id IN (${batchIds
           .map(() => "?")
           .join(",")})`,
-        batchIds
+        batchIds,
       );
     }
 
-    const [result] = await conn.query(
-      `DELETE FROM grn_headers WHERE id = ?`,
-      [id]
-    );
+    const [result] = await conn.query(`DELETE FROM grn_headers WHERE id = ?`, [
+      id,
+    ]);
     await conn.commit();
 
     if (result.affectedRows === 0) {

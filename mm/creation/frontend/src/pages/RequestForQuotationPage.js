@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import rfqApi from "../api/rfqApi";
 import vendorApi from "../api/vendorApi";
 import materialApi from "../api/materialApi";
+import prApi from "../api/prApi";
 
 export default function RequestForQuotationPage() {
   const styles = {
@@ -11,42 +12,42 @@ export default function RequestForQuotationPage() {
       padding: "16px",
       background: "#f4f6f9",
       borderRadius: "10px",
-      fontFamily: "Arial, sans-serif"
+      fontFamily: "Arial, sans-serif",
     },
     title: {
       textAlign: "center",
-      marginBottom: "16px"
+      marginBottom: "16px",
     },
     sectionTitle: {
       marginTop: "20px",
       marginBottom: "8px",
       fontSize: "16px",
-      fontWeight: "bold"
+      fontWeight: "bold",
     },
     formRow: {
       display: "grid",
       gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
       gap: "16px",
-      marginBottom: "10px"
+      marginBottom: "10px",
     },
     formRow2: {
       display: "grid",
       gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
       gap: "16px",
-      marginBottom: "10px"
+      marginBottom: "10px",
     },
     formCol: {},
     label: {
       fontWeight: "bold",
       display: "block",
-      marginBottom: "4px"
+      marginBottom: "4px",
     },
     input: {
       padding: "7px",
       width: "100%",
       borderRadius: "5px",
       border: "1px solid #ccc",
-      boxSizing: "border-box"
+      boxSizing: "border-box",
     },
     inputError: {
       padding: "7px",
@@ -54,26 +55,26 @@ export default function RequestForQuotationPage() {
       borderRadius: "5px",
       border: "2px solid #dc2626",
       boxSizing: "border-box",
-      backgroundColor: "#fef2f2"
+      backgroundColor: "#fef2f2",
     },
     errorText: {
       color: "#dc2626",
       fontSize: "11px",
-      marginTop: "4px"
+      marginTop: "4px",
     },
     infoText: {
       fontSize: "10px",
       color: "#6b7280",
-      marginTop: "2px"
+      marginTop: "2px",
     },
     tableWrapper: {
       marginTop: "10px",
-      overflowX: "auto"
+      overflowX: "auto",
     },
     table: {
       width: "100%",
       borderCollapse: "collapse",
-      background: "white"
+      background: "white",
     },
     th: {
       background: "#2563eb",
@@ -81,13 +82,13 @@ export default function RequestForQuotationPage() {
       padding: "8px",
       border: "1px solid #ddd",
       fontSize: "13px",
-      whiteSpace: "nowrap"
+      whiteSpace: "nowrap",
     },
     td: {
       padding: "6px",
       border: "1px solid #ddd",
       fontSize: "13px",
-      verticalAlign: "middle"
+      verticalAlign: "middle",
     },
     button: {
       padding: "8px 14px",
@@ -96,7 +97,7 @@ export default function RequestForQuotationPage() {
       border: "none",
       borderRadius: "6px",
       cursor: "pointer",
-      fontSize: "13px"
+      fontSize: "13px",
     },
     addBtn: { background: "#2563eb", color: "white" },
     saveBtn: { background: "#16a34a", color: "white" },
@@ -109,7 +110,7 @@ export default function RequestForQuotationPage() {
       borderRadius: "4px",
       border: "none",
       cursor: "pointer",
-      fontSize: "12px"
+      fontSize: "12px",
     },
     deleteBtn: {
       background: "#dc2626",
@@ -118,7 +119,7 @@ export default function RequestForQuotationPage() {
       borderRadius: "4px",
       border: "none",
       cursor: "pointer",
-      fontSize: "12px"
+      fontSize: "12px",
     },
     searchBox: {
       padding: "7px",
@@ -132,7 +133,7 @@ export default function RequestForQuotationPage() {
       borderRadius: "4px",
       fontSize: "11px",
       fontWeight: "bold",
-      display: "inline-block"
+      display: "inline-block",
     },
     statusDraft: { background: "#9ca3af", color: "white" },
     statusSent: { background: "#3b82f6", color: "white" },
@@ -145,26 +146,26 @@ export default function RequestForQuotationPage() {
       gap: "10px",
       marginBottom: "15px",
       alignItems: "center",
-      flexWrap: "wrap"
+      flexWrap: "wrap",
     },
     select: {
       padding: "7px",
       borderRadius: "5px",
-      border: "1px solid #ccc"
+      border: "1px solid #ccc",
     },
     vendorTable: {
       width: "100%",
       borderCollapse: "collapse",
       marginTop: "10px",
       marginBottom: "15px",
-      background: "white"
+      background: "white",
     },
     vendorTh: {
       background: "#059669",
       color: "white",
       padding: "8px",
       border: "1px solid #ddd",
-      fontSize: "12px"
+      fontSize: "12px",
     },
     addVendorBtn: {
       background: "#059669",
@@ -174,7 +175,7 @@ export default function RequestForQuotationPage() {
       borderRadius: "4px",
       cursor: "pointer",
       fontSize: "12px",
-      marginBottom: "10px"
+      marginBottom: "10px",
     },
     removeVendorBtn: {
       background: "#dc2626",
@@ -183,8 +184,8 @@ export default function RequestForQuotationPage() {
       border: "none",
       borderRadius: "4px",
       cursor: "pointer",
-      fontSize: "11px"
-    }
+      fontSize: "11px",
+    },
   };
 
   // State variables
@@ -195,12 +196,16 @@ export default function RequestForQuotationPage() {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
   const [statusFilter, setStatusFilter] = useState("");
-  
+
   // Multi-vendor support - stores selected vendors for current RFQ
   const [selectedVendors, setSelectedVendors] = useState([]);
-  
+
   // Vendor quotes for each vendor (for the full multi-vendor feature)
-  const [vendorQuotes, setVendorQuotes] = useState([]);
+  // const [vendorQuotes, setVendorQuotes] = useState([]);
+
+  const [vendorQuotes, setVendorQuotes] = useState({}); // { tempId: { itemIndex: { price, qty } } }
+
+  const [prs, setPRs] = useState([]);
 
   const [header, setHeader] = useState({
     rfq_type: "",
@@ -213,11 +218,10 @@ export default function RequestForQuotationPage() {
     storage_location: "",
     supplying_plant: "",
     reference_pr_id: "",
-    // NEW FIELDS
     status: "Draft",
     quotation_valid_until: "",
     currency: "USD",
-    payment_terms: "Net 30"
+    payment_terms: "Net 30",
   });
 
   const [items, setItems] = useState([{ material_id: "", qty: "" }]);
@@ -226,8 +230,8 @@ export default function RequestForQuotationPage() {
   const getTodayDate = () => {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
@@ -244,9 +248,9 @@ export default function RequestForQuotationPage() {
   // Validate PR format
   const validatePRFormat = (value, fieldName) => {
     if (!value) return "";
-    const prRegex = /^[A-Za-z]{2,3}-\d{3,4}$/;
+    const prRegex = /^(DB4-)?PR-\d{3,4}$/;
     if (!prRegex.test(value)) {
-      return `${fieldName} must be in format like PR-001, PO-123`;
+      return `${fieldName} must be in format: PR-001 or DB4-PR-001`;
     }
     return "";
   };
@@ -257,7 +261,7 @@ export default function RequestForQuotationPage() {
     const selectedDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
       return `${fieldName} cannot be a past date`;
     }
@@ -300,60 +304,132 @@ export default function RequestForQuotationPage() {
     setVendors(res.data);
   };
 
+  const loadPRs = async () => {
+    try {
+      const res = await prApi.getAll();
+      setPRs(res.data);
+    } catch (err) {
+      console.error("Failed to load PRs:", err);
+    }
+  };
+
   useEffect(() => {
     loadRFQs();
     loadMaterials();
     loadVendors();
+    loadPRs();
   }, []);
+
+  const loadPRDetails = async (prNo) => {
+    if (!prNo) return;
+
+    const selectedPr = prs.find((pr) => pr.req_no === prNo);
+    if (!selectedPr) {
+      console.warn(`PR ${prNo} not found in loaded list`);
+      return;
+    }
+
+    try {
+      const res = await prApi.getById(selectedPr.id);
+      const { header: prHeader, items: prItems } = res.data;
+
+      if (prItems && prItems.length > 0) {
+        setItems(
+          prItems.map((item) => ({
+            material_id: String(item.material_id),
+            qty: String(item.qty),
+          })),
+        );
+      } else {
+        setItems([{ material_id: "", qty: "" }]);
+      }
+
+      setHeader((prev) => ({
+        ...prev,
+        plant: prHeader.plant || prev.plant,
+        purchase_org: prHeader.purchase_org || prev.purchase_org,
+        delivery_date: prHeader.delivery_date || prev.delivery_date,
+        material_group: prHeader.material_group || prev.material_group,
+      }));
+
+      alert(`Loaded ${prItems?.length || 0} items from PR ${prNo}`);
+    } catch (err) {
+      console.error("Failed to load PR details:", err);
+      alert("Could not load PR details");
+    }
+  };
 
   // Multi-vendor functions
   const addVendorToRFQ = () => {
-    setSelectedVendors([...selectedVendors, { vendor_id: "", id: Date.now() }]);
+    const tempId = Date.now();
+    setSelectedVendors([...selectedVendors, { vendor_id: "", id: tempId }]);
+    // Initialize empty quotes for each RFQ item
+    const initialQuotes = {};
+    items.forEach((_, idx) => {
+      if (items[idx].material_id) {
+        initialQuotes[idx] = { price: "", qty: items[idx].qty };
+      }
+    });
+    setVendorQuotes((prev) => ({ ...prev, [tempId]: initialQuotes }));
   };
 
   const removeVendorFromRFQ = (tempId) => {
-    setSelectedVendors(selectedVendors.filter(v => v.id !== tempId));
+    setSelectedVendors(selectedVendors.filter((v) => v.id !== tempId));
   };
 
   const updateVendorSelection = (tempId, vendorId) => {
-    setSelectedVendors(selectedVendors.map(v => 
-      v.id === tempId ? { ...v, vendor_id: vendorId } : v
-    ));
+    setSelectedVendors(
+      selectedVendors.map((v) =>
+        v.id === tempId ? { ...v, vendor_id: vendorId } : v,
+      ),
+    );
   };
 
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
     let processedValue = value;
-    
-    // Remove special characters from text fields
-    if (["rfq_type", "purchase_org", "material_group", "plant", "storage_location", "supplying_plant"].includes(name)) {
-      processedValue = value.replace(/[^A-Za-z0-9\s-]/g, '');
+
+    if (
+      [
+        "rfq_type",
+        "purchase_org",
+        "material_group",
+        "plant",
+        "storage_location",
+        "supplying_plant",
+      ].includes(name)
+    ) {
+      processedValue = value.replace(/[^A-Za-z0-9\s-]/g, "");
     }
-    
+
     if (name === "reference_pr_id") {
-      processedValue = value.replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
+      processedValue = value.replace(/[^A-Za-z0-9-]/g, "").toUpperCase();
+      // 👇 CRITICAL FIX: load PR items when selection changes
+      loadPRDetails(processedValue);
     }
-    
+
     setHeader((h) => ({ ...h, [name]: processedValue }));
-    
+
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleItemChange = (index, field, value) => {
     let processedValue = value;
-    
+
     if (field === "qty") {
       if (value < 0) processedValue = "";
     }
-    
+
     setItems((prev) =>
-      prev.map((it, i) => (i === index ? { ...it, [field]: processedValue } : it))
+      prev.map((it, i) =>
+        i === index ? { ...it, [field]: processedValue } : it,
+      ),
     );
-    
+
     if (errors[`item_${index}_${field}`]) {
-      setErrors(prev => ({ ...prev, [`item_${index}_${field}`]: "" }));
+      setErrors((prev) => ({ ...prev, [`item_${index}_${field}`]: "" }));
     }
   };
 
@@ -377,7 +453,7 @@ export default function RequestForQuotationPage() {
       status: "Draft",
       quotation_valid_until: "",
       currency: "USD",
-      payment_terms: "Net 30"
+      payment_terms: "Net 30",
     });
     setItems([{ material_id: "", qty: "" }]);
     setSelectedVendors([]);
@@ -386,94 +462,117 @@ export default function RequestForQuotationPage() {
 
   // Get status badge style
   const getStatusBadgeStyle = (status) => {
-    switch(status) {
-      case 'Draft': return styles.statusDraft;
-      case 'Sent': return styles.statusSent;
-      case 'Pending Quote': return styles.statusPendingQuote;
-      case 'Quoted': return styles.statusQuoted;
-      case 'Closed': return styles.statusClosed;
-      case 'Cancelled': return styles.statusCancelled;
-      default: return styles.statusDraft;
+    switch (status) {
+      case "Draft":
+        return styles.statusDraft;
+      case "Sent":
+        return styles.statusSent;
+      case "Pending Quote":
+        return styles.statusPendingQuote;
+      case "Quoted":
+        return styles.statusQuoted;
+      case "Closed":
+        return styles.statusClosed;
+      case "Cancelled":
+        return styles.statusCancelled;
+      default:
+        return styles.statusDraft;
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
-    // RFQ Type validation
+
     if (!header.rfq_type) {
       newErrors.rfq_type = "RFQ Type is required";
     } else {
-      const specialCharError = validateNoSpecialChars(header.rfq_type, "RFQ Type");
+      const specialCharError = validateNoSpecialChars(
+        header.rfq_type,
+        "RFQ Type",
+      );
       if (specialCharError) newErrors.rfq_type = specialCharError;
     }
-    
-    // RFQ Date validation
+
     if (!header.rfq_date) {
       newErrors.rfq_date = "RFQ Date is required";
     } else {
       const pastDateError = validateNotPastDate(header.rfq_date, "RFQ Date");
       if (pastDateError) newErrors.rfq_date = pastDateError;
     }
-    
-    // Question Deadline validation
+
     if (header.question_deadline) {
-      const pastDateError = validateNotPastDate(header.question_deadline, "Question Deadline");
+      const pastDateError = validateNotPastDate(
+        header.question_deadline,
+        "Question Deadline",
+      );
       if (pastDateError) {
         newErrors.question_deadline = pastDateError;
-      } else if (header.rfq_date && header.question_deadline < header.rfq_date) {
-        newErrors.question_deadline = "Question Deadline cannot be before RFQ Date";
+      } else if (
+        header.rfq_date &&
+        header.question_deadline < header.rfq_date
+      ) {
+        newErrors.question_deadline =
+          "Question Deadline cannot be before RFQ Date";
       }
     }
-    
-    // Delivery Date validation
+
     if (header.delivery_date) {
-      const pastDateError = validateNotPastDate(header.delivery_date, "Delivery Date");
+      const pastDateError = validateNotPastDate(
+        header.delivery_date,
+        "Delivery Date",
+      );
       if (pastDateError) {
         newErrors.delivery_date = pastDateError;
       } else if (header.rfq_date && header.delivery_date < header.rfq_date) {
         newErrors.delivery_date = "Delivery Date cannot be before RFQ Date";
       }
     }
-    
-    // Quotation Validity Date validation
+
     if (header.quotation_valid_until) {
-      const validUntilError = validateValidUntilDate(header.quotation_valid_until);
+      const validUntilError = validateValidUntilDate(
+        header.quotation_valid_until,
+      );
       if (validUntilError) newErrors.quotation_valid_until = validUntilError;
     }
-    
-    // Other field validations
+
     if (header.purchase_org) {
-      const specialCharError = validateNoSpecialChars(header.purchase_org, "Purchase Organization");
+      const specialCharError = validateNoSpecialChars(
+        header.purchase_org,
+        "Purchase Organization",
+      );
       if (specialCharError) newErrors.purchase_org = specialCharError;
     }
-    
+
     if (header.material_group) {
-      const specialCharError = validateNoSpecialChars(header.material_group, "Material Group");
+      const specialCharError = validateNoSpecialChars(
+        header.material_group,
+        "Material Group",
+      );
       if (specialCharError) newErrors.material_group = specialCharError;
     }
-    
+
     if (header.plant) {
       const specialCharError = validateNoSpecialChars(header.plant, "Plant");
       if (specialCharError) newErrors.plant = specialCharError;
     }
-    
+
     if (header.reference_pr_id) {
-      const prFormatError = validatePRFormat(header.reference_pr_id, "Reference Purchase Requisition");
+      const prFormatError = validatePRFormat(
+        header.reference_pr_id,
+        "Reference Purchase Requisition",
+      );
       if (prFormatError) newErrors.reference_pr_id = prFormatError;
     }
-    
-    // Multi-vendor validation - at least one vendor required
+
     if (selectedVendors.length === 0) {
       newErrors.vendors = "At least one vendor is required for RFQ";
     } else {
-      const hasValidVendor = selectedVendors.some(v => v.vendor_id);
+      const hasValidVendor = selectedVendors.some((v) => v.vendor_id);
       if (!hasValidVendor) {
         newErrors.vendors = "Please select at least one valid vendor";
       }
     }
-    
-    // Items validation
+
     let hasValidItem = false;
     items.forEach((item, idx) => {
       if (item.material_id && item.qty) {
@@ -482,36 +581,41 @@ export default function RequestForQuotationPage() {
         if (qtyError) newErrors[`item_${idx}_qty`] = qtyError;
       }
     });
-    
+
     if (!hasValidItem) {
-      newErrors.general = "At least one item with material and quantity is required";
+      newErrors.general =
+        "At least one item with material and quantity is required";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       alert("Please fix the validation errors before submitting");
       return;
     }
-    
+
     const payload = {
       header: {
         ...header,
         reference_pr_id: header.reference_pr_id || null,
-        quotation_valid_until: header.quotation_valid_until || null
+        quotation_valid_until: header.quotation_valid_until || null,
       },
-      items: items.filter((i) => i.material_id && i.qty).map((i) => ({
-        material_id: Number(i.material_id),
-        qty: Number(i.qty)
-      })),
-      vendors: selectedVendors.filter(v => v.vendor_id).map(v => ({
-        vendor_id: Number(v.vendor_id)
-      }))
+      items: items
+        .filter((i) => i.material_id && i.qty)
+        .map((i) => ({
+          material_id: Number(i.material_id),
+          qty: Number(i.qty),
+        })),
+      vendors: selectedVendors
+        .filter((v) => v.vendor_id)
+        .map((v) => ({
+          vendor_id: Number(v.vendor_id),
+        })),
     };
 
     try {
@@ -555,19 +659,28 @@ export default function RequestForQuotationPage() {
       status: h.status || "Draft",
       quotation_valid_until: toInputDate(h.quotation_valid_until),
       currency: h.currency || "USD",
-      payment_terms: h.payment_terms || "Net 30"
+      payment_terms: h.payment_terms || "Net 30",
     });
 
-    setItems((its || []).map((it) => ({
-      material_id: String(it.material_id),
-      qty: String(it.qty)
-    })));
-    
-    setSelectedVendors((vendorList || []).map((v, idx) => ({
-      id: idx,
-      vendor_id: String(v.vendor_id)
-    })));
-    
+    // 👇 CRITICAL FIX: If this RFQ references a PR, load its items (overwrites saved items)
+    if (h.reference_pr_id) {
+      await loadPRDetails(h.reference_pr_id);
+    } else {
+      setItems(
+        (its || []).map((it) => ({
+          material_id: String(it.material_id),
+          qty: String(it.qty),
+        })),
+      );
+    }
+
+    setSelectedVendors(
+      (vendorList || []).map((v, idx) => ({
+        id: idx,
+        vendor_id: String(v.vendor_id),
+      })),
+    );
+
     setErrors({});
   };
 
@@ -584,8 +697,9 @@ export default function RequestForQuotationPage() {
 
   const filteredRFQs = rfqs.filter((r) => {
     const term = search.toLowerCase();
-    const matchesSearch = r.rfq_no?.toLowerCase().includes(term) ||
-                         r.rfq_type?.toLowerCase().includes(term);
+    const matchesSearch =
+      r.rfq_no?.toLowerCase().includes(term) ||
+      r.rfq_type?.toLowerCase().includes(term);
     const matchesStatus = !statusFilter || r.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -619,7 +733,9 @@ export default function RequestForQuotationPage() {
               placeholder="Letters, numbers, spaces and hyphens only"
               required
             />
-            {errors.rfq_type && <div style={styles.errorText}>{errors.rfq_type}</div>}
+            {errors.rfq_type && (
+              <div style={styles.errorText}>{errors.rfq_type}</div>
+            )}
           </div>
           <div style={styles.formCol}>
             <label style={styles.label}>Purchase Organization</label>
@@ -630,7 +746,9 @@ export default function RequestForQuotationPage() {
               onChange={handleHeaderChange}
               placeholder="Purchase org"
             />
-            {errors.purchase_org && <div style={styles.errorText}>{errors.purchase_org}</div>}
+            {errors.purchase_org && (
+              <div style={styles.errorText}>{errors.purchase_org}</div>
+            )}
           </div>
           <div style={styles.formCol}>
             <label style={styles.label}>RFQ Status *</label>
@@ -648,7 +766,9 @@ export default function RequestForQuotationPage() {
               <option value="Closed">Closed</option>
               <option value="Cancelled">Cancelled</option>
             </select>
-            <div style={styles.infoText}>Track RFQ through procurement workflow</div>
+            <div style={styles.infoText}>
+              Track RFQ through procurement workflow
+            </div>
           </div>
         </div>
 
@@ -665,7 +785,9 @@ export default function RequestForQuotationPage() {
               min={getTodayDate()}
               required
             />
-            {errors.rfq_date && <div style={styles.errorText}>{errors.rfq_date}</div>}
+            {errors.rfq_date && (
+              <div style={styles.errorText}>{errors.rfq_date}</div>
+            )}
           </div>
           <div style={styles.formCol}>
             <label style={styles.label}>Question Deadline</label>
@@ -677,7 +799,9 @@ export default function RequestForQuotationPage() {
               onChange={handleHeaderChange}
               min={getTodayDate()}
             />
-            {errors.question_deadline && <div style={styles.errorText}>{errors.question_deadline}</div>}
+            {errors.question_deadline && (
+              <div style={styles.errorText}>{errors.question_deadline}</div>
+            )}
           </div>
           <div style={styles.formCol}>
             <label style={styles.label}>Delivery Date</label>
@@ -689,7 +813,9 @@ export default function RequestForQuotationPage() {
               onChange={handleHeaderChange}
               min={getTodayDate()}
             />
-            {errors.delivery_date && <div style={styles.errorText}>{errors.delivery_date}</div>}
+            {errors.delivery_date && (
+              <div style={styles.errorText}>{errors.delivery_date}</div>
+            )}
           </div>
           <div style={styles.formCol}>
             <label style={styles.label}>Quotation Valid Until</label>
@@ -701,8 +827,12 @@ export default function RequestForQuotationPage() {
               onChange={handleHeaderChange}
               min={header.rfq_date || getTodayDate()}
             />
-            {errors.quotation_valid_until && <div style={styles.errorText}>{errors.quotation_valid_until}</div>}
-            <div style={styles.infoText}>Vendor quotes valid until this date</div>
+            {errors.quotation_valid_until && (
+              <div style={styles.errorText}>{errors.quotation_valid_until}</div>
+            )}
+            <div style={styles.infoText}>
+              Vendor quotes valid until this date
+            </div>
           </div>
         </div>
 
@@ -717,7 +847,9 @@ export default function RequestForQuotationPage() {
               onChange={handleHeaderChange}
               placeholder="Material group"
             />
-            {errors.material_group && <div style={styles.errorText}>{errors.material_group}</div>}
+            {errors.material_group && (
+              <div style={styles.errorText}>{errors.material_group}</div>
+            )}
           </div>
           <div style={styles.formCol}>
             <label style={styles.label}>Plant</label>
@@ -739,7 +871,9 @@ export default function RequestForQuotationPage() {
               onChange={handleHeaderChange}
               placeholder="Storage location"
             />
-            {errors.storage_location && <div style={styles.errorText}>{errors.storage_location}</div>}
+            {errors.storage_location && (
+              <div style={styles.errorText}>{errors.storage_location}</div>
+            )}
           </div>
           <div style={styles.formCol}>
             <label style={styles.label}>Supplying Plant</label>
@@ -750,7 +884,9 @@ export default function RequestForQuotationPage() {
               onChange={handleHeaderChange}
               placeholder="Supplying plant"
             />
-            {errors.supplying_plant && <div style={styles.errorText}>{errors.supplying_plant}</div>}
+            {errors.supplying_plant && (
+              <div style={styles.errorText}>{errors.supplying_plant}</div>
+            )}
           </div>
         </div>
 
@@ -785,27 +921,48 @@ export default function RequestForQuotationPage() {
               <option value="Net 45">Net 45</option>
               <option value="Net 60">Net 60</option>
               <option value="Advance 100%">Advance 100%</option>
-              <option value="50% Advance, 50% Net 30">50% Advance, 50% Net 30</option>
+              <option value="50% Advance, 50% Net 30">
+                50% Advance, 50% Net 30
+              </option>
               <option value="Letter of Credit">Letter of Credit</option>
               <option value="Cash on Delivery">Cash on Delivery</option>
             </select>
-            <div style={styles.infoText}>Standard procurement payment terms</div>
+            <div style={styles.infoText}>
+              Standard procurement payment terms
+            </div>
           </div>
           <div style={styles.formCol}>
             <label style={styles.label}>Ref-Purchase Requisition</label>
-            <input
+            <select
               style={getInputStyle("reference_pr_id")}
               name="reference_pr_id"
               value={header.reference_pr_id}
               onChange={handleHeaderChange}
-              placeholder="Format: PR-001"
-            />
-            {errors.reference_pr_id && <div style={styles.errorText}>{errors.reference_pr_id}</div>}
-            <div style={styles.infoText}>Link to source PR document</div>
+            >
+              <option value="">-- Select PR --</option>
+              {prs
+                .filter(
+                  (pr) =>
+                    pr.status !== "Closed" ||
+                    pr.req_no === header.reference_pr_id,
+                )
+                .map((pr) => (
+                  <option key={pr.id} value={pr.req_no}>
+                    {pr.req_no} - {pr.requester || "No requester"}
+                    {pr.status && ` [${pr.status}]`}
+                    {pr.status === "Closed" && " (Already used)"}
+                  </option>
+                ))}
+            </select>
+            {errors.reference_pr_id && (
+              <div style={styles.errorText}>{errors.reference_pr_id}</div>
+            )}
+            <div style={styles.infoText}>
+              Select a Purchase Requisition – its items will be copied
+              automatically.
+            </div>
           </div>
-          <div style={styles.formCol}>
-            {/* Empty for alignment */}
-          </div>
+          <div style={styles.formCol}>{/* Empty for alignment */}</div>
         </div>
 
         {/* Multi-Vendor Support Section */}
@@ -819,44 +976,262 @@ export default function RequestForQuotationPage() {
               </tr>
             </thead>
             <tbody>
-              {selectedVendors.map((vendor, idx) => (
-                <tr key={vendor.id}>
-                  <td style={styles.td}>
-                    <select
-                      style={styles.input}
-                      value={vendor.vendor_id}
-                      onChange={(e) => updateVendorSelection(vendor.id, e.target.value)}
-                    >
-                      <option value="">Select Vendor</option>
-                      {vendors.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td style={styles.td}>
-                    <button
-                      type="button"
-                      style={styles.removeVendorBtn}
-                      onClick={() => removeVendorFromRFQ(vendor.id)}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {selectedVendors.length === 0 && (
-                <tr>
-                  <td colSpan="2" style={{ ...styles.td, textAlign: "center", color: "#666" }}>
-                    No vendors added. Click "Add Vendor" to send this RFQ to multiple vendors.
-                  </td>
-                </tr>
-              )}
+              {selectedVendors.map((vendor) => {
+                const tempId = vendor.id;
+                const quotesForVendor = vendorQuotes[tempId] || {};
+                return (
+                  <tr key={tempId}>
+                    <td style={styles.td}>
+                      <select
+                        style={styles.input}
+                        value={vendor.vendor_id}
+                        onChange={(e) =>
+                          updateVendorSelection(tempId, e.target.value)
+                        }
+                      >
+                        <option value="">Select Vendor</option>
+                        {vendors.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Show quote table only if vendor is selected and we have items */}
+                      {vendor.vendor_id && items.length > 0 && (
+                        <div
+                          style={{
+                            marginTop: "12px",
+                            borderTop: "1px solid #ccc",
+                            paddingTop: "8px",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                              marginBottom: "6px",
+                            }}
+                          >
+                            Quotes
+                          </div>
+                          <table
+                            style={{
+                              width: "100%",
+                              fontSize: "11px",
+                              borderCollapse: "collapse",
+                            }}
+                          >
+                            <thead>
+                              <tr style={{ backgroundColor: "#f3f4f6" }}>
+                                <th
+                                  style={{
+                                    padding: "4px",
+                                    border: "1px solid #ddd",
+                                  }}
+                                >
+                                  Material
+                                </th>
+                                <th
+                                  style={{
+                                    padding: "4px",
+                                    border: "1px solid #ddd",
+                                  }}
+                                >
+                                  RFQ Qty
+                                </th>
+                                <th
+                                  style={{
+                                    padding: "4px",
+                                    border: "1px solid #ddd",
+                                  }}
+                                >
+                                  Quote Price
+                                </th>
+                                <th
+                                  style={{
+                                    padding: "4px",
+                                    border: "1px solid #ddd",
+                                  }}
+                                >
+                                  Quote Qty
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {items.map((it, idx) => {
+                                if (!it.material_id) return null;
+                                const materialName =
+                                  materials.find((m) => m.id == it.material_id)
+                                    ?.name || it.material_id;
+                                const quote = quotesForVendor[idx] || {
+                                  price: "",
+                                  qty: it.qty,
+                                };
+                                return (
+                                  <tr key={idx}>
+                                    <td
+                                      style={{
+                                        padding: "4px",
+                                        border: "1px solid #ddd",
+                                      }}
+                                    >
+                                      {materialName}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "4px",
+                                        border: "1px solid #ddd",
+                                      }}
+                                    >
+                                      {it.qty}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "4px",
+                                        border: "1px solid #ddd",
+                                      }}
+                                    >
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        value={quote.price}
+                                        onChange={(e) => {
+                                          const newQuotes = { ...vendorQuotes };
+                                          newQuotes[tempId] = {
+                                            ...quotesForVendor,
+                                            [idx]: {
+                                              ...quote,
+                                              price: e.target.value,
+                                            },
+                                          };
+                                          setVendorQuotes(newQuotes);
+                                        }}
+                                        style={{
+                                          width: "80px",
+                                          padding: "4px",
+                                        }}
+                                        placeholder="Price"
+                                      />
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "4px",
+                                        border: "1px solid #ddd",
+                                      }}
+                                    >
+                                      <input
+                                        type="number"
+                                        step="1"
+                                        value={quote.qty}
+                                        onChange={(e) => {
+                                          const newQuotes = { ...vendorQuotes };
+                                          newQuotes[tempId] = {
+                                            ...quotesForVendor,
+                                            [idx]: {
+                                              ...quote,
+                                              qty: e.target.value,
+                                            },
+                                          };
+                                          setVendorQuotes(newQuotes);
+                                        }}
+                                        style={{
+                                          width: "80px",
+                                          padding: "4px",
+                                        }}
+                                        placeholder="Qty"
+                                      />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                          <button
+                            type="button"
+                            style={{
+                              marginTop: "8px",
+                              padding: "4px 8px",
+                              fontSize: "11px",
+                              backgroundColor: "#10b981",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                            }}
+                            onClick={async () => {
+                              if (!vendor.vendor_id) {
+                                alert("Please select a vendor first");
+                                return;
+                              }
+                              if (!editingId) {
+                                alert(
+                                  "Please save the RFQ first, then add quotes",
+                                );
+                                return;
+                              }
+                              // Build quotes array
+                              const quotesArray = [];
+                              for (let i = 0; i < items.length; i++) {
+                                const it = items[i];
+                                if (!it.material_id) continue;
+                                const quote = quotesForVendor[i];
+                                if (!quote || !quote.price) continue;
+                                // We need the rfq_item_id – it will be available only after RFQ is saved.
+                                // For a new RFQ, we must first save the RFQ, then get item ids.
+                                // So we'll require that the RFQ is already saved (editingId exists).
+                                const rfqItemId = it.id; // Only present when editing an existing RFQ.
+                                if (!rfqItemId) {
+                                  alert(
+                                    "Please save the RFQ first, then add quotes",
+                                  );
+                                  return;
+                                }
+                                quotesArray.push({
+                                  rfq_item_id: rfqItemId,
+                                  material_id: it.material_id,
+                                  quoted_price: parseFloat(quote.price) || 0,
+                                  quoted_qty: parseFloat(quote.qty) || it.qty,
+                                });
+                              }
+                              if (quotesArray.length === 0) {
+                                alert("No valid quotes to save");
+                                return;
+                              }
+                              try {
+                                await rfqApi.saveQuotes({
+                                  rfq_id: editingId,
+                                  vendor_id: vendor.vendor_id,
+                                  quotes: quotesArray,
+                                });
+                                alert("Quotes saved successfully");
+                              } catch (err) {
+                                console.error(err);
+                                alert("Failed to save quotes");
+                              }
+                            }}
+                          >
+                            Save Quotes
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                    <td style={styles.td}>
+                      <button
+                        type="button"
+                        style={styles.removeVendorBtn}
+                        onClick={() => removeVendorFromRFQ(tempId)}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-        
+
         <button
           type="button"
           style={styles.addVendorBtn}
@@ -865,7 +1240,9 @@ export default function RequestForQuotationPage() {
           + Add Vendor
         </button>
         {errors.vendors && <div style={styles.errorText}>{errors.vendors}</div>}
-        <div style={styles.infoText}>Send RFQ to multiple vendors for competitive bidding</div>
+        <div style={styles.infoText}>
+          Send RFQ to multiple vendors for competitive bidding
+        </div>
 
         {/* Materials Section */}
         <h4 style={styles.sectionTitle}>Materials (Material & Qty) *</h4>
@@ -882,9 +1259,15 @@ export default function RequestForQuotationPage() {
                 <tr key={idx}>
                   <td style={styles.td}>
                     <select
-                      style={errors[`item_${idx}_material`] ? styles.inputError : styles.input}
+                      style={
+                        errors[`item_${idx}_material`]
+                          ? styles.inputError
+                          : styles.input
+                      }
                       value={it.material_id}
-                      onChange={(e) => handleItemChange(idx, "material_id", e.target.value)}
+                      onChange={(e) =>
+                        handleItemChange(idx, "material_id", e.target.value)
+                      }
                     >
                       <option value="">Select Material</option>
                       {materials.map((m) => (
@@ -894,21 +1277,31 @@ export default function RequestForQuotationPage() {
                       ))}
                     </select>
                     {errors[`item_${idx}_material`] && (
-                      <div style={styles.errorText}>{errors[`item_${idx}_material`]}</div>
+                      <div style={styles.errorText}>
+                        {errors[`item_${idx}_material`]}
+                      </div>
                     )}
                   </td>
                   <td style={styles.td}>
                     <input
-                      style={errors[`item_${idx}_qty`] ? styles.inputError : styles.input}
+                      style={
+                        errors[`item_${idx}_qty`]
+                          ? styles.inputError
+                          : styles.input
+                      }
                       type="number"
                       step="1"
                       min="1"
                       value={it.qty}
-                      onChange={(e) => handleItemChange(idx, "qty", e.target.value)}
+                      onChange={(e) =>
+                        handleItemChange(idx, "qty", e.target.value)
+                      }
                       placeholder="0"
                     />
                     {errors[`item_${idx}_qty`] && (
-                      <div style={styles.errorText}>{errors[`item_${idx}_qty`]}</div>
+                      <div style={styles.errorText}>
+                        {errors[`item_${idx}_qty`]}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -918,7 +1311,9 @@ export default function RequestForQuotationPage() {
         </div>
 
         {errors.general && (
-          <div style={{ ...styles.errorText, marginTop: "10px" }}>{errors.general}</div>
+          <div style={{ ...styles.errorText, marginTop: "10px" }}>
+            {errors.general}
+          </div>
         )}
 
         <button
@@ -929,10 +1324,7 @@ export default function RequestForQuotationPage() {
           Add Material Row
         </button>
 
-        <button
-          type="submit"
-          style={{ ...styles.button, ...styles.saveBtn }}
-        >
+        <button type="submit" style={{ ...styles.button, ...styles.saveBtn }}>
           {editingId ? "Update RFQ" : "Save RFQ"}
         </button>
 
@@ -957,7 +1349,7 @@ export default function RequestForQuotationPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        
+
         <select
           style={styles.select}
           value={statusFilter}
@@ -972,10 +1364,15 @@ export default function RequestForQuotationPage() {
           <option value="Cancelled">Cancelled</option>
         </select>
 
-        {(statusFilter) && (
+        {statusFilter && (
           <button
             onClick={() => setStatusFilter("")}
-            style={{ ...styles.button, background: "#6b7280", color: "white", padding: "7px 15px" }}
+            style={{
+              ...styles.button,
+              background: "#6b7280",
+              color: "white",
+              padding: "7px 15px",
+            }}
           >
             Clear Filters
           </button>
@@ -993,6 +1390,7 @@ export default function RequestForQuotationPage() {
               <th style={styles.th}>Valid Until</th>
               <th style={styles.th}>Currency</th>
               <th style={styles.th}>Payment Terms</th>
+              <th style={styles.th}>Ref PR</th>
               <th style={styles.th}>Plant</th>
               <th style={styles.th}>Vendors</th>
               <th style={styles.th}>Qty</th>
@@ -1006,14 +1404,22 @@ export default function RequestForQuotationPage() {
                 <td style={styles.td}>{r.rfq_no}</td>
                 <td style={styles.td}>{r.rfq_type}</td>
                 <td style={styles.td}>
-                  <span style={{...styles.statusBadge, ...getStatusBadgeStyle(r.status)}}>
+                  <span
+                    style={{
+                      ...styles.statusBadge,
+                      ...getStatusBadgeStyle(r.status),
+                    }}
+                  >
                     {r.status || "Draft"}
                   </span>
                 </td>
                 <td style={styles.td}>{toInputDate(r.rfq_date)}</td>
-                <td style={styles.td}>{toInputDate(r.quotation_valid_until)}</td>
+                <td style={styles.td}>
+                  {toInputDate(r.quotation_valid_until)}
+                </td>
                 <td style={styles.td}>{r.currency || "USD"}</td>
                 <td style={styles.td}>{r.payment_terms || "Net 30"}</td>
+                <td style={styles.td}>{r.reference_pr_id || "—"}</td>
                 <td style={styles.td}>{r.plant}</td>
                 <td style={styles.td}>{r.vendor_count || 0}</td>
                 <td style={styles.td}>{r.total_qty}</td>
@@ -1038,7 +1444,7 @@ export default function RequestForQuotationPage() {
             ))}
             {filteredRFQs.length === 0 && (
               <tr>
-                <td style={styles.td} colSpan={12}>
+                <td style={styles.td} colSpan={13}>
                   No RFQs found.
                 </td>
               </tr>
