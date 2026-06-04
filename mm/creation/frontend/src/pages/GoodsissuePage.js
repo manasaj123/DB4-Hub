@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import grApi from "../api/grApi";
+import giApi from "../api/giApi";
 import poApi from "../api/poApi";
 
 const titleStyle = {
   fontSize: "18px",
   fontWeight: "600",
   marginBottom: "12px",
-  color: "#111827"
+  color: "#111827",
 };
 
 const cardStyle = {
@@ -14,14 +14,14 @@ const cardStyle = {
   borderRadius: "6px",
   padding: "16px",
   boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-  marginBottom: "16px"
+  marginBottom: "16px",
 };
 
 const formRowStyle = {
   display: "flex",
   gap: "8px",
   marginBottom: "8px",
-  flexWrap: "wrap"
+  flexWrap: "wrap",
 };
 
 const labelStyle = {
@@ -45,13 +45,13 @@ const inputErrorStyle = {
   fontSize: "13px",
   borderRadius: "4px",
   border: "2px solid #dc2626",
-  backgroundColor: "#fef2f2"
+  backgroundColor: "#fef2f2",
 };
 
 const errorTextStyle = {
   color: "#dc2626",
   fontSize: "11px",
-  marginTop: "4px"
+  marginTop: "4px",
 };
 
 const buttonStyle = {
@@ -62,32 +62,32 @@ const buttonStyle = {
   border: "none",
   backgroundColor: "#2563eb",
   color: "#ffffff",
-  cursor: "pointer"
+  cursor: "pointer",
 };
 
 const secondaryButtonStyle = {
   ...buttonStyle,
   backgroundColor: "#6b7280",
-  marginLeft: "8px"
+  marginLeft: "8px",
 };
 
 const tableStyle = {
   width: "100%",
   borderCollapse: "collapse",
   fontSize: "13px",
-  marginTop: "12px"
+  marginTop: "12px",
 };
 
 const thStyle = {
   backgroundColor: "#e5e7eb",
   padding: "6px",
   textAlign: "left",
-  borderBottom: "1px solid #d1d5db"
+  borderBottom: "1px solid #d1d5db",
 };
 
 const tdStyle = {
   padding: "6px",
-  borderBottom: "1px solid #f3f4f6"
+  borderBottom: "1px solid #f3f4f6",
 };
 
 const smallBtn = {
@@ -96,21 +96,21 @@ const smallBtn = {
   borderRadius: "4px",
   border: "none",
   cursor: "pointer",
-  marginRight: "4px"
+  marginRight: "4px",
 };
 
 const stockTypeOptions = [
   { value: "UNRESTRICTED", label: "Unrestricted" },
   { value: "QUALITY", label: "Quality" },
-  { value: "BLOCKED", label: "Blocked" }
+  { value: "BLOCKED", label: "Blocked" },
 ];
 
 // Get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
   const today = new Date();
   const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -120,35 +120,35 @@ const toLocalDateString = (date) => {
   const d = new Date(date);
   if (isNaN(d.getTime())) return "";
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
 // Format number to 2 decimal places
 const formatNumber = (value) => {
   if (value === null || value === undefined || value === "") return "0";
-  const num = typeof value === 'number' ? value : parseFloat(value);
+  const num = typeof value === "number" ? value : parseFloat(value);
   if (isNaN(num)) return "0";
   return num.toString();
 };
 
 export default function GoodsissuePage() {
   const [poList, setPoList] = useState([]);
-  const [grs, setGRs] = useState([]);
+  const [gis, setGIs] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedPoId, setSelectedPoId] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
 
   const [header, setHeader] = useState({
-    gr_no: "",
+    gi_no: "",
     doc_date: "",
     posting_date: "",
     po_id: "",
     plant: "",
     status: "POSTED",
-    location_id: 1
+    location_id: 1,
   });
 
   const [items, setItems] = useState([]);
@@ -159,31 +159,31 @@ export default function GoodsissuePage() {
   };
 
   const loadPOs = async () => {
-    const res = await poApi.getAll();
+    const res = await giApi.getPOsForIssue();
     setPoList(res.data);
   };
 
-  const loadGRs = async () => {
-    const res = await grApi.getAll();
-    setGRs(res.data);
+  const loadGIs = async () => {
+    const res = await giApi.getAll();
+    setGIs(res.data);
   };
 
   useEffect(() => {
     loadPOs();
-    loadGRs();
+    loadGIs();
   }, []);
 
   const resetForm = () => {
     setEditingId(null);
     setErrors({});
     setHeader({
-      gr_no: "",
+      gi_no: "",
       doc_date: "",
       posting_date: "",
       po_id: "",
       plant: "",
       status: "POSTED",
-      location_id: 1
+      location_id: 1,
     });
     setItems([]);
     setSelectedPoId("");
@@ -205,7 +205,7 @@ export default function GoodsissuePage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     selectedDate.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
       return `${fieldName} cannot be a past date`;
     }
@@ -243,7 +243,7 @@ export default function GoodsissuePage() {
     setHeader((h) => ({
       ...h,
       po_id: poId,
-      plant: poHeader.plant || h.plant
+      plant: poHeader.plant || h.plant,
     }));
 
     setItems(
@@ -254,161 +254,165 @@ export default function GoodsissuePage() {
         qty: formatNumber(it.qty),
         storage_location: poHeader.storage_location || "",
         stock_type: "UNRESTRICTED",
-        unit_cost: it.price || 0
-      }))
+        unit_cost: it.price || 0,
+      })),
     );
   };
 
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
     let processedValue = value;
-    
-    // Remove special characters from plant field
+
     if (name === "plant") {
-      processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
+      processedValue = value.replace(/[^A-Za-z0-9\s]/g, "");
     }
-    
+
     setHeader((h) => ({ ...h, [name]: processedValue }));
-    
-    // Clear error for this field
+
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleItemChange = (index, field, value) => {
     let processedValue = value;
-    
-    // For quantity, ensure positive numbers
+
     if (field === "qty") {
       if (value < 0) processedValue = "";
     }
-    
-    // For storage location, remove special characters
+
     if (field === "storage_location") {
-      processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
+      processedValue = value.replace(/[^A-Za-z0-9\s]/g, "");
     }
-    
+
     setItems((prev) =>
-      prev.map((it, i) => (i === index ? { ...it, [field]: processedValue } : it))
+      prev.map((it, i) =>
+        i === index ? { ...it, [field]: processedValue } : it,
+      ),
     );
-    
-    // Clear error for this item field
+
     if (errors[`item_${index}_${field}`]) {
-      setErrors(prev => ({ ...prev, [`item_${index}_${field}`]: "" }));
+      setErrors((prev) => ({ ...prev, [`item_${index}_${field}`]: "" }));
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
-    // Validate Document Date
+
     if (!header.doc_date) {
       newErrors.doc_date = "Document Date is required";
     } else {
-      const pastDateError = validateNotPastDate(header.doc_date, "Document Date");
+      const pastDateError = validateNotPastDate(
+        header.doc_date,
+        "Document Date",
+      );
       if (pastDateError) newErrors.doc_date = pastDateError;
     }
-    
-    // Validate Posting Date
+
     if (!header.posting_date) {
       newErrors.posting_date = "Posting Date is required";
     } else {
-      const pastDateError = validateNotPastDate(header.posting_date, "Posting Date");
+      const pastDateError = validateNotPastDate(
+        header.posting_date,
+        "Posting Date",
+      );
       if (pastDateError) newErrors.posting_date = pastDateError;
-      
-      const postingDateError = validatePostingDate(header.posting_date, header.doc_date);
+
+      const postingDateError = validatePostingDate(
+        header.posting_date,
+        header.doc_date,
+      );
       if (postingDateError) newErrors.posting_date = postingDateError;
     }
-    
-    // Validate PO selection
+
     if (!selectedPoId) {
       newErrors.po_id = "PO is required";
     }
-    
-    // Validate Plant
+
     if (header.plant) {
       const specialCharError = validateNoSpecialChars(header.plant, "Plant");
       if (specialCharError) newErrors.plant = specialCharError;
     }
-    
-    // Validate items
+
     let hasValidItem = false;
     items.forEach((item, idx) => {
       if (item.material_id && item.qty) {
         hasValidItem = true;
-        
-        // Validate quantity
+
         const qtyError = validateQuantity(item.qty);
         if (qtyError) newErrors[`item_${idx}_qty`] = qtyError;
-        
-        // Validate storage location (no special characters)
+
         if (item.storage_location) {
-          const specialCharError = validateNoSpecialChars(item.storage_location, "Storage Location");
-          if (specialCharError) newErrors[`item_${idx}_storage_location`] = specialCharError;
+          const specialCharError = validateNoSpecialChars(
+            item.storage_location,
+            "Storage Location",
+          );
+          if (specialCharError)
+            newErrors[`item_${idx}_storage_location`] = specialCharError;
         }
       }
     });
-    
+
     if (!hasValidItem) {
-      newErrors.general = "At least one item with material and quantity is required";
+      newErrors.general =
+        "At least one item with material and quantity is required";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       alert("Please fix the validation errors before submitting");
       return;
     }
-    
+
     const payload = {
       header: {
         ...header,
         doc_date: header.doc_date,
-        posting_date: header.posting_date
+        posting_date: header.posting_date,
       },
       items: items.map((it) => ({
         ...it,
         qty: Number(it.qty),
-        unit_cost: Number(it.unit_cost || 0)
-      }))
+        unit_cost: Number(it.unit_cost || 0),
+      })),
     };
 
     try {
       if (editingId) {
-        await grApi.update(editingId, payload);
+        await giApi.update(editingId, payload);
         alert("Goods Issue updated");
       } else {
-        const res = await grApi.create(payload);
-        alert(`Goods Issue saved : ${res.data.gr_no}`);
+        const res = await giApi.create(payload);
+        alert(`Goods Issue saved : ${res.data.gi_no}`);
       }
       resetForm();
-      loadGRs();
+      loadGIs();
     } catch (err) {
       console.error(err);
       alert("Error saving Goods Issue");
     }
   };
 
-  const handleEdit = async (gr) => {
-    setEditingId(gr.id);
+  const handleEdit = async (gi) => {
+    setEditingId(gi.id);
     setErrors({});
-    const res = await grApi.getById(gr.id);
+    const res = await giApi.getById(gi.id);
     const { header: h, items: its } = res.data;
 
     setHeader({
-      gr_no: h.gr_no,
+      gi_no: h.gi_no,
       doc_date: toLocalDateString(h.doc_date),
       posting_date: toLocalDateString(h.posting_date),
       po_id: h.po_id,
       plant: h.plant || "",
       status: h.status || "POSTED",
-      location_id: 1
+      location_id: 1,
     });
     setSelectedPoId(String(h.po_id || ""));
 
@@ -420,22 +424,22 @@ export default function GoodsissuePage() {
         qty: formatNumber(it.qty),
         storage_location: it.storage_location || "",
         stock_type: it.stock_type || "UNRESTRICTED",
-        unit_cost: it.unit_cost || 0
-      }))
+        unit_cost: it.unit_cost || 0,
+      })),
     );
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this Goods Issue?")) return;
-    await grApi.deleteById(id);
+    await giApi.deleteById(id);
     if (editingId === id) resetForm();
-    loadGRs();
+    loadGIs();
   };
 
-  const filteredGRs = grs.filter((g) => {
+  const filteredGIs = gis.filter((g) => {
     const term = search.toLowerCase();
     return (
-      g.gr_no?.toLowerCase().includes(term) ||
+      g.gi_no?.toLowerCase().includes(term) ||
       g.po_no?.toLowerCase().includes(term) ||
       g.plant?.toLowerCase().includes(term)
     );
@@ -457,7 +461,7 @@ export default function GoodsissuePage() {
               <input
                 style={inputStyle}
                 value={
-                  editingId ? header.gr_no : header.gr_no || "Auto Generated"
+                  editingId ? header.gi_no : header.gi_no || "Auto Generated"
                 }
                 disabled
               />
@@ -473,7 +477,9 @@ export default function GoodsissuePage() {
                 max={getTodayDate()}
                 required
               />
-              {errors.doc_date && <div style={errorTextStyle}>{errors.doc_date}</div>}
+              {errors.doc_date && (
+                <div style={errorTextStyle}>{errors.doc_date}</div>
+              )}
             </label>
             <label style={labelStyle}>
               Posting Date *
@@ -486,7 +492,9 @@ export default function GoodsissuePage() {
                 max={getTodayDate()}
                 required
               />
-              {errors.posting_date && <div style={errorTextStyle}>{errors.posting_date}</div>}
+              {errors.posting_date && (
+                <div style={errorTextStyle}>{errors.posting_date}</div>
+              )}
             </label>
           </div>
 
@@ -502,7 +510,8 @@ export default function GoodsissuePage() {
                 <option value="">Select PO</option>
                 {poList.map((po) => (
                   <option key={po.id} value={po.id}>
-                    {po.po_no} - {po.vendor_name}
+                    {po.po_no} - {po.vendor_name} (Remaining:{" "}
+                    {po.total_ordered - po.total_issued})
                   </option>
                 ))}
               </select>
@@ -540,13 +549,21 @@ export default function GoodsissuePage() {
                 style={{
                   fontSize: "13px",
                   fontWeight: 500,
-                  margin: "8px 0"
+                  margin: "8px 0",
                 }}
               >
                 GI Lines *
               </div>
               {items.map((it, idx) => (
-                <div key={idx} style={{ marginBottom: "16px", padding: "8px", border: "1px solid #e5e7eb", borderRadius: "4px" }}>
+                <div
+                  key={idx}
+                  style={{
+                    marginBottom: "16px",
+                    padding: "8px",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "4px",
+                  }}
+                >
                   <div style={formRowStyle}>
                     <label style={labelStyle}>
                       Material
@@ -577,10 +594,14 @@ export default function GoodsissuePage() {
                         }
                         placeholder="> 0"
                       />
-                      {errors[`item_${idx}_qty`] && <div style={errorTextStyle}>{errors[`item_${idx}_qty`]}</div>}
+                      {errors[`item_${idx}_qty`] && (
+                        <div style={errorTextStyle}>
+                          {errors[`item_${idx}_qty`]}
+                        </div>
+                      )}
                     </label>
                   </div>
-                  
+
                   <div style={formRowStyle}>
                     <label style={labelStyle}>
                       Storage Location
@@ -588,11 +609,19 @@ export default function GoodsissuePage() {
                         style={getInputStyle(`item_${idx}_storage_location`)}
                         value={it.storage_location}
                         onChange={(e) =>
-                          handleItemChange(idx, "storage_location", e.target.value)
+                          handleItemChange(
+                            idx,
+                            "storage_location",
+                            e.target.value,
+                          )
                         }
                         placeholder="Letters, numbers and spaces only"
                       />
-                      {errors[`item_${idx}_storage_location`] && <div style={errorTextStyle}>{errors[`item_${idx}_storage_location`]}</div>}
+                      {errors[`item_${idx}_storage_location`] && (
+                        <div style={errorTextStyle}>
+                          {errors[`item_${idx}_storage_location`]}
+                        </div>
+                      )}
                     </label>
                     <label style={labelStyle}>
                       Stock Type
@@ -617,15 +646,13 @@ export default function GoodsissuePage() {
           )}
 
           {errors.general && (
-            <div style={{ ...errorTextStyle, marginBottom: "8px" }}>{errors.general}</div>
+            <div style={{ ...errorTextStyle, marginBottom: "8px" }}>
+              {errors.general}
+            </div>
           )}
 
           <div>
-            <button
-              type="submit"
-              style={buttonStyle}
-              disabled={!items.length}
-            >
+            <button type="submit" style={buttonStyle} disabled={!items.length}>
               {editingId ? "Update GI" : "Save GI"}
             </button>
             <button
@@ -649,9 +676,7 @@ export default function GoodsissuePage() {
       </div>
 
       <div style={cardStyle}>
-        <div
-          style={{ fontSize: "14px", fontWeight: 500, marginBottom: "8px" }}
-        >
+        <div style={{ fontSize: "14px", fontWeight: 500, marginBottom: "8px" }}>
           Existing Goods Issues
         </div>
 
@@ -659,7 +684,7 @@ export default function GoodsissuePage() {
           style={{
             ...inputStyle,
             marginBottom: "8px",
-            maxWidth: "260px"
+            maxWidth: "260px",
           }}
           placeholder="Search by GI No, PO No"
           value={search}
@@ -679,9 +704,9 @@ export default function GoodsissuePage() {
             </tr>
           </thead>
           <tbody>
-            {filteredGRs.map((g) => (
+            {filteredGIs.map((g) => (
               <tr key={g.id}>
-                <td style={tdStyle}>{g.gr_no}</td>
+                <td style={tdStyle}>{g.gi_no}</td>
                 <td style={tdStyle}>{toLocalDateString(g.doc_date)}</td>
                 <td style={tdStyle}>{toLocalDateString(g.posting_date)}</td>
                 <td style={tdStyle}>{g.po_no}</td>
@@ -692,7 +717,7 @@ export default function GoodsissuePage() {
                     style={{
                       ...smallBtn,
                       backgroundColor: "#2563eb",
-                      color: "#fff"
+                      color: "#fff",
                     }}
                     onClick={() => handleEdit(g)}
                   >
@@ -702,7 +727,7 @@ export default function GoodsissuePage() {
                     style={{
                       ...smallBtn,
                       backgroundColor: "#dc2626",
-                      color: "#fff"
+                      color: "#fff",
                     }}
                     onClick={() => handleDelete(g.id)}
                   >
@@ -711,7 +736,7 @@ export default function GoodsissuePage() {
                 </td>
               </tr>
             ))}
-            {filteredGRs.length === 0 && (
+            {filteredGIs.length === 0 && (
               <tr>
                 <td style={tdStyle} colSpan={7}>
                   No Goods Issues found.
