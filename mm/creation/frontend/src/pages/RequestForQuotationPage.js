@@ -642,9 +642,10 @@ export default function RequestForQuotationPage() {
 
   const editRFQ = async (rfq) => {
     setEditingId(rfq.id);
-    const res = await rfqApi.getById(rfq.id);
-    const { header: h, items: its, vendors: vendorList } = res.data;
+    const res = await rfqApi.getRFQWithQuotes(rfq.id);
+    const { header: h, items: its, vendors: vendorList, quotes } = res.data;
 
+    // 1. Set header fields
     setHeader({
       rfq_type: h.rfq_type || "",
       rfq_date: toInputDate(h.rfq_date),
@@ -662,24 +663,42 @@ export default function RequestForQuotationPage() {
       payment_terms: h.payment_terms || "Net 30",
     });
 
-    // 👇 CRITICAL FIX: If this RFQ references a PR, load its items (overwrites saved items)
-    if (h.reference_pr_id) {
-      await loadPRDetails(h.reference_pr_id);
-    } else {
-      setItems(
-        (its || []).map((it) => ({
-          material_id: String(it.material_id),
-          qty: String(it.qty),
-        })),
-      );
-    }
-
-    setSelectedVendors(
-      (vendorList || []).map((v, idx) => ({
-        id: idx,
-        vendor_id: String(v.vendor_id),
+    // 2. Set items – always use the RFQ's own items (its) to preserve rfq_item_id
+    setItems(
+      (its || []).map((it) => ({
+        id: it.id, // ← save rfq_item_id for saving quotes
+        material_id: String(it.material_id),
+        qty: String(it.qty),
       })),
     );
+
+    // 3. Build selected vendors list (use index as temporary id for UI)
+    const selectedVendorsWithId = (vendorList || []).map((v, idx) => ({
+      id: idx,
+      vendor_id: String(v.vendor_id),
+    }));
+    setSelectedVendors(selectedVendorsWithId);
+
+    // 4. Populate vendorQuotes from the quotes array
+    const quotesByVendor = {};
+    vendorList.forEach((vendor, idx) => {
+      const vendorId = vendor.vendor_id;
+      // Get all quotes for this vendor
+      const vendorQuotesArray = quotes.filter((q) => q.vendor_id == vendorId);
+      // Map each quote to the correct item index using rfq_item_id
+      const quotesMap = {};
+      its.forEach((item, itemIdx) => {
+        const quote = vendorQuotesArray.find((q) => q.rfq_item_id === item.id);
+        if (quote) {
+          quotesMap[itemIdx] = {
+            price: quote.quoted_price,
+            qty: quote.quoted_qty,
+          };
+        }
+      });
+      quotesByVendor[idx] = quotesMap;
+    });
+    setVendorQuotes(quotesByVendor);
 
     setErrors({});
   };
@@ -1160,6 +1179,14 @@ export default function RequestForQuotationPage() {
                               cursor: "pointer",
                             }}
                             onClick={async () => {
+                              console.log("Save Quotes clicked");
+                              console.log(
+                                "vendor.vendor_id:",
+                                vendor.vendor_id,
+                              );
+                              console.log("editingId:", editingId);
+                              console.log("items:", items);
+
                               if (!vendor.vendor_id) {
                                 alert("Please select a vendor first");
                                 return;
@@ -1170,20 +1197,22 @@ export default function RequestForQuotationPage() {
                                 );
                                 return;
                               }
-                              // Build quotes array
+
                               const quotesArray = [];
                               for (let i = 0; i < items.length; i++) {
                                 const it = items[i];
                                 if (!it.material_id) continue;
                                 const quote = quotesForVendor[i];
                                 if (!quote || !quote.price) continue;
-                                // We need the rfq_item_id – it will be available only after RFQ is saved.
-                                // For a new RFQ, we must first save the RFQ, then get item ids.
-                                // So we'll require that the RFQ is already saved (editingId exists).
-                                const rfqItemId = it.id; // Only present when editing an existing RFQ.
+
+                                const rfqItemId = it.id;
+                                console.log(
+                                  `Item ${i}: id=${rfqItemId}, material_id=${it.material_id}, qty=${it.qty}, quote.price=${quote.price}`,
+                                );
+
                                 if (!rfqItemId) {
                                   alert(
-                                    "Please save the RFQ first, then add quotes",
+                                    `Item ${i} has no id – please re-edit the RFQ (the item id is missing from API response)`,
                                   );
                                   return;
                                 }
@@ -1194,20 +1223,28 @@ export default function RequestForQuotationPage() {
                                   quoted_qty: parseFloat(quote.qty) || it.qty,
                                 });
                               }
+
                               if (quotesArray.length === 0) {
                                 alert("No valid quotes to save");
                                 return;
                               }
+
                               try {
-                                await rfqApi.saveQuotes({
+                                const response = await rfqApi.saveQuotes({
                                   rfq_id: editingId,
                                   vendor_id: vendor.vendor_id,
                                   quotes: quotesArray,
                                 });
+                                console.log("Save quotes response:", response);
                                 alert("Quotes saved successfully");
+                                window.location.reload(); // refresh to show saved quotes
                               } catch (err) {
-                                console.error(err);
-                                alert("Failed to save quotes");
+                                console.error("Save quotes error:", err);
+                                const errorMsg =
+                                  err.response?.data?.error ||
+                                  err.message ||
+                                  "Unknown error";
+                                alert(`Failed to save quotes: ${errorMsg}`);
                               }
                             }}
                           >

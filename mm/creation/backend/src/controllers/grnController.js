@@ -44,6 +44,146 @@ export const getGRNById = async (req, res, next) => {
 };
 
 // CREATE GRN (auto GRN No)
+// export const createGRN = async (req, res, next) => {
+//   const conn = await db.getConnection();
+//   try {
+//     const { header, items } = req.body;
+//     await conn.beginTransaction();
+
+//     // Generate GRN number (GRN-001, GRN-002...)
+//     const [rows] = await conn.query(
+//       `SELECT grn_no FROM grn_headers WHERE grn_no LIKE 'GRN-%' ORDER BY id DESC LIMIT 1`,
+//     );
+//     let nextSeq = 1;
+//     if (rows.length && rows[0].grn_no) {
+//       const parts = rows[0].grn_no.split("-");
+//       if (parts.length === 2 && !isNaN(parts[1]))
+//         nextSeq = parseInt(parts[1], 10) + 1;
+//     }
+//     const generatedGrnNo = `GRN-${String(nextSeq).padStart(3, "0")}`;
+
+//     // Insert GRN header
+//     const [hRes] = await conn.query(
+//       `INSERT INTO grn_headers
+//        (grn_no, grn_date, po_id, vendor_id, location_id, status)
+//        VALUES (?, ?, ?, ?, ?, ?)`,
+//       [
+//         generatedGrnNo,
+//         toMysqlDate(header.grn_date),
+//         header.po_id,
+//         header.vendor_id,
+//         header.location_id,
+//         header.status || "POSTED",
+//       ],
+//     );
+//     const grnId = hRes.insertId;
+
+//     // Process each GRN item
+//     for (const item of items || []) {
+//       // Check cumulative accepted quantity for this PO item
+//       const [cumulative] = await conn.query(
+//         `SELECT COALESCE(SUM(gi.accepted_qty), 0) AS already_received
+//          FROM grn_items gi
+//          JOIN grn_headers gh ON gi.grn_id = gh.id
+//          WHERE gi.po_item_id = ? AND gh.status != 'CANCELLED'`,
+//         [item.po_item_id],
+//       );
+//       const alreadyReceived = cumulative[0].already_received;
+
+//       const [poItemRow] = await conn.query(
+//         `SELECT qty FROM po_items WHERE id = ?`,
+//         [item.po_item_id],
+//       );
+//       const orderedQty = poItemRow[0]?.qty || 0;
+//       const newAccepted = Number(item.accepted_qty);
+
+//       if (alreadyReceived + newAccepted > orderedQty) {
+//         await conn.rollback();
+//         return res.status(400).json({
+//           error: `Cannot accept ${newAccepted}. Already received ${alreadyReceived} of ${orderedQty}.`,
+//         });
+//       }
+
+//       // Create batch
+//       const [bRes] = await conn.query(
+//         `INSERT INTO batches
+//          (batch_no, material_id, mfg_date, expiry_date, source_type, source_id)
+//          VALUES (?, ?, ?, ?, ?, ?)`,
+//         [
+//           item.batch_no,
+//           item.material_id,
+//           toMysqlDate(item.mfg_date),
+//           toMysqlDate(item.expiry_date),
+//           "VENDOR",
+//           header.vendor_id,
+//         ],
+//       );
+//       const batchId = bRes.insertId;
+
+//       // Insert GRN item
+//       await conn.query(
+//         `INSERT INTO grn_items
+//          (grn_id, po_item_id, material_id, received_qty, accepted_qty, rejected_qty, batch_id)
+//          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+//         [
+//           grnId,
+//           item.po_item_id,
+//           item.material_id,
+//           item.received_qty,
+//           item.accepted_qty,
+//           item.rejected_qty,
+//           batchId,
+//         ],
+//       );
+
+//       // Stock ledger entry
+//       await conn.query(
+//         `INSERT INTO stock_ledger
+//          (material_id, location_id, batch_id, txn_type, qty_in, qty_out, unit_cost, txn_ref_type, txn_ref_id, txn_date)
+//          VALUES (?, ?, ?, 'GRN', ?, 0, ?, 'GRN', ?, ?)`,
+//         [
+//           item.material_id,
+//           header.location_id,
+//           batchId,
+//           item.accepted_qty,
+//           item.unit_cost || 0,
+//           grnId,
+//           toMysqlDate(header.grn_date),
+//         ],
+//       );
+//     }
+
+//     // After all items, check if PO is fully received and update status
+//     const [remaining] = await conn.query(
+//       `SELECT
+//           pi.id,
+//           pi.qty - COALESCE(SUM(gi.accepted_qty), 0) AS remaining_qty
+//        FROM po_items pi
+//        LEFT JOIN grn_items gi ON gi.po_item_id = pi.id
+//        LEFT JOIN grn_headers gh ON gi.grn_id = gh.id AND gh.status != 'CANCELLED'
+//        WHERE pi.po_id = ?
+//        GROUP BY pi.id`,
+//       [header.po_id],
+//     );
+
+//     const allCompleted = remaining.every((r) => r.remaining_qty <= 0);
+//     if (allCompleted) {
+//       await conn.query(
+//         `UPDATE purchase_orders SET status = 'COMPLETED' WHERE id = ?`,
+//         [header.po_id],
+//       );
+//     }
+
+//     await conn.commit();
+//     res.status(201).json({ id: grnId, grn_no: generatedGrnNo });
+//   } catch (err) {
+//     await conn.rollback();
+//     next(err);
+//   } finally {
+//     conn.release();
+//   }
+// };
+
 export const createGRN = async (req, res, next) => {
   const conn = await db.getConnection();
   try {
@@ -57,8 +197,9 @@ export const createGRN = async (req, res, next) => {
     let nextSeq = 1;
     if (rows.length && rows[0].grn_no) {
       const parts = rows[0].grn_no.split("-");
-      if (parts.length === 2 && !isNaN(parts[1]))
+      if (parts.length === 2 && !isNaN(parts[1])) {
         nextSeq = parseInt(parts[1], 10) + 1;
+      }
     }
     const generatedGrnNo = `GRN-${String(nextSeq).padStart(3, "0")}`;
 
@@ -80,7 +221,7 @@ export const createGRN = async (req, res, next) => {
 
     // Process each GRN item
     for (const item of items || []) {
-      // Check cumulative accepted quantity for this PO item
+      // 1. Check cumulative accepted quantity
       const [cumulative] = await conn.query(
         `SELECT COALESCE(SUM(gi.accepted_qty), 0) AS already_received
          FROM grn_items gi
@@ -104,7 +245,7 @@ export const createGRN = async (req, res, next) => {
         });
       }
 
-      // Create batch
+      // 2. Create batch
       const [bRes] = await conn.query(
         `INSERT INTO batches
          (batch_no, material_id, mfg_date, expiry_date, source_type, source_id)
@@ -120,7 +261,7 @@ export const createGRN = async (req, res, next) => {
       );
       const batchId = bRes.insertId;
 
-      // Insert GRN item
+      // 3. Insert GRN item
       await conn.query(
         `INSERT INTO grn_items
          (grn_id, po_item_id, material_id, received_qty, accepted_qty, rejected_qty, batch_id)
@@ -136,7 +277,7 @@ export const createGRN = async (req, res, next) => {
         ],
       );
 
-      // Stock ledger entry
+      // 4. Stock ledger entry
       await conn.query(
         `INSERT INTO stock_ledger
          (material_id, location_id, batch_id, txn_type, qty_in, qty_out, unit_cost, txn_ref_type, txn_ref_id, txn_date)
@@ -153,7 +294,7 @@ export const createGRN = async (req, res, next) => {
       );
     }
 
-    // After all items, check if PO is fully received and update status
+    // ----- After all items, check if PO is fully received -----
     const [remaining] = await conn.query(
       `SELECT 
           pi.id,
@@ -168,10 +309,47 @@ export const createGRN = async (req, res, next) => {
 
     const allCompleted = remaining.every((r) => r.remaining_qty <= 0);
     if (allCompleted) {
+      // Update PO status
       await conn.query(
         `UPDATE purchase_orders SET status = 'COMPLETED' WHERE id = ?`,
         [header.po_id],
       );
+
+      // ----- Also update the linked PR status -----
+      // 1. Get PO source_type and source_id
+      const [[poRow]] = await conn.query(
+        `SELECT source_type, source_id FROM purchase_orders WHERE id = ?`,
+        [header.po_id],
+      );
+
+      if (poRow) {
+        if (poRow.source_type === "PR" && poRow.source_id) {
+          // PO came directly from a PR
+          await conn.query(
+            `UPDATE purchase_requisitions SET status = 'COMPLETED' WHERE id = ?`,
+            [poRow.source_id],
+          );
+        } else if (poRow.source_type === "RFQ" && poRow.source_id) {
+          // PO came from an RFQ – check if the RFQ references a PR
+          const [[rfqRow]] = await conn.query(
+            `SELECT reference_pr_id FROM rfq_headers WHERE id = ?`,
+            [poRow.source_id],
+          );
+          if (rfqRow && rfqRow.reference_pr_id) {
+            // Find PR id by req_no (reference_pr_id is the PR number)
+            const [[prRow]] = await conn.query(
+              `SELECT id FROM purchase_requisitions WHERE req_no = ?`,
+              [rfqRow.reference_pr_id],
+            );
+            if (prRow) {
+              await conn.query(
+                `UPDATE purchase_requisitions SET status = 'COMPLETED' WHERE id = ?`,
+                [prRow.id],
+              );
+            }
+          }
+        }
+      }
     }
 
     await conn.commit();
