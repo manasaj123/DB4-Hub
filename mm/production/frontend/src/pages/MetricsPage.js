@@ -244,7 +244,20 @@ function MetricsPage() {
               </div>
               <div className="metric-subtitle">Finished</div>
             </div>
+
+            <div className="metric-card">
+              <div className="metric-label">
+                <span className="status-indicator status-cancelled"></span>
+                Cancelled
+              </div>
+              <div className="metric-value" style={{ color: "#dc3545", fontSize: "28px" }}>
+                {metrics.cancelled_orders || 0}
+              </div>
+              <div className="metric-subtitle">Excluded from KPIs</div>
+            </div>
           </div>
+
+          
 
           {/* Plan & Capacity Summary */}
           <h3 style={{ marginTop: "24px" }}>Plan & Capacity</h3>

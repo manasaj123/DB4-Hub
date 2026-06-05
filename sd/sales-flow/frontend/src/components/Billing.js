@@ -87,15 +87,26 @@ const styles = {
     cursor: "pointer",
     fontSize: "12px"
   },
+  paidText: {
+    color: "#155724",
+    fontSize: "12px",
+    fontWeight: "bold"
+  },
   error: {
     color: "red",
     marginBottom: "8px",
-    fontSize: "13px"
+    fontSize: "13px",
+    padding: "8px",
+    backgroundColor: "#fff8f8",
+    borderRadius: "4px"
   },
   success: {
     color: "green",
     marginBottom: "8px",
-    fontSize: "13px"
+    fontSize: "13px",
+    padding: "8px",
+    backgroundColor: "#f0fff0",
+    borderRadius: "4px"
   },
   loadingText: {
     textAlign: "center",
@@ -135,6 +146,15 @@ const styles = {
   amountText: {
     fontWeight: "bold",
     color: "#0b3c5d"
+  },
+  infoBox: {
+    backgroundColor: "#f0f7ff",
+    padding: "10px 12px",
+    borderRadius: "4px",
+    marginBottom: "12px",
+    fontSize: "13px",
+    color: "#004085",
+    border: "1px solid #cce5ff"
   }
 };
 
@@ -175,7 +195,23 @@ const Billing = ({ token }) => {
     if (order.items && Array.isArray(order.items) && order.items.length > 0) {
       return order.items.map(item => item.product).filter(Boolean).join(", ") || "";
     }
+    if (typeof order.items === 'string') {
+      try {
+        const parsed = JSON.parse(order.items);
+        return parsed.map(item => item.product).filter(Boolean).join(", ") || "";
+      } catch (e) {
+        return "";
+      }
+    }
     return order.product || "";
+  };
+
+  // Get quantity from order
+  const getOrderQuantity = (order) => {
+    if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+      return order.items[0].quantity || order.quantity || 1;
+    }
+    return order.quantity || 1;
   };
 
   // Calculate order total
@@ -191,15 +227,37 @@ const Billing = ({ token }) => {
     return Number(order.price || 0) * Number(order.quantity || 1);
   };
 
+  // CHANGED: Show ALL orders that don't have invoices yet (any status)
+  const ordersReadyForInvoice = orders.filter((o) => {
+    const orderId = String(o.id || o._id);
+    
+    // Check if this order already has an invoice
+    const alreadyHasInvoice = invoices.some(inv => 
+      String(inv.orderId) === orderId
+    );
+    
+    // Show all orders that don't have invoices yet (removed DELIVERED check)
+    return !alreadyHasInvoice;
+  });
+
   const handleCreateInvoice = async (order) => {
     setError("");
     setSuccess("");
     
-    setCreatingInvoiceFor(order.id || order._id);
+    const orderId = order.id || order._id;
+    
+    // Check if invoice already exists
+    const alreadyHasInvoice = invoices.some(inv => String(inv.orderId) === String(orderId));
+    if (alreadyHasInvoice) {
+      setError(`Invoice already exists for Order #${orderId}.`);
+      return;
+    }
+    
+    setCreatingInvoiceFor(orderId);
     
     try {
       const payload = {
-        orderId: order.id || order._id,
+        orderId: orderId,
         customerName: order.customerName || "",
         amount: getOrderTotal(order),
         items: order.items || [],
@@ -209,7 +267,7 @@ const Billing = ({ token }) => {
       console.log("Creating invoice with data:", payload);
       
       await createInvoiceApi(token, payload);
-      setSuccess(`Invoice created for Order #${order.id || order._id}`);
+      setSuccess(`Invoice created for Order #${orderId}`);
       setCreatingInvoiceFor(null);
       await load();
       
@@ -250,50 +308,78 @@ const Billing = ({ token }) => {
     });
   };
 
+  const formatCurrency = (amount) => {
+    return `₹${Number(amount || 0).toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  };
+
+  // Get invoice stats
+  const getInvoiceStats = () => {
+    const total = invoices.length;
+    const paid = invoices.filter(inv => inv.status === "PAID").length;
+    const pending = invoices.filter(inv => inv.status === "PENDING").length;
+    
+    return { total, paid, pending };
+  };
+
+  const stats = getInvoiceStats();
+
   return (
     <div style={styles.card}>
       <h3 style={styles.title}>Billing & Invoices</h3>
       
-      {error && <div style={styles.error}>{error}</div>}
-      {success && <div style={styles.success}>{success}</div>}
+      {error && <div style={styles.error}>❌ {error}</div>}
+      {success && <div style={styles.success}>✅ {success}</div>}
 
-      <h4 style={styles.subTitle}>Pending Orders</h4>
+      {/* Invoice Summary */}
+      {invoices.length > 0 && (
+        <div style={styles.infoBox}>
+          <strong>Summary:</strong> {stats.total} Total | {stats.paid} Paid | {stats.pending} Pending
+        </div>
+      )}
+
+      {/* Orders Ready for Invoicing - Shows ALL orders without invoices */}
+      <h4 style={styles.subTitle}>Orders Without Invoice</h4>
       {loading && !orders.length ? (
         <div style={styles.loadingText}>Loading orders...</div>
-      ) : orders.filter((o) => o.status !== "INVOICED" && o.status !== "DELIVERED").length === 0 ? (
-        <div style={styles.noOrders}>All orders have been invoiced.</div>
+      ) : ordersReadyForInvoice.length === 0 ? (
+        <div style={styles.noOrders}>
+          All orders have been invoiced.
+        </div>
       ) : (
         <ul style={styles.orderList}>
-          {orders
-            .filter((o) => o.status !== "INVOICED" && o.status !== "DELIVERED")
-            .map((o) => {
-              const orderTotal = getOrderTotal(o);
-              const productName = getProductName(o);
-              const isCreating = creatingInvoiceFor === (o.id || o._id);
-              
-              return (
-                <li key={o.id || o._id} style={styles.orderItem}>
-                  <span style={styles.orderText}>
-                    <strong>{o.id || o._id}</strong> - {o.customerName || "Unknown"} 
-                    {" | "}{productName || "No product"}
-                    {" | "}Qty: {o.quantity || 1}
-                    {" | "}<span style={styles.amountText}>₹{orderTotal.toFixed(2)}</span>
-                    {" | "}{o.status}
-                  </span>
-                  <button
-                    style={isCreating ? styles.createButtonDisabled : styles.createButton}
-                    onClick={() => handleCreateInvoice(o)}
-                    disabled={isCreating}
-                  >
-                    {isCreating ? "Creating..." : "Create Invoice"}
-                  </button>
-                </li>
-              );
-            })}
+          {ordersReadyForInvoice.map((o) => {
+            const orderTotal = getOrderTotal(o);
+            const productName = getProductName(o);
+            const quantity = getOrderQuantity(o);
+            const isCreating = creatingInvoiceFor === (o.id || o._id);
+            
+            return (
+              <li key={o.id || o._id} style={styles.orderItem}>
+                <span style={styles.orderText}>
+                  <strong>#{o.id || o._id}</strong> - {o.customerName || "Unknown"} 
+                  {" | "}{productName || "No product"}
+                  {" | "}Qty: {quantity}
+                  {" | "}<span style={styles.amountText}>{formatCurrency(orderTotal)}</span>
+                  {" | "}<span style={styles.statusBadge(o.status)}>{o.status}</span>
+                </span>
+                <button
+                  style={isCreating ? styles.createButtonDisabled : styles.createButton}
+                  onClick={() => handleCreateInvoice(o)}
+                  disabled={isCreating}
+                >
+                  {isCreating ? "Creating..." : "Create Invoice"}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      <h4 style={styles.subTitle}>Invoices</h4>
+      {/* Invoices List */}
+      <h4 style={styles.subTitle}>Invoices ({invoices.length})</h4>
       {loading && !invoices.length ? (
         <div style={styles.loadingText}>Loading invoices...</div>
       ) : invoices.length === 0 ? (
@@ -303,8 +389,8 @@ const Billing = ({ token }) => {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>Invoice </th>
-                <th style={styles.th}>Order</th>
+                <th style={styles.th}>Invoice #</th>
+                <th style={styles.th}>Order #</th>
                 <th style={styles.th}>Customer</th>
                 <th style={styles.th}>Amount</th>
                 <th style={styles.th}>Status</th>
@@ -313,33 +399,42 @@ const Billing = ({ token }) => {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((inv) => (
-                <tr key={inv.id || inv._id}>
-                  <td style={styles.td}>{inv.invoiceNumber || `${inv.id || inv._id}`}</td>
-                  <td style={styles.td}>{inv.orderId}</td>
-                  <td style={styles.td}>{inv.customerName || inv.Order?.customerName || "-"}</td>
-                  <td style={styles.td}>
-                    <span style={styles.amountText}>₹{Number(inv.amount || 0).toFixed(2)}</span>
-                  </td>
-                  <td style={styles.td}>
-                    <span style={styles.statusBadge(inv.status)}>
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td style={styles.td}>{formatDate(inv.createdAt)}</td>
-                  <td style={styles.td}>
-                    {inv.status === "PENDING" && (
-                      <button
-                        style={styles.payButton}
-                        onClick={() => handlePayInvoice(inv.id || inv._id)}
-                        disabled={loading}
-                      >
-                        ✓ Mark Paid
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {invoices.map((inv) => {
+                const invoiceId = inv.id || inv._id;
+                const isPending = inv.status === "PENDING";
+                
+                return (
+                  <tr key={invoiceId}>
+                    <td style={styles.td}>
+                      <strong>{inv.invoiceNumber || `INV-${String(invoiceId).padStart(4, '0')}`}</strong>
+                    </td>
+                    <td style={styles.td}>#{inv.orderId}</td>
+                    <td style={styles.td}>{inv.customerName || inv.Order?.customerName || "-"}</td>
+                    <td style={styles.td}>
+                      <span style={styles.amountText}>{formatCurrency(inv.amount || 0)}</span>
+                    </td>
+                    <td style={styles.td}>
+                      <span style={styles.statusBadge(inv.status)}>
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td style={styles.td}>{formatDate(inv.createdAt)}</td>
+                    <td style={styles.td}>
+                      {isPending ? (
+                        <button
+                          style={styles.payButton}
+                          onClick={() => handlePayInvoice(invoiceId)}
+                          disabled={loading}
+                        >
+                          ✓ Mark Paid
+                        </button>
+                      ) : (
+                        <span style={styles.paidText}>✅ Paid</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
