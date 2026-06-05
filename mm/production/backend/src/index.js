@@ -11,7 +11,7 @@ const mrpRoutes = require('./routes/mrpRoutes');
 const metricRoutes = require('./routes/metricRoutes');
 const productRoutes = require('./routes/productRoutes');
 const gradePackRoutes = require('./routes/gradePackRoutes');
-
+const bomRoutes = require('./routes/bom');
 
 
 const app = express();
@@ -27,6 +27,8 @@ app.use('/api/mrp', mrpRoutes);
 app.use('/api/metrics', metricRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/grade-packs', gradePackRoutes);
+app.use('/api/bom', bomRoutes);
+
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => {

@@ -11,6 +11,8 @@ export default function FarmerOnboarding() {
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -27,13 +29,14 @@ export default function FarmerOnboarding() {
       });
       setFarmers(validFarmers);
       
-      // Generate next code
-      const nextCode = generateNextCode(validFarmers);
-      setFarmerCode(nextCode);
+      if (!editingId) {
+        const nextCode = generateNextCode(validFarmers);
+        setFarmerCode(nextCode);
+      }
     } catch (err) {
       console.error("Fetch error:", err);
       setFarmers([]);
-      setFarmerCode('FARM-00001');
+      if (!editingId) setFarmerCode('FARM-00001');
     }
   };
 
@@ -132,7 +135,6 @@ export default function FarmerOnboarding() {
   };
 
   const handleChange = (field, value) => {
-    // Block invalid characters
     if (field === "contact" && !/^\d*$/.test(value)) return;
     if (field === "bankAccount" && !/^\d*$/.test(value)) return;
     
@@ -156,7 +158,6 @@ export default function FarmerOnboarding() {
     if (field === "address") setAddress(value);
     if (field === "contact") setContact(value);
 
-    // Clear error when user types
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
@@ -167,7 +168,6 @@ export default function FarmerOnboarding() {
     validateField(field, value);
   };
 
-  // Simple check if form can be submitted
   const canSubmit = () => {
     return (
       farmerName.trim().length >= 3 &&
@@ -180,40 +180,104 @@ export default function FarmerOnboarding() {
     );
   };
 
-  const addFarmer = async () => {
-    // Mark all as touched
-    setTouched({ 
-      name: true, 
-      village: true,
-      district: true,
-      bankAccount: true,
-      address: true, 
-      contact: true 
-    });
+  // ✅ EDIT FARMER
+  const editFarmer = (farmer) => {
+    setEditingId(farmer.id);
+    setFarmerCode(farmer.farmer_code || "");
+    setFarmerName(farmer.name || "");
+    setVillage(farmer.village || "");
+    setDistrict(farmer.district || "");
+    setBankAccount(farmer.bank_account || "");
+    setAddress(farmer.address || "");
+    setContact(farmer.contact || "");
+    setErrors({});
+    setTouched({});
+  };
 
-    // Validate all fields
+  // ✅ UPDATE FARMER
+  const updateFarmer = async () => {
+    setTouched({ name: true, village: true, district: true, bankAccount: true, address: true, contact: true });
+    const nameError = validateField("name", farmerName);
+    const addressError = validateField("address", address);
+    const contactError = validateField("contact", contact);
+    if (nameError || addressError || contactError) return;
+    if (!farmerName.trim() || !address.trim() || !contact.trim()) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await axios.put(`http://localhost:5001/api/farmers/${editingId}`, {
+        name: farmerName.trim(),
+        village: village.trim(),
+        district: district.trim(),
+        bankAccount: bankAccount.trim(),
+        address: address.trim(),
+        contact: contact.trim(),
+      });
+      alert("Farmer updated successfully!");
+      resetForm();
+      await fetchFarmers();
+    } catch (error) {
+      console.error("Update error:", error);
+      alert(error.response?.data?.error || "Failed to update farmer");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ✅ DELETE FARMER
+  const deleteFarmer = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete farmer "${name}"?\nThis action cannot be undone.`)) return;
+    try {
+      await axios.delete(`http://localhost:5001/api/farmers/${id}`);
+      alert(`Farmer "${name}" deleted successfully!`);
+      if (editingId === id) resetForm();
+      await fetchFarmers();
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert(error.response?.data?.error || "Failed to delete farmer");
+    }
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFarmerName("");
+    setVillage("");
+    setDistrict("");
+    setBankAccount("");
+    setAddress("");
+    setContact("");
+    setErrors({});
+    setTouched({});
+    const nextCode = generateNextCode(farmers);
+    setFarmerCode(nextCode);
+  };
+
+  const handleSubmit = () => {
+    if (editingId) {
+      updateFarmer();
+    } else {
+      addFarmer();
+    }
+  };
+
+  const addFarmer = async () => {
+    setTouched({ name: true, village: true, district: true, bankAccount: true, address: true, contact: true });
     const nameError = validateField("name", farmerName);
     const addressError = validateField("address", address);
     const contactError = validateField("contact", contact);
     validateField("village", village);
     validateField("district", district);
     validateField("bankAccount", bankAccount);
-
-    // Check if required fields have errors
-    if (nameError || addressError || contactError) {
-      return;
-    }
-
-    // Final check
+    if (nameError || addressError || contactError) return;
     if (!farmerName.trim() || !address.trim() || !contact.trim()) {
       alert("Please fill in all required fields (Name, Address, Contact)");
       return;
     }
-
     setIsSubmitting(true);
-
     try {
-      const response = await axios.post("http://localhost:5001/api/farmers", {
+      await axios.post("http://localhost:5001/api/farmers", {
         farmerCode: farmerCode,
         name: farmerName.trim(),
         village: village.trim(),
@@ -222,29 +286,13 @@ export default function FarmerOnboarding() {
         address: address.trim(),
         contact: contact.trim(),
       });
-
-      // Success
       alert(`Farmer added successfully! Code: ${farmerCode}`);
-      
-      // Reset form
-      setFarmerName("");
-      setVillage("");
-      setDistrict("");
-      setBankAccount("");
-      setAddress("");
-      setContact("");
-      setErrors({});
-      setTouched({});
-      
-      // Refresh list and generate new code
+      resetForm();
       await fetchFarmers();
-      
     } catch (error) {
       console.error("Error adding farmer:", error);
       const errorMsg = error.response?.data?.error || "Failed to add farmer";
-      
       if (errorMsg.includes("already exists")) {
-        // Generate new code and retry
         const newCode = generateNextCode(farmers);
         setFarmerCode(newCode);
         alert(`${errorMsg}\nNew code generated: ${newCode}. Please try again.`);
@@ -256,10 +304,23 @@ export default function FarmerOnboarding() {
     }
   };
 
+  const filteredFarmers = farmers.filter(f => {
+    if (!searchTerm) return true;
+    const t = searchTerm.toLowerCase();
+    return (
+      (f.name && f.name.toLowerCase().includes(t)) ||
+      (f.farmer_code && f.farmer_code.toLowerCase().includes(t)) ||
+      (f.contact && f.contact.includes(t)) ||
+      (f.village && f.village.toLowerCase().includes(t))
+    );
+  });
+
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h2 style={styles.title}>🌾 Farmer Onboarding</h2>
+        <h2 style={styles.title}>
+          {editingId ? '✏️ Edit Farmer' : '🌾 Farmer Onboarding'}
+        </h2>
 
         {/* Farmer Code */}
         <div style={styles.field}>
@@ -398,29 +459,66 @@ export default function FarmerOnboarding() {
           )}
         </div>
 
-        <button
-          style={{
-            ...styles.button,
-            backgroundColor: canSubmit() ? "#4CAF50" : "#ccc",
-            cursor: canSubmit() ? "pointer" : "not-allowed",
-            opacity: isSubmitting ? 0.7 : 1,
-          }}
-          onClick={addFarmer}
-          disabled={!canSubmit()}
-        >
-          {isSubmitting ? "⏳ Adding..." : "✅ Add Farmer"}
-        </button>
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            style={{
+              ...styles.button,
+              flex: editingId ? 2 : 1,
+              backgroundColor: canSubmit() ? (editingId ? "#2c07ff" : "#4CAF50") : "#ccc",
+              cursor: canSubmit() ? "pointer" : "not-allowed",
+              opacity: isSubmitting ? 0.7 : 1,
+            }}
+            onClick={handleSubmit}
+            disabled={!canSubmit()}
+          >
+            {isSubmitting ? "⏳ Saving..." : editingId ? "✏️ Update Farmer" : "✅ Add Farmer"}
+          </button>
+          {editingId && (
+            <button
+              style={{
+                ...styles.button,
+                flex: 1,
+                backgroundColor: "#6c757d",
+                cursor: "pointer",
+              }}
+              onClick={resetForm}
+            >
+              ❌ Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Farmers List */}
       <div style={styles.listCard}>
         <h3>🌾 Farmers List ({farmers.length})</h3>
+        
+        {/* Search */}
+        <input
+          type="text"
+          placeholder="🔍 Search farmers..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            ...styles.input,
+            marginBottom: '15px',
+            paddingRight: '12px',
+          }}
+        />
+        
         {farmers.length === 0 ? (
           <p style={styles.emptyMessage}>No farmers registered yet</p>
+        ) : filteredFarmers.length === 0 ? (
+          <p style={styles.emptyMessage}>No matching farmers found</p>
         ) : (
           <ul style={styles.list}>
-            {farmers.map((f) => (
-              <li key={f.id} style={styles.listItem}>
+            {filteredFarmers.map((f) => (
+              <li key={f.id} style={{
+                ...styles.listItem,
+                background: editingId === f.id ? '#fff3cd' : 'transparent',
+                border: editingId === f.id ? '2px solid #ffda07' : '1px solid transparent'
+              }}>
                 <div style={styles.farmerHeader}>
                   <b style={styles.farmerName}>{f.name}</b>
                   <span style={styles.code}>({f.farmer_code || 'N/A'})</span>
@@ -435,6 +533,48 @@ export default function FarmerOnboarding() {
                 {f.bank_account && (
                   <div style={styles.detail}>🏦 A/C: {f.bank_account}</div>
                 )}
+                
+                {/* Action Buttons - Customer Style */}
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  marginTop: '10px',
+                  paddingTop: '10px',
+                  borderTop: '1px solid #e9ecef'
+                }}>
+                  <button
+                    onClick={() => editFarmer(f)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      background: '#fff3e0',
+                      color: '#e65100',
+                      border: '1px solid #ffe0b2',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
+                    onClick={() => deleteFarmer(f.id, f.name)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      background: '#fce4ec',
+                      color: '#c62828',
+                      border: '1px solid #ffcdd2',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    🗑️ Delete
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -530,7 +670,7 @@ const styles = {
     boxSizing: "border-box",
     maxHeight: "1000px",
     overflowY: "auto",
-     height: "900px",
+    height: "900px",
   },
   list: {
     listStyle: "none",

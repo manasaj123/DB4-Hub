@@ -9,6 +9,7 @@ import WorkOrderPage from "./pages/WorkOrderPage";
 import MRPRunPage from "./pages/MRPRunPage";
 import MetricsPage from "./pages/MetricsPage";
 import ProductMasterPage from "./pages/ProductMasterPage";
+import BOMPage from './pages/BOMPage';
 
 function App() {
   const location = useLocation();
@@ -98,6 +99,7 @@ function App() {
         .pp-nav a[href="/work-orders"]::before { content: "📝"; }
         .pp-nav a[href="/mrp"]::before { content: "🔧"; }
         .pp-nav a[href="/metrics"]::before { content: "📈"; }
+          .pp-nav a[href="/bom"]::before { content: "🧾"; }
 
         .pp-main {
           flex: 1;
@@ -151,12 +153,16 @@ function App() {
         <Link to="/work-orders" className={isActive("/work-orders")}>
           <span>Work Orders</span>
         </Link>
+        <Link to="/bom" className={isActive("/bom")}>
+          <span>BOM</span>
+        </Link>
         <Link to="/mrp" className={isActive("/mrp")}>
           <span>MRP</span>
         </Link>
         <Link to="/metrics" className={isActive("/metrics")}>
           <span>Metrics</span>
         </Link>
+        
       </nav>
 
       <main className="pp-main">
@@ -169,6 +175,7 @@ function App() {
           <Route path="/work-orders" element={<WorkOrderPage />} />
           <Route path="/mrp" element={<MRPRunPage />} />
           <Route path="/metrics" element={<MetricsPage />} />
+          <Route path="/bom" element={<BOMPage />} />
           <Route path="/" element={<ForecastPage />} />
           <Route path="*" element={<ForecastPage />} />
         </Routes>
