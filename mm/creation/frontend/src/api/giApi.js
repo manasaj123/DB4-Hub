@@ -19,6 +19,11 @@ const giApi = {
   getPOsForIssue() {
     return axiosClient.get("/gi/pos-for-issue");
   },
+  getAvailableBatches(materialId, locationId) {
+    return axiosClient.get(
+      `/gi/available-batches?materialId=${materialId}&locationId=${locationId}`,
+    );
+  },
 };
 
 export default giApi;

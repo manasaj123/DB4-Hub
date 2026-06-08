@@ -261,3 +261,32 @@ export const getPOsForIssue = async (req, res, next) => {
     next(err);
   }
 };
+
+// Get available batches for a material (with positive stock)
+export const getAvailableBatches = async (req, res, next) => {
+  try {
+    const { materialId, locationId } = req.query;
+    if (!materialId) {
+      return res.status(400).json({ error: "materialId is required" });
+    }
+    const locId = locationId || 1;
+
+    const [rows] = await db.query(
+      `SELECT 
+         b.id AS batch_id,
+         b.batch_no,
+         b.expiry_date,
+         SUM(sl.qty_in - sl.qty_out) AS qty
+       FROM stock_ledger sl
+       JOIN batches b ON b.id = sl.batch_id
+       WHERE sl.material_id = ? AND sl.location_id = ? AND sl.batch_id IS NOT NULL
+       GROUP BY b.id, b.batch_no, b.expiry_date
+       HAVING qty > 0
+       ORDER BY b.expiry_date ASC`,
+      [materialId, locId],
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+};

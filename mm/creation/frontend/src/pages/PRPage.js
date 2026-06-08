@@ -12,36 +12,36 @@ export default function PRPage() {
       padding: "10px",
       background: "#f4f6f9",
       borderRadius: "10px",
-      fontFamily: "Arial"
+      fontFamily: "Arial",
     },
     title: {
       textAlign: "center",
-      marginBottom: "10px"
+      marginBottom: "10px",
     },
     formGroup: {
-      marginBottom: "15px"
+      marginBottom: "15px",
     },
     formRow: {
       display: "flex",
       gap: "16px",
       marginBottom: "10px",
-      flexWrap: "wrap"
+      flexWrap: "wrap",
     },
     formCol: {
       flex: 1,
-      minWidth: "220px"
+      minWidth: "220px",
     },
     label: {
       fontWeight: "bold",
       display: "block",
-      marginBottom: "5px"
+      marginBottom: "5px",
     },
     input: {
       padding: "7px",
       width: "100%",
       borderRadius: "5px",
       border: "1px solid #ccc",
-      boxSizing: "border-box"
+      boxSizing: "border-box",
     },
     inputError: {
       padding: "7px",
@@ -49,28 +49,28 @@ export default function PRPage() {
       borderRadius: "5px",
       border: "2px solid #dc2626",
       boxSizing: "border-box",
-      backgroundColor: "#fef2f2"
+      backgroundColor: "#fef2f2",
     },
     errorText: {
       color: "#dc2626",
       fontSize: "11px",
-      marginTop: "4px"
+      marginTop: "4px",
     },
     table: {
       width: "100%",
       borderCollapse: "collapse",
       marginTop: "15px",
-      background: "white"
+      background: "white",
     },
     th: {
       background: "#2563eb",
       color: "white",
       padding: "8px",
-      border: "1px solid #ddd"
+      border: "1px solid #ddd",
     },
     td: {
       padding: "6px",
-      border: "1px solid #ddd"
+      border: "1px solid #ddd",
     },
     button: {
       padding: "10px 15px",
@@ -78,15 +78,15 @@ export default function PRPage() {
       marginRight: "10px",
       border: "none",
       borderRadius: "6px",
-      cursor: "pointer"
+      cursor: "pointer",
     },
     addBtn: {
       background: "#2563eb",
-      color: "white"
+      color: "white",
     },
     saveBtn: {
       background: "#16a34a",
-      color: "white"
+      color: "white",
     },
     editBtn: {
       background: "#0b61f5",
@@ -95,7 +95,7 @@ export default function PRPage() {
       marginRight: "4px",
       borderRadius: "4px",
       border: "none",
-      cursor: "pointer"
+      cursor: "pointer",
     },
     deleteBtn: {
       background: "#dc2626",
@@ -103,42 +103,37 @@ export default function PRPage() {
       padding: "4px 8px",
       borderRadius: "4px",
       border: "none",
-      cursor: "pointer"
+      cursor: "pointer",
+    },
+    // NEW: View button style
+    viewBtn: {
+      background: "#6b7280",
+      color: "white",
+      padding: "4px 8px",
+      marginRight: "4px",
+      borderRadius: "4px",
+      border: "none",
+      cursor: "pointer",
     },
     searchBox: {
       padding: "7px",
       width: "250px",
       borderRadius: "5px",
       border: "1px solid #ccc",
-      marginBottom: "10px"
+      marginBottom: "10px",
     },
     statusBadge: {
       padding: "4px 8px",
       borderRadius: "4px",
       fontSize: "12px",
       fontWeight: "bold",
-      display: "inline-block"
+      display: "inline-block",
     },
-    statusDraft: {
-      background: "#9ca3af",
-      color: "white"
-    },
-    statusPending: {
-      background: "#f59e0b",
-      color: "white"
-    },
-    statusApproved: {
-      background: "#10b981",
-      color: "white"
-    },
-    statusRejected: {
-      background: "#ef4444",
-      color: "white"
-    },
-    statusClosed: {
-      background: "#6b7280",
-      color: "white"
-    },
+    statusDraft: { background: "#9ca3af", color: "white" },
+    statusPending: { background: "#f59e0b", color: "white" },
+    statusApproved: { background: "#10b981", color: "white" },
+    statusRejected: { background: "#ef4444", color: "white" },
+    statusClosed: { background: "#6b7280", color: "white" },
     priorityLow: {
       background: "#22c55e",
       color: "white",
@@ -146,7 +141,7 @@ export default function PRPage() {
       borderRadius: "4px",
       fontSize: "12px",
       fontWeight: "bold",
-      display: "inline-block"
+      display: "inline-block",
     },
     priorityMedium: {
       background: "#f59e0b",
@@ -155,7 +150,7 @@ export default function PRPage() {
       borderRadius: "4px",
       fontSize: "12px",
       fontWeight: "bold",
-      display: "inline-block"
+      display: "inline-block",
     },
     priorityHigh: {
       background: "#ef4444",
@@ -164,7 +159,7 @@ export default function PRPage() {
       borderRadius: "4px",
       fontSize: "12px",
       fontWeight: "bold",
-      display: "inline-block"
+      display: "inline-block",
     },
     priorityUrgent: {
       background: "#7c3aed",
@@ -173,20 +168,56 @@ export default function PRPage() {
       borderRadius: "4px",
       fontSize: "12px",
       fontWeight: "bold",
-      display: "inline-block"
+      display: "inline-block",
     },
     filterBar: {
       display: "flex",
       gap: "10px",
       marginBottom: "15px",
       alignItems: "center",
-      flexWrap: "wrap"
+      flexWrap: "wrap",
     },
     select: {
       padding: "7px",
       borderRadius: "5px",
-      border: "1px solid #ccc"
-    }
+      border: "1px solid #ccc",
+    },
+    /* -------- MODAL STYLES (NEW) -------- */
+    modalOverlay: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 1000,
+    },
+    modalContent: {
+      background: "white",
+      padding: "25px",
+      borderRadius: "10px",
+      maxWidth: "600px",
+      width: "90%",
+      maxHeight: "80vh",
+      overflowY: "auto",
+    },
+    modalTitle: {
+      marginTop: 0,
+      marginBottom: "20px",
+    },
+    modalCloseBtn: {
+      background: "#dc2626",
+      color: "white",
+      border: "none",
+      padding: "8px 16px",
+      borderRadius: "6px",
+      cursor: "pointer",
+      float: "right",
+      marginTop: "10px",
+    },
   };
 
   /* ---------------- STATE ---------------- */
@@ -199,6 +230,10 @@ export default function PRPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
 
+  // NEW: state for view modal
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewPRData, setViewPRData] = useState(null); // { header, items }
+
   const [header, setHeader] = useState({
     req_date: "",
     requester: "",
@@ -206,12 +241,12 @@ export default function PRPage() {
     batch: "",
     plant: "",
     purchase_org: "",
-    status: "Draft", // NEW: PR Status
-    priority: "Medium" // NEW: Priority Level
+    status: "Draft",
+    priority: "Medium",
   });
 
   const [items, setItems] = useState([
-    { material_id: "", qty: "", required_date: "", remarks: "" }
+    { material_id: "", qty: "", required_date: "", remarks: "" },
   ]);
 
   /* ---------------- LOAD DATA ---------------- */
@@ -231,13 +266,12 @@ export default function PRPage() {
     loadMaterials();
   }, []);
 
-  /* ---------------- VALIDATION FUNCTIONS ---------------- */
-
+  /* ---------------- VALIDATION (unchanged) ---------------- */
   const getTodayDate = () => {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
@@ -255,7 +289,6 @@ export default function PRPage() {
     const selectedDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
     if (selectedDate < today) {
       return `${fieldName} cannot be a past date`;
     }
@@ -273,42 +306,42 @@ export default function PRPage() {
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
     let processedValue = value;
-    
-    if (name === "requester" || name === "batch" || name === "plant" || name === "purchase_org") {
-      processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
+    if (
+      name === "requester" ||
+      name === "batch" ||
+      name === "plant" ||
+      name === "purchase_org"
+    ) {
+      processedValue = value.replace(/[^A-Za-z0-9\s]/g, "");
     }
-    
     setHeader((h) => ({ ...h, [name]: processedValue }));
-    
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleItemChange = (index, field, value) => {
     let processedValue = value;
-    
     if (field === "remarks") {
-      processedValue = value.replace(/[^A-Za-z0-9\s]/g, '');
+      processedValue = value.replace(/[^A-Za-z0-9\s]/g, "");
     }
-    
     if (field === "qty") {
       if (value < 0) processedValue = "";
     }
-    
     setItems((prev) =>
-      prev.map((it, i) => (i === index ? { ...it, [field]: processedValue } : it))
+      prev.map((it, i) =>
+        i === index ? { ...it, [field]: processedValue } : it,
+      ),
     );
-    
     if (errors[`item_${index}_${field}`]) {
-      setErrors(prev => ({ ...prev, [`item_${index}_${field}`]: "" }));
+      setErrors((prev) => ({ ...prev, [`item_${index}_${field}`]: "" }));
     }
   };
 
   const addRow = () => {
     setItems((prev) => [
       ...prev,
-      { material_id: "", qty: "", required_date: "", remarks: "" }
+      { material_id: "", qty: "", required_date: "", remarks: "" },
     ]);
   };
 
@@ -322,7 +355,7 @@ export default function PRPage() {
       plant: "",
       purchase_org: "",
       status: "Draft",
-      priority: "Medium"
+      priority: "Medium",
     });
     setItems([{ material_id: "", qty: "", required_date: "", remarks: "" }]);
     setErrors({});
@@ -330,86 +363,88 @@ export default function PRPage() {
 
   const validateForm = () => {
     const newErrors = {};
-    
     if (!header.req_date) {
       newErrors.req_date = "Req Date is required";
     } else {
       const pastDateError = validateNotPastDate(header.req_date, "Req Date");
       if (pastDateError) newErrors.req_date = pastDateError;
     }
-    
     if (header.requester) {
-      const specialCharError = validateNoSpecialChars(header.requester, "Requestor");
+      const specialCharError = validateNoSpecialChars(
+        header.requester,
+        "Requestor",
+      );
       if (specialCharError) newErrors.requester = specialCharError;
     }
-    
     if (header.batch) {
       const specialCharError = validateNoSpecialChars(header.batch, "Batch");
       if (specialCharError) newErrors.batch = specialCharError;
     }
-    
     if (header.plant) {
       const specialCharError = validateNoSpecialChars(header.plant, "Plant");
       if (specialCharError) newErrors.plant = specialCharError;
     }
-    
     if (header.purchase_org) {
-      const specialCharError = validateNoSpecialChars(header.purchase_org, "Purchase Organization");
+      const specialCharError = validateNoSpecialChars(
+        header.purchase_org,
+        "Purchase Organization",
+      );
       if (specialCharError) newErrors.purchase_org = specialCharError;
     }
-    
+
     let hasValidItem = false;
     items.forEach((item, idx) => {
       if (item.material_id && item.qty) {
         hasValidItem = true;
-        
         const qtyError = validateQuantity(item.qty);
         if (qtyError) {
           newErrors[`item_${idx}_qty`] = qtyError;
         }
-        
         if (item.required_date) {
-          const pastDateError = validateNotPastDate(item.required_date, "Required Date");
+          const pastDateError = validateNotPastDate(
+            item.required_date,
+            "Required Date",
+          );
           if (pastDateError) {
             newErrors[`item_${idx}_required_date`] = pastDateError;
           }
         }
-        
         if (item.remarks) {
-          const specialCharError = validateNoSpecialChars(item.remarks, "Remarks");
+          const specialCharError = validateNoSpecialChars(
+            item.remarks,
+            "Remarks",
+          );
           if (specialCharError) {
             newErrors[`item_${idx}_remarks`] = specialCharError;
           }
         }
       }
     });
-    
+
     if (!hasValidItem) {
-      newErrors.general = "At least one item with material and quantity is required";
+      newErrors.general =
+        "At least one item with material and quantity is required";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!validateForm()) {
       alert("Please fix the validation errors before submitting");
       return;
     }
-
     const payload = {
       header,
       items: items
         .filter((i) => i.material_id && i.qty)
         .map((i) => ({
           ...i,
-          qty: Number(i.qty)
-        }))
+          qty: Number(i.qty),
+        })),
     };
-
     try {
       if (editingId) {
         await prApi.update(editingId, payload);
@@ -418,7 +453,6 @@ export default function PRPage() {
         const res = await prApi.create(payload);
         alert(`PR Created : ${res.data.req_no}`);
       }
-
       resetForm();
       loadPRs();
     } catch (err) {
@@ -432,25 +466,23 @@ export default function PRPage() {
     try {
       const res = await prApi.getById(pr.id);
       const { header: h, items: its } = res.data;
-
       setHeader({
-        req_date: h.req_date ? h.req_date.split('T')[0] : "",
+        req_date: h.req_date ? h.req_date.split("T")[0] : "",
         requester: h.requester || "",
         uom: h.uom || "",
         batch: h.batch || "",
         plant: h.plant || "",
         purchase_org: h.purchase_org || "",
         status: h.status || "Draft",
-        priority: h.priority || "Medium"
+        priority: h.priority || "Medium",
       });
-
       setItems(
         (its || []).map((it) => ({
           material_id: String(it.material_id),
           qty: String(it.qty),
           required_date: it.required_date || "",
-          remarks: it.remarks || ""
-        }))
+          remarks: it.remarks || "",
+        })),
       );
       setErrors({});
     } catch (err) {
@@ -465,32 +497,61 @@ export default function PRPage() {
     loadPRs();
   };
 
-  // Function to get status badge style
-  const getStatusBadgeStyle = (status) => {
-    switch(status) {
-      case 'Draft': return styles.statusDraft;
-      case 'Pending': return styles.statusPending;
-      case 'Approved': return styles.statusApproved;
-      case 'Rejected': return styles.statusRejected;
-      case 'Closed': return styles.statusClosed;
-      default: return styles.statusDraft;
+  /* ---------------- VIEW PR (NEW) ---------------- */
+  const viewPR = async (pr) => {
+    try {
+      const res = await prApi.getById(pr.id);
+      // Store full data for modal display
+      setViewPRData(res.data);
+      setShowViewModal(true);
+    } catch (err) {
+      console.error("Failed to load PR details", err);
+      alert("Could not load PR details");
     }
   };
 
-  // Function to get priority badge style
+  const closeViewModal = () => {
+    setShowViewModal(false);
+    setViewPRData(null);
+  };
+
+  // status & priority badge helpers
+  const getStatusBadgeStyle = (status) => {
+    switch (status) {
+      case "Draft":
+        return styles.statusDraft;
+      case "Pending":
+        return styles.statusPending;
+      case "Approved":
+        return styles.statusApproved;
+      case "Rejected":
+        return styles.statusRejected;
+      case "Closed":
+        return styles.statusClosed;
+      default:
+        return styles.statusDraft;
+    }
+  };
+
   const getPriorityBadgeStyle = (priority) => {
-    switch(priority) {
-      case 'Low': return styles.priorityLow;
-      case 'Medium': return styles.priorityMedium;
-      case 'High': return styles.priorityHigh;
-      case 'Urgent': return styles.priorityUrgent;
-      default: return styles.priorityMedium;
+    switch (priority) {
+      case "Low":
+        return styles.priorityLow;
+      case "Medium":
+        return styles.priorityMedium;
+      case "High":
+        return styles.priorityHigh;
+      case "Urgent":
+        return styles.priorityUrgent;
+      default:
+        return styles.priorityMedium;
     }
   };
 
   const filteredPRs = prs.filter((pr) => {
-    const matchesSearch = pr.req_no?.toLowerCase().includes(search.toLowerCase()) ||
-                         pr.requester?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      pr.req_no?.toLowerCase().includes(search.toLowerCase()) ||
+      pr.requester?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || pr.status === statusFilter;
     const matchesPriority = !priorityFilter || pr.priority === priorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
@@ -529,7 +590,9 @@ export default function PRPage() {
               min={getTodayDate()}
               required
             />
-            {errors.req_date && <div style={styles.errorText}>{errors.req_date}</div>}
+            {errors.req_date && (
+              <div style={styles.errorText}>{errors.req_date}</div>
+            )}
           </div>
 
           <div style={styles.formCol}>
@@ -541,7 +604,9 @@ export default function PRPage() {
               onChange={handleHeaderChange}
               placeholder="Letters, numbers and spaces only"
             />
-            {errors.requester && <div style={styles.errorText}>{errors.requester}</div>}
+            {errors.requester && (
+              <div style={styles.errorText}>{errors.requester}</div>
+            )}
           </div>
         </div>
 
@@ -599,11 +664,13 @@ export default function PRPage() {
               onChange={handleHeaderChange}
               placeholder="Letters, numbers and spaces only"
             />
-            {errors.purchase_org && <div style={styles.errorText}>{errors.purchase_org}</div>}
+            {errors.purchase_org && (
+              <div style={styles.errorText}>{errors.purchase_org}</div>
+            )}
           </div>
         </div>
 
-        {/* Row 4: Status + Priority (NEW) */}
+        {/* Row 4: Status + Priority */}
         <div style={styles.formRow}>
           <div style={styles.formCol}>
             <label style={styles.label}>Status *</label>
@@ -668,9 +735,8 @@ export default function PRPage() {
                     onChange={(e) => {
                       const materialId = e.target.value;
                       const selectedMaterial = materials.find(
-                        (m) => String(m.id) === materialId
+                        (m) => String(m.id) === materialId,
                       );
-
                       setItems((prev) =>
                         prev.map((row, i) =>
                           i === idx
@@ -681,10 +747,10 @@ export default function PRPage() {
                                   selectedMaterial &&
                                   selectedMaterial.qty != null
                                     ? String(selectedMaterial.qty)
-                                    : ""
+                                    : "",
                               }
-                            : row
-                        )
+                            : row,
+                        ),
                       );
                     }}
                   >
@@ -699,7 +765,11 @@ export default function PRPage() {
 
                 <td style={styles.td}>
                   <input
-                    style={errors[`item_${idx}_qty`] ? styles.inputError : styles.input}
+                    style={
+                      errors[`item_${idx}_qty`]
+                        ? styles.inputError
+                        : styles.input
+                    }
                     type="number"
                     step="1"
                     min="1"
@@ -710,13 +780,19 @@ export default function PRPage() {
                     placeholder="0"
                   />
                   {errors[`item_${idx}_qty`] && (
-                    <div style={styles.errorText}>{errors[`item_${idx}_qty`]}</div>
+                    <div style={styles.errorText}>
+                      {errors[`item_${idx}_qty`]}
+                    </div>
                   )}
                 </td>
 
                 <td style={styles.td}>
                   <input
-                    style={errors[`item_${idx}_required_date`] ? styles.inputError : styles.input}
+                    style={
+                      errors[`item_${idx}_required_date`]
+                        ? styles.inputError
+                        : styles.input
+                    }
                     type="date"
                     value={it.required_date}
                     onChange={(e) =>
@@ -725,13 +801,19 @@ export default function PRPage() {
                     min={getTodayDate()}
                   />
                   {errors[`item_${idx}_required_date`] && (
-                    <div style={styles.errorText}>{errors[`item_${idx}_required_date`]}</div>
+                    <div style={styles.errorText}>
+                      {errors[`item_${idx}_required_date`]}
+                    </div>
                   )}
                 </td>
 
                 <td style={styles.td}>
                   <input
-                    style={errors[`item_${idx}_remarks`] ? styles.inputError : styles.input}
+                    style={
+                      errors[`item_${idx}_remarks`]
+                        ? styles.inputError
+                        : styles.input
+                    }
                     value={it.remarks}
                     onChange={(e) =>
                       handleItemChange(idx, "remarks", e.target.value)
@@ -739,7 +821,9 @@ export default function PRPage() {
                     placeholder="Letters, numbers and spaces only"
                   />
                   {errors[`item_${idx}_remarks`] && (
-                    <div style={styles.errorText}>{errors[`item_${idx}_remarks`]}</div>
+                    <div style={styles.errorText}>
+                      {errors[`item_${idx}_remarks`]}
+                    </div>
                   )}
                 </td>
               </tr>
@@ -748,7 +832,9 @@ export default function PRPage() {
         </table>
 
         {errors.general && (
-          <div style={{ ...styles.errorText, marginTop: "10px" }}>{errors.general}</div>
+          <div style={{ ...styles.errorText, marginTop: "10px" }}>
+            {errors.general}
+          </div>
         )}
 
         <button
@@ -759,10 +845,7 @@ export default function PRPage() {
           Add Row
         </button>
 
-        <button
-          type="submit"
-          style={{ ...styles.button, ...styles.saveBtn }}
-        >
+        <button type="submit" style={{ ...styles.button, ...styles.saveBtn }}>
           {editingId ? "Update PR" : "Save PR"}
         </button>
       </form>
@@ -770,7 +853,7 @@ export default function PRPage() {
       {/* -------- EXISTING PR TABLE -------- */}
       <h3 style={{ marginTop: "30px" }}>Existing PRs</h3>
 
-      {/* Filter Bar (NEW) */}
+      {/* Filter Bar */}
       <div style={styles.filterBar}>
         <input
           style={styles.searchBox}
@@ -778,7 +861,7 @@ export default function PRPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        
+
         <select
           style={styles.select}
           value={statusFilter}
@@ -810,7 +893,12 @@ export default function PRPage() {
               setStatusFilter("");
               setPriorityFilter("");
             }}
-            style={{ ...styles.button, background: "#6b7280", color: "white", padding: "7px 15px" }}
+            style={{
+              ...styles.button,
+              background: "#6b7280",
+              color: "white",
+              padding: "7px 15px",
+            }}
           >
             Clear Filters
           </button>
@@ -839,10 +927,17 @@ export default function PRPage() {
           {filteredPRs.map((pr) => (
             <tr key={pr.id}>
               <td style={styles.td}>{pr.req_no}</td>
-              <td style={styles.td}>{pr.req_date ? pr.req_date.split('T')[0] : ""}</td>
+              <td style={styles.td}>
+                {pr.req_date ? pr.req_date.split("T")[0] : ""}
+              </td>
               <td style={styles.td}>{pr.requester}</td>
               <td style={styles.td}>
-                <span style={{...styles.statusBadge, ...getStatusBadgeStyle(pr.status)}}>
+                <span
+                  style={{
+                    ...styles.statusBadge,
+                    ...getStatusBadgeStyle(pr.status),
+                  }}
+                >
                   {pr.status || "Draft"}
                 </span>
               </td>
@@ -858,6 +953,14 @@ export default function PRPage() {
               <td style={styles.td}>{pr.total_qty}</td>
               <td style={styles.td}>{pr.item_count}</td>
               <td style={styles.td}>
+                {/* NEW: View button added before Edit and Delete */}
+                <button
+                  style={styles.viewBtn}
+                  type="button"
+                  onClick={() => viewPR(pr)}
+                >
+                  View
+                </button>
                 <button
                   style={styles.editBtn}
                   type="button"
@@ -884,6 +987,95 @@ export default function PRPage() {
           )}
         </tbody>
       </table>
+
+      {/* -------- VIEW MODAL (NEW) -------- */}
+      {showViewModal && viewPRData && (
+        <div style={styles.modalOverlay} onClick={closeViewModal}>
+          <div
+            style={styles.modalContent}
+            onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
+          >
+            <h3 style={styles.modalTitle}>
+              PR Details : {viewPRData.header?.req_no}
+            </h3>
+            <div style={{ marginBottom: "15px" }}>
+              <p>
+                <strong>Req Date:</strong>{" "}
+                {viewPRData.header?.req_date?.split("T")[0]}
+              </p>
+              <p>
+                <strong>Requestor:</strong> {viewPRData.header?.requester}
+              </p>
+              <p>
+                <strong>UOM:</strong> {viewPRData.header?.uom}
+              </p>
+              <p>
+                <strong>Batch:</strong> {viewPRData.header?.batch}
+              </p>
+              <p>
+                <strong>Plant:</strong> {viewPRData.header?.plant}
+              </p>
+              <p>
+                <strong>Purchase Org:</strong> {viewPRData.header?.purchase_org}
+              </p>
+              <p>
+                <strong>Status:</strong>{" "}
+                <span
+                  style={{
+                    ...styles.statusBadge,
+                    ...getStatusBadgeStyle(viewPRData.header?.status),
+                  }}
+                >
+                  {viewPRData.header?.status || "Draft"}
+                </span>
+              </p>
+              <p>
+                <strong>Priority:</strong>{" "}
+                <span
+                  style={getPriorityBadgeStyle(viewPRData.header?.priority)}
+                >
+                  {viewPRData.header?.priority || "Medium"}
+                </span>
+              </p>
+            </div>
+
+            <h4>Items</h4>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Material</th>
+                  <th style={styles.th}>Qty</th>
+                  <th style={styles.th}>Required Date</th>
+                  <th style={styles.th}>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {viewPRData.items?.map((it, idx) => (
+                  <tr key={idx}>
+                    <td style={styles.td}>
+                      {it.material_name || it.material_id}
+                    </td>
+                    <td style={styles.td}>{it.qty}</td>
+                    <td style={styles.td}>{it.required_date || ""}</td>
+                    <td style={styles.td}>{it.remarks || ""}</td>
+                  </tr>
+                ))}
+                {viewPRData.items?.length === 0 && (
+                  <tr>
+                    <td style={styles.td} colSpan={4}>
+                      No items
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            <button style={styles.modalCloseBtn} onClick={closeViewModal}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
