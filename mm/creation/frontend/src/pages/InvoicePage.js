@@ -7,7 +7,7 @@ const titleStyle = {
   fontSize: "18px",
   fontWeight: "600",
   marginBottom: "12px",
-  color: "#111827"
+  color: "#111827",
 };
 
 const cardStyle = {
@@ -15,14 +15,14 @@ const cardStyle = {
   borderRadius: "6px",
   padding: "16px",
   boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-  marginBottom: "16px"
+  marginBottom: "16px",
 };
 
 const formRowStyle = {
   display: "flex",
   gap: "8px",
   marginBottom: "8px",
-  flexWrap: "wrap"
+  flexWrap: "wrap",
 };
 
 const labelStyle = {
@@ -31,14 +31,14 @@ const labelStyle = {
   fontSize: "12px",
   color: "#4b5563",
   flex: 1,
-  minWidth: "160px"
+  minWidth: "160px",
 };
 
 const inputStyle = {
   padding: "6px 8px",
   fontSize: "13px",
   borderRadius: "4px",
-  border: "1px solid #d1d5db"
+  border: "1px solid #d1d5db",
 };
 
 const buttonStyle = {
@@ -49,25 +49,41 @@ const buttonStyle = {
   border: "none",
   backgroundColor: "#2563eb",
   color: "#ffffff",
-  cursor: "pointer"
+  cursor: "pointer",
 };
 
 const tableStyle = {
   width: "100%",
   borderCollapse: "collapse",
-  fontSize: "13px"
+  fontSize: "13px",
 };
 
 const thStyle = {
   textAlign: "left",
   padding: "6px 8px",
   borderBottom: "1px solid #e5e7eb",
-  backgroundColor: "#f9fafb"
+  backgroundColor: "#f9fafb",
+  fontWeight: "600",
 };
 
 const tdStyle = {
   padding: "6px 8px",
-  borderBottom: "1px solid #f3f4f6"
+  borderBottom: "1px solid #f3f4f6",
+};
+
+// Status badge styles
+const statusBadgeStyle = (status) => {
+  switch (status) {
+    case "VERIFIED":
+      return { backgroundColor: "#10b981", color: "#fff" };
+    case "PENDING":
+      return { backgroundColor: "#f59e0b", color: "#fff" };
+    case "BLOCKED_MANUAL":
+    case "BLOCKED_DUE_TO_VARIANCE":
+      return { backgroundColor: "#dc2626", color: "#fff" };
+    default:
+      return { backgroundColor: "#6b7280", color: "#fff" };
+  }
 };
 
 export default function InvoicePage() {
@@ -75,6 +91,9 @@ export default function InvoicePage() {
   const [pos, setPOs] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [lineItems, setLineItems] = useState([]);
 
   const [header, setHeader] = useState({
     invoice_no: "",
@@ -84,16 +103,28 @@ export default function InvoicePage() {
     total_amount: "",
     invoice_type: "INVOICE",
     gr_based: true,
-    payment_blocked: false
+    payment_blocked: false,
   });
 
   const [items, setItems] = useState([
-    { po_item_id: "", material_id: "", qty: "", price: "", tax_percent: "" }
+    { po_item_id: "", material_id: "", qty: "", price: "", tax_percent: "" },
   ]);
+
+  useEffect(() => {
+    const total = items.reduce((sum, it) => {
+      const qty = Number(it.qty) || 0;
+      const price = Number(it.price) || 0;
+      return sum + qty * price;
+    }, 0);
+    setHeader((prev) => ({ ...prev, total_amount: total }));
+  }, [items]);
 
   const loadRefs = async () => {
     try {
-      const [vRes, pRes] = await Promise.all([vendorApi.getAll(), poApi.getAll()]);
+      const [vRes, pRes] = await Promise.all([
+        vendorApi.getAll(),
+        poApi.getAll(),
+      ]);
       setVendors(vRes.data);
       setPOs(pRes.data);
     } catch (e) {
@@ -118,24 +149,47 @@ export default function InvoicePage() {
     loadInvoices();
   }, []);
 
+  // ----- NEW: Auto‑populate items when PO changes -----
+  const loadPOItems = async (poId) => {
+    if (!poId) return;
+    try {
+      const res = await poApi.getById(poId);
+      const poItems = res.data.items || [];
+      const newItems = poItems.map((item) => ({
+        po_item_id: item.id,
+        material_id: item.material_id,
+        qty: item.qty,
+        price: item.price,
+        tax_percent: 0,
+      }));
+      setItems(newItems);
+      // Pre‑fill vendor from PO header
+      const poHeader = res.data.header;
+      if (poHeader.vendor_id) {
+        setHeader((prev) => ({ ...prev, vendor_id: poHeader.vendor_id }));
+      }
+    } catch (err) {
+      console.error("Failed to load PO items:", err);
+      alert("Could not load PO items");
+    }
+  };
+
+  // ----- Handlers -----
   const handleHeaderChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setHeader((h) => ({
-      ...h,
-      [name]: type === "checkbox" ? checked : value
-    }));
+    setHeader((h) => ({ ...h, [name]: type === "checkbox" ? checked : value }));
   };
 
   const handleItemChange = (index, field, value) => {
     setItems((prev) =>
-      prev.map((it, i) => (i === index ? { ...it, [field]: value } : it))
+      prev.map((it, i) => (i === index ? { ...it, [field]: value } : it)),
     );
   };
 
   const addItemRow = () => {
     setItems((prev) => [
       ...prev,
-      { po_item_id: "", material_id: "", qty: "", price: "", tax_percent: "" }
+      { po_item_id: "", material_id: "", qty: "", price: "", tax_percent: "" },
     ]);
   };
 
@@ -147,7 +201,7 @@ export default function InvoicePage() {
           ...header,
           vendor_id: Number(header.vendor_id),
           po_id: header.po_id ? Number(header.po_id) : null,
-          total_amount: Number(header.total_amount) || 0
+          total_amount: Number(header.total_amount) || 0,
         },
         items: items
           .filter((it) => it.material_id && it.qty && it.price)
@@ -157,13 +211,12 @@ export default function InvoicePage() {
             material_id: Number(it.material_id),
             qty: Number(it.qty),
             price: Number(it.price),
-            tax_percent: Number(it.tax_percent) || 0
-          }))
+            tax_percent: Number(it.tax_percent) || 0,
+          })),
       };
-
       const res = await invoiceApi.create(payload);
       alert(`Invoice saved: ${res.data.invoice_no} (${res.data.status})`);
-
+      // Reset form
       setHeader({
         invoice_no: "",
         invoice_date: "",
@@ -172,10 +225,16 @@ export default function InvoicePage() {
         total_amount: "",
         invoice_type: "INVOICE",
         gr_based: true,
-        payment_blocked: false
+        payment_blocked: false,
       });
       setItems([
-        { po_item_id: "", material_id: "", qty: "", price: "", tax_percent: "" }
+        {
+          po_item_id: "",
+          material_id: "",
+          qty: "",
+          price: "",
+          tax_percent: "",
+        },
       ]);
       await loadInvoices();
     } catch (e) {
@@ -184,12 +243,68 @@ export default function InvoicePage() {
     }
   };
 
+  // ----- Verification Actions (same as before) -----
+  const verifyInvoice = async (id) => {
+    if (!window.confirm("Approve this invoice? Status will become VERIFIED."))
+      return;
+    try {
+      await invoiceApi.verify(id);
+      alert("Invoice verified");
+      await loadInvoices();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to verify invoice");
+    }
+  };
+
+  const togglePaymentBlock = async (id, currentBlocked) => {
+    const action = currentBlocked ? "release payment block" : "block payment";
+    if (!window.confirm(`Are you sure you want to ${action} for this invoice?`))
+      return;
+    try {
+      await invoiceApi.toggleBlock(id);
+      alert(`Payment ${currentBlocked ? "released" : "blocked"}`);
+      await loadInvoices();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update payment block");
+    }
+  };
+
+  const viewLineItems = async (invoice) => {
+    setSelectedInvoice(invoice);
+    try {
+      const res = await invoiceApi.getLineItems(invoice.id);
+      setLineItems(res.data);
+      setModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert("Could not load line items");
+    }
+  };
+
+  const statusBadgeStyle = (status) => {
+    switch (status) {
+      case "VERIFIED":
+        return { backgroundColor: "#10b981", color: "#fff" };
+      case "PENDING":
+        return { backgroundColor: "#f59e0b", color: "#fff" };
+      case "BLOCKED_MANUAL":
+      case "BLOCKED_DUE_TO_VARIANCE":
+        return { backgroundColor: "#dc2626", color: "#fff" };
+      default:
+        return { backgroundColor: "#6b7280", color: "#fff" };
+    }
+  };
+
   return (
     <div>
-      <div style={titleStyle}>Vendor Invoices</div>
+      <div style={titleStyle}>Vendor Invoices & Verification</div>
 
+      {/* Manual Invoice Entry Form */}
       <div style={cardStyle}>
         <form onSubmit={handleSubmit}>
+          {/* ... header fields (same as before, with PO onChange updated) ... */}
           <div style={formRowStyle}>
             <label style={labelStyle}>
               Invoice No
@@ -222,7 +337,7 @@ export default function InvoicePage() {
                 <option value="">Select</option>
                 {vendors.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.name}
+                    {v.name} ({v.type || "Vendor"})
                   </option>
                 ))}
               </select>
@@ -236,7 +351,10 @@ export default function InvoicePage() {
                 style={inputStyle}
                 name="po_id"
                 value={header.po_id}
-                onChange={handleHeaderChange}
+                onChange={(e) => {
+                  handleHeaderChange(e);
+                  loadPOItems(e.target.value);
+                }}
               >
                 <option value="">None</option>
                 {pos.map((po) => (
@@ -272,7 +390,13 @@ export default function InvoicePage() {
           </div>
 
           <div style={formRowStyle}>
-            <label style={{ ...labelStyle, flexDirection: "row", alignItems: "center" }}>
+            <label
+              style={{
+                ...labelStyle,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
               <input
                 type="checkbox"
                 name="gr_based"
@@ -282,7 +406,13 @@ export default function InvoicePage() {
               />
               GR-based Invoice Verification
             </label>
-            <label style={{ ...labelStyle, flexDirection: "row", alignItems: "center" }}>
+            <label
+              style={{
+                ...labelStyle,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
               <input
                 type="checkbox"
                 name="payment_blocked"
@@ -294,13 +424,7 @@ export default function InvoicePage() {
             </label>
           </div>
 
-          <div
-            style={{
-              fontSize: "13px",
-              fontWeight: 500,
-              margin: "8px 0"
-            }}
-          >
+          <div style={{ fontSize: "13px", fontWeight: 500, margin: "8px 0" }}>
             Invoice Lines
           </div>
 
@@ -314,30 +438,27 @@ export default function InvoicePage() {
                   onChange={(e) =>
                     handleItemChange(idx, "po_item_id", e.target.value)
                   }
-                  placeholder="Optional link to PO item"
+                  placeholder="Optional"
                 />
               </label>
               <label style={labelStyle}>
-  Material Id
-  <input
-  style={inputStyle}
-  value={it.material_id}
-  onChange={(e) =>
-    handleItemChange(idx, "material_id", e.target.value)
-  }
-  required={!it.po_item_id}   // ✅ KEY FIX
-/>
-</label>
-
+                Material Id
+                <input
+                  style={inputStyle}
+                  value={it.material_id}
+                  onChange={(e) =>
+                    handleItemChange(idx, "material_id", e.target.value)
+                  }
+                  required={!it.po_item_id}
+                />
+              </label>
               <label style={labelStyle}>
                 Qty
                 <input
                   style={inputStyle}
                   type="number"
                   value={it.qty}
-                  onChange={(e) =>
-                    handleItemChange(idx, "qty", e.target.value)
-                  }
+                  onChange={(e) => handleItemChange(idx, "qty", e.target.value)}
                   required
                 />
               </label>
@@ -369,30 +490,30 @@ export default function InvoicePage() {
 
           <button
             type="button"
-            style={{ ...buttonStyle, backgroundColor: "#6b7280", marginRight: "8px" }}
+            style={{
+              ...buttonStyle,
+              backgroundColor: "#6b7280",
+              marginRight: "8px",
+            }}
             onClick={addItemRow}
           >
             + Add Line
           </button>
-
           <button type="submit" style={buttonStyle}>
             Save Invoice
           </button>
         </form>
       </div>
 
+      {/* Existing Invoices Table (verification actions) – same as before */}
       <div style={cardStyle}>
-        <div
-          style={{ fontSize: "14px", marginBottom: "8px", fontWeight: 500 }}
-        >
-          Existing Invoices
+        <div style={{ fontSize: "14px", marginBottom: "8px", fontWeight: 500 }}>
+          Existing Invoices (Verification)
         </div>
         {loading ? (
-          <div style={{ fontSize: "13px" }}>Loading...</div>
+          <div>Loading...</div>
         ) : invoices.length === 0 ? (
-          <div style={{ fontSize: "13px", color: "#6b7280" }}>
-            No invoices found.
-          </div>
+          <div>No invoices found.</div>
         ) : (
           <table style={tableStyle}>
             <thead>
@@ -405,6 +526,7 @@ export default function InvoicePage() {
                 <th style={thStyle}>Type</th>
                 <th style={thStyle}>Status</th>
                 <th style={thStyle}>Payment Blocked</th>
+                <th style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -413,17 +535,136 @@ export default function InvoicePage() {
                   <td style={tdStyle}>{inv.invoice_no}</td>
                   <td style={tdStyle}>{inv.invoice_date}</td>
                   <td style={tdStyle}>{inv.vendor_name}</td>
-                  <td style={tdStyle}>{inv.po_no}</td>
+                  <td style={tdStyle}>{inv.po_no || "-"}</td>
                   <td style={tdStyle}>{inv.total_amount}</td>
                   <td style={tdStyle}>{inv.invoice_type}</td>
-                  <td style={tdStyle}>{inv.status}</td>
+                  <td style={tdStyle}>
+                    <span
+                      style={{
+                        ...statusBadgeStyle(inv.status),
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                        fontSize: "11px",
+                        display: "inline-block",
+                      }}
+                    >
+                      {inv.status}
+                    </span>
+                  </td>
                   <td style={tdStyle}>{inv.payment_blocked ? "Yes" : "No"}</td>
+                  <td style={tdStyle}>
+                    <button
+                      style={{
+                        ...buttonStyle,
+                        padding: "4px 8px",
+                        fontSize: "11px",
+                        marginRight: "4px",
+                        backgroundColor: "#10b981",
+                      }}
+                      onClick={() => verifyInvoice(inv.id)}
+                      disabled={inv.status === "VERIFIED"}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      style={{
+                        ...buttonStyle,
+                        padding: "4px 8px",
+                        fontSize: "11px",
+                        marginRight: "4px",
+                        backgroundColor: "#f59e0b",
+                      }}
+                      onClick={() =>
+                        togglePaymentBlock(inv.id, inv.payment_blocked)
+                      }
+                    >
+                      {inv.payment_blocked ? "Release Block" : "Block Payment"}
+                    </button>
+                    <button
+                      style={{
+                        ...buttonStyle,
+                        padding: "4px 8px",
+                        fontSize: "11px",
+                        backgroundColor: "#6b7280",
+                      }}
+                      onClick={() => viewLineItems(inv)}
+                    >
+                      View Items
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      {/* Modal for Line Items */}
+      {modalOpen && selectedInvoice && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setModalOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: "8px",
+              padding: "20px",
+              maxWidth: "600px",
+              width: "90%",
+              maxHeight: "80%",
+              overflow: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0 }}>
+              Invoice: {selectedInvoice.invoice_no}
+            </h3>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Material</th>
+                  <th style={thStyle}>Qty</th>
+                  <th style={thStyle}>Price</th>
+                  <th style={thStyle}>Tax%</th>
+                  <th style={thStyle}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineItems.map((item, idx) => (
+                  <tr key={idx}>
+                    <td style={tdStyle}>
+                      {item.material_name || item.material_id}
+                    </td>
+                    <td style={tdStyle}>{item.qty}</td>
+                    <td style={tdStyle}>{item.price}</td>
+                    <td style={tdStyle}>{item.tax_percent}%</td>
+                    <td style={tdStyle}>
+                      {(item.qty * item.price).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ marginTop: "12px", textAlign: "right" }}>
+              <button onClick={() => setModalOpen(false)} style={buttonStyle}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
