@@ -21,7 +21,7 @@ export const createInvoice = async (req, res, next) => {
     const [rows] = await conn.query(
       `SELECT invoice_no FROM vendor_invoices
        WHERE invoice_no LIKE 'INV-%'
-       ORDER BY id DESC LIMIT 1`
+       ORDER BY id DESC LIMIT 1`,
     );
 
     let nextSeq = 1;
@@ -40,9 +40,9 @@ export const createInvoice = async (req, res, next) => {
         invoice_no: invoiceNo,
         status: "PENDING",
         gr_based: isGRBased,
-        payment_blocked: header.payment_blocked ? 1 : 0
+        payment_blocked: header.payment_blocked ? 1 : 0,
       },
-      conn
+      conn,
     );
 
     const invoiceId = hRes.insertId;
@@ -60,7 +60,7 @@ export const createInvoice = async (req, res, next) => {
         const [[po]] = await conn.query(
           `SELECT qty, price, material_id
            FROM po_items WHERE id = ?`,
-          [po_item_id]
+          [po_item_id],
         );
 
         if (!po) {
@@ -72,7 +72,7 @@ export const createInvoice = async (req, res, next) => {
         const [[gr]] = await conn.query(
           `SELECT COALESCE(SUM(received_qty),0) grn_qty
            FROM grn_items WHERE po_item_id = ?`,
-          [po_item_id]
+          [po_item_id],
         );
 
         const grnQty = Number(gr.grn_qty);
@@ -92,10 +92,10 @@ export const createInvoice = async (req, res, next) => {
           material_id,
           qty,
           price,
-          tax_percent: Number(tax_percent) || 0
+          tax_percent: Number(tax_percent) || 0,
         },
         invoiceId,
-        conn
+        conn,
       );
     }
 
@@ -117,7 +117,7 @@ export const createInvoice = async (req, res, next) => {
       `UPDATE vendor_invoices
        SET status = ?, payment_blocked = ?
        WHERE id = ?`,
-      [status, paymentBlocked, invoiceId]
+      [status, paymentBlocked, invoiceId],
     );
 
     await conn.commit();
@@ -126,12 +126,62 @@ export const createInvoice = async (req, res, next) => {
       id: invoiceId,
       invoice_no: invoiceNo,
       status,
-      payment_blocked: !!paymentBlocked
+      payment_blocked: !!paymentBlocked,
     });
   } catch (err) {
     await conn.rollback();
     next(err);
   } finally {
     conn.release();
+  }
+};
+
+// Verify invoice (set status = 'VERIFIED')
+export const verifyInvoice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await db.query(
+      `UPDATE vendor_invoices SET status = 'VERIFIED' WHERE id = ?`,
+      [id],
+    );
+    res.json({ success: true, status: "VERIFIED" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Toggle payment block flag
+export const togglePaymentBlock = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const [[inv]] = await db.query(
+      `SELECT payment_blocked FROM vendor_invoices WHERE id = ?`,
+      [id],
+    );
+    const newBlocked = inv.payment_blocked ? 0 : 1;
+    await db.query(
+      `UPDATE vendor_invoices SET payment_blocked = ? WHERE id = ?`,
+      [newBlocked, id],
+    );
+    res.json({ success: true, payment_blocked: newBlocked });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get invoice line items
+export const getInvoiceItems = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await db.query(
+      `SELECT ii.*, m.name as material_name
+       FROM invoice_items ii
+       JOIN materials m ON ii.material_id = m.id
+       WHERE ii.invoice_id = ?`,
+      [id],
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
   }
 };
