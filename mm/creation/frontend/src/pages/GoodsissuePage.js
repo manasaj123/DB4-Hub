@@ -140,6 +140,7 @@ export default function GoodsissuePage() {
   const [selectedPoId, setSelectedPoId] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [batchesByItem, setBatchesByItem] = useState({}); // { itemIndex: { batches: [], selectedBatchId } }
 
   const [header, setHeader] = useState({
     gi_no: "",
@@ -234,6 +235,7 @@ export default function GoodsissuePage() {
     if (!poId) {
       setItems([]);
       setHeader((h) => ({ ...h, po_id: "", plant: "" }));
+      setBatchesByItem({});
       return;
     }
     const res = await poApi.getById(poId);
@@ -246,17 +248,42 @@ export default function GoodsissuePage() {
       plant: poHeader.plant || h.plant,
     }));
 
-    setItems(
-      poItems.map((it) => ({
-        po_item_id: it.id,
-        material_id: it.material_id,
-        material_desc: it.material_name || it.description || "",
-        qty: formatNumber(it.qty),
-        storage_location: poHeader.storage_location || "",
-        stock_type: "UNRESTRICTED",
-        unit_cost: it.price || 0,
-      })),
-    );
+    // 1. Create items array without batch_id
+    const newItems = poItems.map((it) => ({
+      po_item_id: it.id,
+      material_id: it.material_id,
+      material_desc: it.material_name || it.description || "",
+      qty: formatNumber(it.qty),
+      storage_location: poHeader.storage_location || "",
+      stock_type: "UNRESTRICTED",
+      unit_cost: it.price || 0,
+      batch_id: null, // will be set after fetching batches
+    }));
+
+    // 2. Fetch batches and update items & batchesByItem
+    const newBatchesByItem = {};
+    for (let i = 0; i < newItems.length; i++) {
+      const item = newItems[i];
+      const batchesRes = await giApi.getAvailableBatches(
+        item.material_id,
+        header.location_id || 1,
+      );
+      const batches = batchesRes.data || [];
+      const selectedBatchId = batches.length > 0 ? batches[0].batch_id : null;
+
+      // Update the item's batch_id
+      newItems[i].batch_id = selectedBatchId;
+
+      // Store batch list and selected id for UI
+      newBatchesByItem[i] = {
+        batches,
+        selectedBatchId,
+      };
+    }
+
+    // 3. Set state once
+    setItems(newItems);
+    setBatchesByItem(newBatchesByItem);
   };
 
   const handleHeaderChange = (e) => {
@@ -334,6 +361,7 @@ export default function GoodsissuePage() {
       if (specialCharError) newErrors.plant = specialCharError;
     }
 
+    // Item validation loop (including batch)
     let hasValidItem = false;
     items.forEach((item, idx) => {
       if (item.material_id && item.qty) {
@@ -349,6 +377,11 @@ export default function GoodsissuePage() {
           );
           if (specialCharError)
             newErrors[`item_${idx}_storage_location`] = specialCharError;
+        }
+
+        // Batch validation (moved inside the loop)
+        if (!item.batch_id) {
+          newErrors[`item_${idx}_batch`] = "Please select a batch";
         }
       }
     });
@@ -597,6 +630,41 @@ export default function GoodsissuePage() {
                       {errors[`item_${idx}_qty`] && (
                         <div style={errorTextStyle}>
                           {errors[`item_${idx}_qty`]}
+                        </div>
+                      )}
+                    </label>
+                    <label style={labelStyle}>
+                      Batch
+                      <select
+                        value={batchesByItem[idx]?.selectedBatchId || ""}
+                        onChange={(e) => {
+                          const batchId = e.target.value;
+                          // Update local state for the dropdown
+                          const newBatches = { ...batchesByItem };
+                          newBatches[idx] = {
+                            ...newBatches[idx],
+                            selectedBatchId: batchId,
+                          };
+                          setBatchesByItem(newBatches);
+                          // Update the item's batch_id
+                          const newItems = [...items];
+                          newItems[idx].batch_id = batchId || null;
+                          setItems(newItems);
+                        }}
+                        style={inputStyle}
+                      >
+                        <option value="">-- Select Batch --</option>
+                        {(batchesByItem[idx]?.batches || []).map((batch) => (
+                          <option key={batch.batch_id} value={batch.batch_id}>
+                            {batch.batch_no} (Exp:{" "}
+                            {batch.expiry_date?.substring(0, 10)} | Avail:{" "}
+                            {batch.qty})
+                          </option>
+                        ))}
+                      </select>
+                      {errors[`item_${idx}_batch`] && (
+                        <div style={errorTextStyle}>
+                          {errors[`item_${idx}_batch`]}
                         </div>
                       )}
                     </label>
