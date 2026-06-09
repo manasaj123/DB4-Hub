@@ -194,6 +194,7 @@ export default function RequestForQuotationPage() {
   const [vendors, setVendors] = useState([]);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [viewRFQ, setViewRFQ] = useState(null);
   const [errors, setErrors] = useState({});
   const [statusFilter, setStatusFilter] = useState("");
 
@@ -220,7 +221,7 @@ export default function RequestForQuotationPage() {
     reference_pr_id: "",
     status: "Draft",
     quotation_valid_until: "",
-    currency: "USD",
+    currency: "INR",
     payment_terms: "Net 30",
   });
 
@@ -452,7 +453,7 @@ export default function RequestForQuotationPage() {
       reference_pr_id: "",
       status: "Draft",
       quotation_valid_until: "",
-      currency: "USD",
+      currency: "INR",
       payment_terms: "Net 30",
     });
     setItems([{ material_id: "", qty: "" }]);
@@ -659,7 +660,7 @@ export default function RequestForQuotationPage() {
       reference_pr_id: h.reference_pr_id || "",
       status: h.status || "Draft",
       quotation_valid_until: toInputDate(h.quotation_valid_until),
-      currency: h.currency || "USD",
+      currency: h.currency || "INR",
       payment_terms: h.payment_terms || "Net 30",
     });
 
@@ -1462,6 +1463,23 @@ export default function RequestForQuotationPage() {
                 <td style={styles.td}>{r.total_qty}</td>
                 <td style={styles.td}>{r.item_count}</td>
                 <td style={styles.td}>
+
+                  <button
+  type="button"
+  style={{
+    background: "#374151",
+    color: "white",
+    padding: "4px 10px",
+    marginRight: "4px",
+    borderRadius: "4px",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "12px",
+  }}
+  onClick={() => setViewRFQ(r)}
+>
+  View
+</button>
                   <button
                     type="button"
                     style={styles.editBtn}
@@ -1489,6 +1507,56 @@ export default function RequestForQuotationPage() {
           </tbody>
         </table>
       </div>
+        {/* RFQ View Popup */}
+      {viewRFQ && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              padding: "20px",
+              borderRadius: "8px",
+              width: "500px",
+            }}
+          >
+            <h3>RFQ Details</h3>
+
+            <p><b>RFQ No:</b> {viewRFQ.rfq_no}</p>
+            <p><b>Type:</b> {viewRFQ.rfq_type}</p>
+            <p><b>Status:</b> {viewRFQ.status}</p>
+            <p><b>Currency:</b> {viewRFQ.currency}</p>
+            <p><b>Payment Terms:</b> {viewRFQ.payment_terms}</p>
+            <p><b>Plant:</b> {viewRFQ.plant}</p>
+            <p><b>Reference PR:</b> {viewRFQ.reference_pr_id}</p>
+
+            <button
+              onClick={() => setViewRFQ(null)}
+              style={{
+                background: "#dc2626",
+                color: "white",
+                border: "none",
+                padding: "8px 15px",
+                borderRadius: "5px",
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

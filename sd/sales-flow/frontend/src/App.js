@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import SalesOrder from "./components/SalesOrder";
@@ -47,7 +47,9 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "16px"
+    marginBottom: "16px",
+    flexWrap: "wrap",
+    gap: "10px"
   },
   title: {
     margin: 0,
@@ -56,7 +58,8 @@ const styles = {
   nav: {
     display: "flex",
     gap: "8px",
-    flexWrap: "wrap"
+    flexWrap: "wrap",
+    alignItems: "center"
   },
   navButton: {
     padding: "6px 12px",
@@ -70,17 +73,59 @@ const styles = {
     padding: "6px 12px",
     borderRadius: "4px",
     border: "none",
-    backgroundColor: "#d9534f",
+    backgroundColor: "#fd140c",
     color: "#fff",
     cursor: "pointer",
     fontSize: "14px"
+  },
+  userInfo: {
+    fontSize: "12px",
+    color: "#666",
+    marginRight: "8px"
+  },
+  roleBadge: {
+    padding: "2px 8px",
+    borderRadius: "4px",
+    fontSize: "11px",
+    fontWeight: "bold"
   }
 };
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
-  const [authView, setAuthView] = useState("login"); // "login" or "register"
+  const [authView, setAuthView] = useState("login");
   const [view, setView] = useState("orders");
+  const [userRole, setUserRole] = useState("viewer");
+  const [userEmail, setUserEmail] = useState("");
+
+  // Decode token to get user info and role
+  useEffect(() => {
+    if (token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const payload = JSON.parse(jsonPayload);
+        console.log("Token decoded:", payload);
+        
+        setUserRole(payload.role || "viewer");
+        setUserEmail(payload.email || "");
+      } catch (e) {
+        console.error("Error decoding token:", e);
+        setUserRole("viewer");
+      }
+    }
+  }, [token]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setToken("");
+    setUserRole("viewer");
+    setUserEmail("");
+  };
 
   if (!token) {
     if (authView === "register") {
@@ -99,7 +144,10 @@ function App() {
     return (
       <div style={styles.page}>
         <div style={styles.authWrapper}>
-          <Login onLogin={setToken} />
+          <Login onLogin={(newToken) => {
+            setToken(newToken);
+            localStorage.setItem("token", newToken);
+          }} />
           <p style={styles.authBottomText}>
             No account?{" "}
             <button
@@ -119,45 +167,46 @@ function App() {
     <div style={styles.page}>
       <div style={styles.appShell}>
         <header style={styles.header}>
-          <h2 style={styles.title}>Sales Order – Delivery – Billing</h2>
+          <div>
+            <h2 style={styles.title}>Sales Order – Delivery – Billing</h2>
+            {userEmail && (
+              <span style={styles.userInfo}>
+                Logged in as: <strong>{userEmail}</strong>
+                <span style={{
+                  ...styles.roleBadge,
+                  backgroundColor: userRole === "admin" ? "#d4edda" : "#cce5ff",
+                  color: userRole === "admin" ? "#155724" : "#004085",
+                  marginLeft: "8px"
+                }}>
+                  {userRole === "admin" ? "🔧 Admin" : "👁️ Viewer"}
+                </span>
+              </span>
+            )}
+          </div>
           <nav style={styles.nav}>
             <button style={styles.navButton} onClick={() => setView("orders")}>
-              Orders
+              📋 Orders
             </button>
-            <button
-              style={styles.navButton}
-              onClick={() => setView("delivery")}
-            >
-              Delivery
+            <button style={styles.navButton} onClick={() => setView("delivery")}>
+              🚚 Delivery
             </button>
-            <button
-              style={styles.navButton}
-              onClick={() => setView("billing")}
-            >
-              Billing
+            <button style={styles.navButton} onClick={() => setView("billing")}>
+              💰 Billing
             </button>
-            <button
-              style={styles.navButton}
-              onClick={() => setView("reports")}
-            >
-              Reports
+            <button style={styles.navButton} onClick={() => setView("reports")}>
+              📊 Reports
             </button>
-            <button
-              style={styles.logoutButton}
-              onClick={() => {
-                localStorage.removeItem("token");
-                setToken("");
-              }}
-            >
-              Logout
+            <button style={styles.logoutButton} onClick={handleLogout}>
+              🚪 Logout
             </button>
           </nav>
         </header>
 
-        {view === "orders" && <SalesOrder token={token} />}
-        {view === "delivery" && <Delivery token={token} />}
-        {view === "billing" && <Billing token={token} />}
-        {view === "reports" && <Reports token={token} />}
+        {/* Pass token AND userRole to all components */}
+        {view === "orders" && <SalesOrder token={token} userRole={userRole} />}
+        {view === "delivery" && <Delivery token={token} userRole={userRole} />}
+        {view === "billing" && <Billing token={token} userRole={userRole} />}
+        {view === "reports" && <Reports token={token} userRole={userRole} />}
       </div>
     </div>
   );

@@ -3,9 +3,9 @@ import React from "react";
 const tableStyle = {
   width: "100%",
   borderCollapse: "separate",
-  borderSpacing: "0 8px",
-  fontSize: "13px",
-  background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+  borderSpacing: "0 12px",
+  fontSize: "14px",
+  background: "#ffffff",
 };
 
 const thStyle = {
@@ -19,11 +19,11 @@ const thStyle = {
 };
 
 const tdStyle = {
-  padding: "12px 16px",
+  padding: "14px",
   backgroundColor: "#ffffff",
-  borderRadius: "8px",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-  transition: "all 0.2s ease",
+  borderRadius: "12px",
+  boxShadow: "0 3px 12px rgba(0,0,0,0.08)",
+  verticalAlign: "top",
 };
 
 const actionBtnStyle = {
@@ -68,7 +68,12 @@ const nonPerishableTagStyle = {
   fontSize: "11px",
 };
 
-export default function MaterialList({ data, onEdit, onDelete }) {
+export default function MaterialList({
+  data,
+  onEdit,
+  onDelete,
+  onView
+}) {
   if (!data || data.length === 0) {
     return (
       <div
@@ -88,7 +93,14 @@ export default function MaterialList({ data, onEdit, onDelete }) {
   }
 
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div
+  style={{
+    overflowX: "auto",
+    padding: "10px",
+    background: "#f8fafc",
+    borderRadius: "16px",
+  }}
+>
       <table style={tableStyle}>
         <thead>
           <tr>
@@ -224,27 +236,40 @@ export default function MaterialList({ data, onEdit, onDelete }) {
 
                 {/* Actions */}
                 <td style={tdStyle}>
-                  <button
-                    style={editBtnStyle}
-                    onClick={() => onEdit(m)}
-                    onMouseOver={(e) =>
-                      (e.target.style.transform = "translateY(-2px)")
-                    }
-                    onMouseOut={(e) => (e.target.style.transform = "none")}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    style={deleteBtnStyle}
-                    onClick={() => onDelete(m.id)}
-                    onMouseOver={(e) =>
-                      (e.target.style.transform = "translateY(-2px)")
-                    }
-                    onMouseOut={(e) => (e.target.style.transform = "none")}
-                  >
-                    Delete
-                  </button>
-                </td>
+  <button
+    style={{
+      ...actionBtnStyle,
+      backgroundColor: "#374151",
+      color: "#fff",
+      marginBottom: "6px",
+    }}
+    onClick={() => onView(m)}
+  >
+    View
+  </button>
+
+  <button
+    style={editBtnStyle}
+    onClick={() => onEdit(m)}
+    onMouseOver={(e) =>
+      (e.target.style.transform = "translateY(-2px)")
+    }
+    onMouseOut={(e) => (e.target.style.transform = "none")}
+  >
+    Edit
+  </button>
+
+  <button
+    style={deleteBtnStyle}
+    onClick={() => onDelete(m.id)}
+    onMouseOver={(e) =>
+      (e.target.style.transform = "translateY(-2px)")
+    }
+    onMouseOut={(e) => (e.target.style.transform = "none")}
+  >
+    Delete
+  </button>
+</td>
               </tr>
             );
           })}

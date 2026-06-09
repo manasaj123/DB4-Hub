@@ -32,6 +32,7 @@ export default function MaterialPage() {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
+  const [viewMaterial, setViewMaterial] = useState(null);
 
   const loadData = async () => {
     try {
@@ -67,6 +68,12 @@ export default function MaterialPage() {
   const handleEdit = (material) => {
     setEditingMaterial(material);
   };
+  const handleView = (material) => {
+  setViewMaterial(material);
+};
+const closeView = () => {
+  setViewMaterial(null);
+};
 
   // src/pages/MaterialPage.js
 
@@ -87,6 +94,7 @@ const handleDelete = async (id) => {
   const handleCancelEdit = () => {
     setEditingMaterial(null);
   };
+  
 
   return (
     <div style={pageContainer}>
@@ -115,11 +123,73 @@ const handleDelete = async (id) => {
           </div>
         ) : (
           <MaterialList
-            data={materials}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+  data={materials}
+  onEdit={handleEdit}
+  onDelete={handleDelete}
+  onView={handleView}
+/>
         )}
+        {viewMaterial && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      backgroundColor: "rgba(0,0,0,0.5)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999,
+    }}
+  >
+    <div
+      style={{
+        background: "#fff",
+        padding: "25px",
+        borderRadius: "12px",
+        width: "600px",
+        maxHeight: "80vh",
+        overflowY: "auto",
+      }}
+    >
+      <h2>Material Details</h2>
+
+      <p><b>Material Number:</b> {viewMaterial.material_number}</p>
+      <p><b>Name:</b> {viewMaterial.name}</p>
+      <p><b>Quantity:</b> {viewMaterial.qty}</p>
+      <p><b>UOM:</b> {viewMaterial.uom}</p>
+      <p><b>Material Type:</b> {viewMaterial.material_type}</p>
+      <p><b>Material Group:</b> {viewMaterial.material_group}</p>
+      <p><b>Warehouse:</b> {viewMaterial.warehouse_number}</p>
+      <p><b>Storage Location:</b> {viewMaterial.storage_location}</p>
+      <p><b>Storage Type:</b> {viewMaterial.storage_type}</p>
+      <p><b>Sales Org:</b> {viewMaterial.sales_org}</p>
+      <p><b>Distribution Channel:</b> {viewMaterial.distribution_channel}</p>
+      <p><b>Gross Weight:</b> {viewMaterial.gross_weight}</p>
+      <p><b>Net Weight:</b> {viewMaterial.net_weight}</p>
+      <p><b>Shelf Life:</b> {viewMaterial.shelf_life_days} days</p>
+      <p><b>Valuation Method:</b> {viewMaterial.valuation_method}</p>
+      <p><b>Issue Type:</b> {viewMaterial.issue_type}</p>
+
+      <button
+        onClick={closeView}
+        style={{
+          marginTop: "15px",
+          padding: "8px 16px",
+          background: "#2563eb",
+          color: "#fff",
+          border: "none",
+          borderRadius: "6px",
+          cursor: "pointer",
+        }}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
