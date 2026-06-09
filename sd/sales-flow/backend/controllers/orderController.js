@@ -256,3 +256,22 @@ exports.updateOrder = async (req, res) => {
     });
   }
 };
+
+// controllers/orderController.js - Add this function
+exports.deleteOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const order = await Order.findByPk(id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    
+    await order.destroy();
+    
+    res.json({ message: `Order #${id} deleted successfully` });
+  } catch (err) {
+    console.error("Delete order error:", err);
+    res.status(500).json({ message: err.message || "Failed to delete order" });
+  }
+};

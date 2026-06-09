@@ -1,3 +1,4 @@
+// api/orderApi.js
 import axios from "axios";
 const API_URL = "http://localhost:5007/api/orders";
 
@@ -15,9 +16,16 @@ export const createOrderApi = async (token, order) => {
   return res.data;
 };
 
-// ADD THIS FUNCTION - it must be here
 export const updateOrderApi = async (token, orderId, orderData) => {
   const res = await axios.put(`${API_URL}/${orderId}`, orderData, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data;
+};
+
+
+export const deleteOrderApi = async (token, orderId) => {
+  const res = await axios.delete(`${API_URL}/${orderId}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
   return res.data;

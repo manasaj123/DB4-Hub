@@ -4,13 +4,13 @@ import { registerApi } from "../api/authApi";
 const styles = {
   container: {
     background: "linear-gradient(45deg, #06143fff, #0d253aff)",
-    width: "340px",
+    width: "360px",
     padding: "24px",
     borderRadius: "8px",
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     fontFamily: "Arial, sans-serif",
     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-    color:"#fff"
+    color: "#fff"
   },
   title: {
     textAlign: "center",
@@ -23,6 +23,16 @@ const styles = {
     borderRadius: "4px",
     border: "1px solid #ccc",
     boxSizing: "border-box"
+  },
+  select: {
+    width: "100%",
+    padding: "8px",
+    marginBottom: "10px",
+    borderRadius: "4px",
+    border: "1px solid #ccc",
+    boxSizing: "border-box",
+    backgroundColor: "white",
+    fontSize: "14px"
   },
   passwordWrapper: {
     position: "relative",
@@ -51,12 +61,14 @@ const styles = {
   },
   button: {
     width: "100%",
-    padding: "8px",
+    padding: "10px",
     border: "none",
     borderRadius: "4px",
     backgroundColor: "#5b799aff",
     color: "#fff",
-    cursor: "pointer"
+    cursor: "pointer",
+    fontSize: "15px",
+    fontWeight: "bold"
   },
   linkButton: {
     border: "none",
@@ -67,16 +79,22 @@ const styles = {
     textDecoration: "underline"
   },
   error: {
-    color: "red",
+    color: "#ff4444",
     marginBottom: "8px",
     textAlign: "center",
-    fontSize: "13px"
+    fontSize: "13px",
+    padding: "8px",
+    backgroundColor: "rgba(255, 68, 68, 0.1)",
+    borderRadius: "4px"
   },
   success: {
-    color: "green",
+    color: "#00c851",
     marginBottom: "8px",
     textAlign: "center",
-    fontSize: "13px"
+    fontSize: "13px",
+    padding: "8px",
+    backgroundColor: "rgba(0, 200, 81, 0.1)",
+    borderRadius: "4px"
   },
   footerText: {
     marginTop: "10px",
@@ -94,6 +112,13 @@ const styles = {
     marginTop: "2px",
     borderRadius: "2px",
     transition: "width 0.3s, background-color 0.3s"
+  },
+  roleInfo: {
+    fontSize: "11px",
+    color: "#aaa",
+    marginTop: "-8px",
+    marginBottom: "10px",
+    textAlign: "left"
   }
 };
 
@@ -101,6 +126,7 @@ const Register = ({ onRegisterSuccess, switchToLogin }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("viewer"); // Default role: viewer
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -118,18 +144,15 @@ const Register = ({ onRegisterSuccess, switchToLogin }) => {
 
     let score = 0;
     
-    // Length checks
     if (pwd.length >= 6) score += 1;
     if (pwd.length >= 8) score += 1;
     if (pwd.length >= 12) score += 1;
     
-    // Character variety checks
     if (/[a-z]/.test(pwd)) score += 1;
     if (/[A-Z]/.test(pwd)) score += 1;
     if (/[0-9]/.test(pwd)) score += 1;
     if (/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) score += 1;
 
-    // Determine strength level
     let strengthLevel = 0;
     let strengthText = "";
     let strengthColor = "";
@@ -168,13 +191,11 @@ const Register = ({ onRegisterSuccess, switchToLogin }) => {
     setError("");
     setMessage("");
 
-    // Validate name
     if (!name.trim()) {
       setError("Name is required");
       return;
     }
 
-    // Convert email to lowercase and validate
     const lowercaseEmail = email.toLowerCase().trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
@@ -188,7 +209,6 @@ const Register = ({ onRegisterSuccess, switchToLogin }) => {
       return;
     }
 
-    // Validate password
     if (!password) {
       setError("Password is required");
       return;
@@ -199,19 +219,19 @@ const Register = ({ onRegisterSuccess, switchToLogin }) => {
       return;
     }
 
-    // Optional: Uncomment if you want to enforce strong passwords
-     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-       setError("Password must contain uppercase, lowercase and numbers");
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      setError("Password must contain uppercase, lowercase and numbers");
       return;
     }
 
     try {
-      await registerApi(name.trim(), lowercaseEmail, password);
+      // Pass role to register API
+      await registerApi(name.trim(), lowercaseEmail, password, role);
       setMessage("Registration successful! You can now login.");
-      // Clear form
       setName("");
       setEmail("");
       setPassword("");
+      setRole("viewer");
       setPasswordStrength({ level: 0, text: "", color: "" });
       if (onRegisterSuccess) onRegisterSuccess(lowercaseEmail, password);
     } catch (err) {
@@ -224,7 +244,6 @@ const Register = ({ onRegisterSuccess, switchToLogin }) => {
   };
 
   const handleEmailChange = (e) => {
-    // Allow typing in any case, but we'll convert to lowercase on submit
     setEmail(e.target.value);
   };
 
@@ -243,7 +262,7 @@ const Register = ({ onRegisterSuccess, switchToLogin }) => {
       <form onSubmit={handleSubmit}>
         <input
           style={styles.input}
-          placeholder="Name"
+          placeholder="Full Name *"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -251,17 +270,19 @@ const Register = ({ onRegisterSuccess, switchToLogin }) => {
         
         <input
           style={styles.input}
-          placeholder="Email"
+          placeholder="Email Address *"
           type="email"
           value={email}
           onChange={handleEmailChange}
           required
         />
         
+       
+        
         <div style={styles.passwordWrapper}>
           <input
             style={styles.passwordInput}
-            placeholder="Password"
+            placeholder="Password *"
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={handlePasswordChange}
@@ -289,9 +310,25 @@ const Register = ({ onRegisterSuccess, switchToLogin }) => {
             }} />
           </div>
         )}
+
+         {/* Role Selection Dropdown */}
+        <select
+          style={styles.select}
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          required
+        >
+          <option value="viewer"> Viewer </option>
+          <option value="admin"> Admin</option>
+        </select>
+        <div style={styles.roleInfo}>
+          {role === "admin" 
+            ? "Admin can create, edit, and delete data" 
+            : "Viewer can only view data (read-only access)"}
+        </div>
         
         <button style={styles.button} type="submit">
-          Register
+          Register as {role === "admin" ? "Admin" : "Viewer"}
         </button>
       </form>
 

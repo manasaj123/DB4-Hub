@@ -3,12 +3,16 @@ const { User } = require("../models");
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
     
     // Input validation
     if (!name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
+
+    // Validate role
+    const validRoles = ["admin", "viewer"];
+    const userRole = validRoles.includes(role) ? role : "viewer";
 
     // Check if email already exists (case insensitive)
     const existingUser = await User.findOne({ 
@@ -19,14 +23,14 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    // Create user with lowercase email
+    // Create user with lowercase email and role
     const user = await User.create({ 
       name, 
       email: email.toLowerCase(), 
-      password  // Note: In production, hash the password here
+      password,
+      role: userRole  // Save the role
     });
     
-    // Don't send password back
     const userResponse = {
       id: user.id,
       name: user.name,
@@ -53,7 +57,6 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Find user by email (case insensitive)
     const user = await User.findOne({ 
       where: { email: email.toLowerCase() } 
     });
@@ -62,7 +65,6 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Compare passwords (case sensitive for now since passwords are plain text)
     if (user.password !== password) {
       return res.status(400).json({ message: "Invalid credentials" });
     }

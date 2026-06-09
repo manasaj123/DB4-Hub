@@ -177,6 +177,7 @@ export default function POPage() {
   const [rfqVendorsList, setRfqVendorsList] = useState([]);
 
   const [editingId, setEditingId] = useState(null);
+  const [viewPO, setViewPO] = useState(null);
 
   const [header, setHeader] = useState({
     po_no: "",
@@ -1189,6 +1190,19 @@ export default function POPage() {
                   <td style={tdStyle}>{po.source_type}</td>
                   <td style={tdStyle}>
                     <button
+  style={{
+    ...buttonStyle,
+    padding: "4px 8px",
+    marginRight: "4px",
+    fontSize: "12px",
+    backgroundColor: "#374151",
+  }}
+  type="button"
+  onClick={() => setViewPO(po)}
+>
+  View
+</button>
+                    <button
                       style={{
                         ...buttonStyle,
                         padding: "4px 8px",
@@ -1219,6 +1233,57 @@ export default function POPage() {
           </table>
         )}
       </div>
+      {viewPO && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      backgroundColor: "rgba(0,0,0,0.5)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999,
+    }}
+  >
+    <div
+      style={{
+        background: "#fff",
+        padding: "25px",
+        borderRadius: "10px",
+        minWidth: "500px",
+        maxWidth: "700px",
+      }}
+    >
+      <h3>PO Details</h3>
+
+      <p><b>PO No:</b> {viewPO.po_no}</p>
+      <p><b>Date:</b> {viewPO.po_date}</p>
+      <p><b>Vendor:</b> {viewPO.vendor_name}</p>
+      <p><b>Status:</b> {viewPO.status}</p>
+      <p><b>Amount:</b> {viewPO.gross_amount}</p>
+      <p><b>PO Type:</b> {viewPO.po_type}</p>
+      <p><b>Source Type:</b> {viewPO.source_type}</p>
+
+      <button
+        onClick={() => setViewPO(null)}
+        style={{
+          background: "#dc2626",
+          color: "white",
+          border: "none",
+          padding: "8px 15px",
+          borderRadius: "5px",
+          cursor: "pointer",
+        }}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
