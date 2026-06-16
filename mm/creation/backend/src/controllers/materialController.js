@@ -1,4 +1,7 @@
 import { Material } from "../models/Material.js";
+import axios from "axios";
+
+const INTEGRATION_HUB = "http://localhost:3000";
 
 export const getMaterials = async (req, res, next) => {
   try {
@@ -11,18 +14,36 @@ export const getMaterials = async (req, res, next) => {
 
 export const createMaterial = async (req, res, next) => {
   try {
-    // Model will generate material_number = DB4-MAT-00X
+    // 1. Create material in MM Creation (YOUR EXISTING CODE)
     const [result] = await Material.create(req.body);
-
-    // return generated number to frontend
     const [rows] = await Material.findById(result.insertId);
     const created = rows[0] || null;
 
+    // 2. 🆕 Send to Integration Hub (UPDATED - includes material_number)
+    try {
+      await axios.post(`${INTEGRATION_HUB}/api/material/sync`, {
+        source: "mm_creation",
+        material: {
+          id: result.insertId,
+          name: created.name,
+          uom: created.uom,
+          shelf_life_days: created.shelf_life_days,
+          material_number: created.material_number, // ← ADD THIS LINE
+          material_type: created.material_type, // ← ADD THIS LINE (optional)
+        },
+      });
+      console.log(
+        `✅ Material "${created.name}" (${created.material_number}) sent to integration hub`,
+      );
+    } catch (syncError) {
+      console.error("Sync failed:", syncError.message);
+      // Don't fail the request - material still created in MM Creation
+    }
+
+    // 3. Return response (YOUR EXISTING CODE)
     res.status(201).json({
       id: result.insertId,
       material_number: created?.material_number || null,
-      // if you want, you can include qty and other fields here too:
-      // qty: created?.qty ?? null
     });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {

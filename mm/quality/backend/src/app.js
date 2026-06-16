@@ -4,6 +4,7 @@ import qcLotRoutes from "./routes/qcLotRoutes.js";
 import qcMasterRoutes from "./routes/qcMasterRoutes.js";
 import capaRoutes from "./routes/capaRoutes.js";
 import qcSummaryRoutes from "./routes/qcSummaryRoutes.js";
+import integrationRoutes from "./routes/integrationRoutes.js"; // ← ADD THIS
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use("/api/qc/lots", qcLotRoutes);
 app.use("/api/qc/master", qcMasterRoutes);
 app.use("/api/qc/capa", capaRoutes);
 app.use("/api/qc", qcSummaryRoutes);
+app.use("/api/integration", integrationRoutes); // ← ADD THIS
 
 app.get("/health", (req, res) => {
   res.json({ ok: true });
