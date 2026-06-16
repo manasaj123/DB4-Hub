@@ -4,6 +4,8 @@ const db = require("../models");
 const { Op } = require("sequelize");
 const checkCreditLimit = require("../helpers/creditCheck");
 const determineItemCategory = require("../helpers/itemCategoryDetermination");
+const axios = require("axios");
+const INTEGRATION_HUB = "http://localhost:3000";
 
 // validation
 const validateSalesOrder = (data) => {
@@ -198,44 +200,37 @@ exports.getSalesOrderById = asyncHandler(async (req, res) => {
 // };
 
 // POST /api/sales-orders
+// POST /api/sales-orders
 exports.createSalesOrder = asyncHandler(async (req, res) => {
   try {
     req.body.orderType = (req.body.orderType || "").trim().toUpperCase();
-
     req.body.salesOrg = (req.body.salesOrg || "").trim().toUpperCase();
-
     req.body.distributionChannel = (req.body.distributionChannel || "")
       .trim()
       .toUpperCase();
-
     req.body.division = (req.body.division || "").trim().toUpperCase();
-
     req.body.salesOffice = (req.body.salesOffice || "").trim().toUpperCase();
-
     req.body.salesGroup = (req.body.salesGroup || "").trim().toUpperCase();
 
     // normalize optional refs
     if (req.body.referenceInquiryId === "") {
       req.body.referenceInquiryId = null;
     }
-
     if (req.body.referenceQuotationId === "") {
       req.body.referenceQuotationId = null;
     }
 
     const errors = validateSalesOrder(req.body);
-
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({ errors });
     }
 
-    // ======================== Sales Document Config lookup ========================
+    // Sales Document Config lookup
     const docConfig = await db.SalesDocumentConfig.findOne({
       where: { documentType: req.body.orderType, isDeleted: false },
     });
-    // ===========================================================================
 
-    // ---- Credit limit check (configurable) ----
+    // Credit limit check
     let orderAmount = 0;
     try {
       const items = JSON.parse(req.body.itemsJson || "[]");
@@ -264,7 +259,6 @@ exports.createSalesOrder = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: creditCheck.message });
       }
     }
-    // ---- End credit check ----
 
     // Enrich items with item category
     let parsedItems;
@@ -288,6 +282,28 @@ exports.createSalesOrder = asyncHandler(async (req, res) => {
     req.body.itemsJson = JSON.stringify(enrichedItems);
 
     const order = await db.SalesOrder.create(req.body);
+
+    // SEND WEBHOOK TO INTEGRATION HUB FOR TRACEABILITY
+    try {
+      const customer = await db.Customer.findByPk(req.body.soldToPartyId);
+      const items = JSON.parse(req.body.itemsJson || "[]");
+
+      for (const item of items) {
+        const material = await db.Material.findByPk(item.materialId);
+
+        await axios.post(`${INTEGRATION_HUB}/webhook/sales-order-created`, {
+          order_id: order.id,
+          order_number: order.id,
+          customer_name: customer?.name || "Unknown",
+          material_code: material?.materialCode || "Unknown",
+          quantity: item.quantity,
+          uom: item.uom,
+        });
+      }
+      console.log(`✅ Sales Order ${order.id} sent to integration hub`);
+    } catch (webhookError) {
+      console.error("Webhook failed:", webhookError.message);
+    }
 
     res.status(201).json(order);
   } catch (err) {
