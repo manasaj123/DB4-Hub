@@ -17,6 +17,9 @@ app.use('/api/report', require('./routes/report.routes'));
 app.use('/api/dispatch', require('./routes/dispatch.routes')); 
 app.use('/api/cycle-counts', require('./routes/cyclecount.routes'));
 
+// 🆕 ADD INTEGRATION ROUTE (NEW)
+app.use('/api/integration', require('./routes/integration.routes'));
+
 
 app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
 

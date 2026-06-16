@@ -12,6 +12,7 @@ const metricRoutes = require('./routes/metricRoutes');
 const productRoutes = require('./routes/productRoutes');
 const gradePackRoutes = require('./routes/gradePackRoutes');
 const bomRoutes = require('./routes/bom');
+const integrationRoutes = require('./routes/integration.routes');
 
 
 const app = express();
@@ -28,6 +29,7 @@ app.use('/api/metrics', metricRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/grade-packs', gradePackRoutes);
 app.use('/api/bom', bomRoutes);
+app.use('/api/integration', integrationRoutes);
 
 
 const port = process.env.PORT || 4000;

@@ -19,3 +19,4 @@ export const getCustomers = (req, res) => {
     res.json(data);
   });
 };
+

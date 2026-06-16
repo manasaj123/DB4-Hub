@@ -16,7 +16,7 @@ const inProcessInspectionRoutes = require("./routes/inProcessInspectionRoutes");
 const finalInspectionRoutes = require("./routes/finalInspectionRoutes");
 const defectRoutes = require("./routes/defectRoutes");
 const qualityNotificationRoutes = require("./routes/qualityNotificationRoutes");
-
+const integrationRoutes = require("./routes/integration.routes");
 
 const app = express();
 
@@ -36,8 +36,6 @@ app.use("/api", inProcessInspectionRoutes);
 app.use("/api", finalInspectionRoutes);
 app.use("/api", defectRoutes);
 app.use("/api", qualityNotificationRoutes);
-
-
-
+app.use("/api/integration", integrationRoutes);
 
 module.exports = app;
