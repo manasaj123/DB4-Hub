@@ -187,12 +187,13 @@ function App() {
             <button style={styles.navButton} onClick={() => setView("orders")}>
               📋 Orders
             </button>
-            <button style={styles.navButton} onClick={() => setView("delivery")}>
-              🚚 Delivery
-            </button>
             <button style={styles.navButton} onClick={() => setView("billing")}>
               💰 Billing
             </button>
+            <button style={styles.navButton} onClick={() => setView("delivery")}>
+              🚚 Delivery
+            </button>
+            
             <button style={styles.navButton} onClick={() => setView("reports")}>
               📊 Reports
             </button>

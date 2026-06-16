@@ -94,10 +94,12 @@ export default function RequestForQuotationPage() {
       padding: "8px 14px",
       marginTop: "15px",
       marginRight: "10px",
+      
       border: "none",
       borderRadius: "6px",
       cursor: "pointer",
       fontSize: "13px",
+      
     },
     addBtn: { background: "#2563eb", color: "white" },
     saveBtn: { background: "#16a34a", color: "white" },
@@ -120,6 +122,7 @@ export default function RequestForQuotationPage() {
       border: "none",
       cursor: "pointer",
       fontSize: "12px",
+       marginTop: "5px",
     },
     searchBox: {
       padding: "7px",
@@ -1471,6 +1474,7 @@ export default function RequestForQuotationPage() {
     color: "white",
     padding: "4px 10px",
     marginRight: "4px",
+    marginBottom: "4px",
     borderRadius: "4px",
     border: "none",
     cursor: "pointer",
@@ -1521,6 +1525,7 @@ export default function RequestForQuotationPage() {
             justifyContent: "center",
             alignItems: "center",
             zIndex: 9999,
+            
           }}
         >
           <div
@@ -1550,6 +1555,7 @@ export default function RequestForQuotationPage() {
                 padding: "8px 15px",
                 borderRadius: "5px",
                 cursor: "pointer",
+                
               }}
             >
               Close

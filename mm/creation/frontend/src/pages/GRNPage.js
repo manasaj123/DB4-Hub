@@ -100,6 +100,39 @@ const smallBtn = {
   marginRight: "4px",
 };
 
+// Modal styles
+const modalOverlayStyle = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.5)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 1000,
+};
+
+const modalContentStyle = {
+  backgroundColor: "#fff",
+  padding: "20px",
+  borderRadius: "8px",
+  width: "700px",
+  maxHeight: "80vh",
+  overflowY: "auto",
+};
+
+const modalCloseBtnStyle = {
+  marginTop: "15px",
+  padding: "8px 12px",
+  backgroundColor: "#dc2626",
+  color: "#fff",
+  border: "none",
+  borderRadius: "4px",
+  cursor: "pointer",
+};
+
 // Get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
   const today = new Date();
@@ -127,6 +160,8 @@ export default function GRNPage() {
   const [vendors, setVendors] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [viewGRN, setViewGRN] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const [header, setHeader] = useState({
     grn_no: "",
@@ -507,6 +542,22 @@ export default function GRNPage() {
     );
   };
 
+  const handleView = async (grn) => {
+    try {
+      const res = await grnApi.getById(grn.id);
+      setViewGRN(res.data);
+      setShowViewModal(true);
+    } catch (err) {
+      console.error("Failed to load GRN details", err);
+      alert("Could not load GRN details");
+    }
+  };
+
+  const closeViewModal = () => {
+    setShowViewModal(false);
+    setViewGRN(null);
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this GRN?")) return;
     await grnApi.deleteById(id);
@@ -519,391 +570,463 @@ export default function GRNPage() {
   };
 
   return (
-    <div>
-      <div style={titleStyle}>Goods Receipt (GRN)</div>
+    <>
+      <div>
+        <div style={titleStyle}>Goods Receipt (GRN)</div>
 
-      <div style={cardStyle}>
-        <form onSubmit={handleSubmit}>
-          <div style={formRowStyle}>
-            <label style={labelStyle}>
-              GRN No
-              <input
-                style={inputStyle}
-                value={
-                  editingId ? header.grn_no : header.grn_no || "Auto Generated"
-                }
-                disabled
-              />
-            </label>
-            <label style={labelStyle}>
-              GRN Date *
-              <input
-                style={getInputStyle("grn_date")}
-                type="date"
-                name="grn_date"
-                value={header.grn_date}
-                onChange={handleHeaderChange}
-                max={getTodayDate()}
-                required
-              />
-              {errors.grn_date && (
-                <div style={errorTextStyle}>{errors.grn_date}</div>
-              )}
-            </label>
-            <label style={labelStyle}>
-              Location Id
-              <input
-                style={inputStyle}
-                type="number"
-                name="location_id"
-                value={header.location_id}
-                onChange={handleHeaderChange}
-                min="1"
-              />
-            </label>
-          </div>
+        <div style={cardStyle}>
+          <form onSubmit={handleSubmit}>
+            <div style={formRowStyle}>
+              <label style={labelStyle}>
+                GRN No
+                <input
+                  style={inputStyle}
+                  value={
+                    editingId ? header.grn_no : header.grn_no || "Auto Generated"
+                  }
+                  disabled
+                />
+              </label>
+              <label style={labelStyle}>
+                GRN Date *
+                <input
+                  style={getInputStyle("grn_date")}
+                  type="date"
+                  name="grn_date"
+                  value={header.grn_date}
+                  onChange={handleHeaderChange}
+                  max={getTodayDate()}
+                  required
+                />
+                {errors.grn_date && (
+                  <div style={errorTextStyle}>{errors.grn_date}</div>
+                )}
+              </label>
+              <label style={labelStyle}>
+                Location Id
+                <input
+                  style={inputStyle}
+                  type="number"
+                  name="location_id"
+                  value={header.location_id}
+                  onChange={handleHeaderChange}
+                  min="1"
+                />
+              </label>
+            </div>
 
-          <div style={formRowStyle}>
-            <label style={labelStyle}>
-              PO *
-              <select
-                style={inputStyle}
-                value={selectedPoId}
-                onChange={(e) => handleSelectPO(e.target.value)}
-                required
-              >
-                <option value="">Select PO</option>
-                {poList
-                  .filter((po) => po.status !== "COMPLETED") // hide fully received POs
-                  .map((po) => (
-                    <option key={po.id} value={po.id}>
-                      {po.po_no} - {po.vendor_name}
+            <div style={formRowStyle}>
+              <label style={labelStyle}>
+                PO *
+                <select
+                  style={inputStyle}
+                  value={selectedPoId}
+                  onChange={(e) => handleSelectPO(e.target.value)}
+                  required
+                >
+                  <option value="">Select PO</option>
+                  {poList
+                    .filter((po) => po.status !== "COMPLETED")
+                    .map((po) => (
+                      <option key={po.id} value={po.id}>
+                        {po.po_no} - {po.vendor_name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label style={labelStyle}>
+                Vendor
+                <select
+                  style={inputStyle}
+                  name="vendor_id"
+                  value={header.vendor_id}
+                  onChange={handleHeaderChange}
+                  disabled
+                >
+                  <option value="">Select</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
                     </option>
                   ))}
-              </select>
-            </label>
-            <label style={labelStyle}>
-              Vendor
-              <select
-                style={inputStyle}
-                name="vendor_id"
-                value={header.vendor_id}
-                onChange={handleHeaderChange}
-                disabled
-              >
-                <option value="">Select</option>
-                {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={labelStyle}>
-              Status
-              <select
-                style={inputStyle}
-                name="status"
-                value={header.status}
-                onChange={handleHeaderChange}
-              >
-                <option value="POSTED">POSTED</option>
-                <option value="CANCELLED">CANCELLED</option>
-                <option value="DRAFT">DRAFT</option>
-              </select>
-            </label>
-          </div>
+                </select>
+              </label>
+              <label style={labelStyle}>
+                Status
+                <select
+                  style={inputStyle}
+                  name="status"
+                  value={header.status}
+                  onChange={handleHeaderChange}
+                >
+                  <option value="POSTED">POSTED</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                  <option value="DRAFT">DRAFT</option>
+                </select>
+              </label>
+            </div>
 
-          {items.length > 0 && (
-            <>
-              <div
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  margin: "8px 0",
-                }}
-              >
-                GRN Lines *
-              </div>
-              {items.map((it, idx) => {
-                const received = Number(it.received_qty) || 0;
-                const accepted = Number(it.accepted_qty) || 0;
-                const rejected = Number(it.rejected_qty) || 0;
-                const isValidSum =
-                  Math.abs(accepted + rejected - received) <= 0.01;
+            {items.length > 0 && (
+              <>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    margin: "8px 0",
+                  }}
+                >
+                  GRN Lines *
+                </div>
+                {items.map((it, idx) => {
+                  const received = Number(it.received_qty) || 0;
+                  const accepted = Number(it.accepted_qty) || 0;
+                  const rejected = Number(it.rejected_qty) || 0;
+                  const isValidSum =
+                    Math.abs(accepted + rejected - received) <= 0.01;
 
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      marginBottom: "16px",
-                      padding: "8px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    <div style={formRowStyle}>
-                      <label style={labelStyle}>
-                        Material ID
-                        <input
-                          style={inputStyle}
-                          value={it.material_id}
-                          disabled
-                        />
-                      </label>
-                      <label style={labelStyle}>
-                        Received Qty *
-                        <input
-                          style={getInputStyle(`item_${idx}_received_qty`)}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={it.received_qty}
-                          disabled
-                        />
-                        {errors[`item_${idx}_received_qty`] && (
-                          <div style={errorTextStyle}>
-                            {errors[`item_${idx}_received_qty`]}
-                          </div>
-                        )}
-                      </label>
-                      <label style={labelStyle}>
-                        Accepted Qty *
-                        <input
-                          style={getInputStyle(`item_${idx}_accepted_qty`)}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={it.accepted_qty}
-                          onChange={(e) =>
-                            handleItemChange(
-                              idx,
-                              "accepted_qty",
-                              e.target.value,
-                            )
-                          }
-                        />
-                        {errors[`item_${idx}_accepted_qty`] && (
-                          <div style={errorTextStyle}>
-                            {errors[`item_${idx}_accepted_qty`]}
-                          </div>
-                        )}
-                      </label>
-                      <label style={labelStyle}>
-                        Rejected Qty
-                        <input
-                          style={getInputStyle(`item_${idx}_rejected_qty`)}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={it.rejected_qty}
-                          onChange={(e) =>
-                            handleItemChange(
-                              idx,
-                              "rejected_qty",
-                              e.target.value,
-                            )
-                          }
-                        />
-                        {errors[`item_${idx}_rejected_qty`] && (
-                          <div style={errorTextStyle}>
-                            {errors[`item_${idx}_rejected_qty`]}
-                          </div>
-                        )}
-                      </label>
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        marginBottom: "16px",
+                        padding: "8px",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      <div style={formRowStyle}>
+                        <label style={labelStyle}>
+                          Material ID
+                          <input
+                            style={inputStyle}
+                            value={it.material_id}
+                            disabled
+                          />
+                        </label>
+                        <label style={labelStyle}>
+                          Received Qty *
+                          <input
+                            style={getInputStyle(`item_${idx}_received_qty`)}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={it.received_qty}
+                            disabled
+                          />
+                          {errors[`item_${idx}_received_qty`] && (
+                            <div style={errorTextStyle}>
+                              {errors[`item_${idx}_received_qty`]}
+                            </div>
+                          )}
+                        </label>
+                        <label style={labelStyle}>
+                          Accepted Qty *
+                          <input
+                            style={getInputStyle(`item_${idx}_accepted_qty`)}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={it.accepted_qty}
+                            onChange={(e) =>
+                              handleItemChange(
+                                idx,
+                                "accepted_qty",
+                                e.target.value,
+                              )
+                            }
+                          />
+                          {errors[`item_${idx}_accepted_qty`] && (
+                            <div style={errorTextStyle}>
+                              {errors[`item_${idx}_accepted_qty`]}
+                            </div>
+                          )}
+                        </label>
+                        <label style={labelStyle}>
+                          Rejected Qty
+                          <input
+                            style={getInputStyle(`item_${idx}_rejected_qty`)}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={it.rejected_qty}
+                            onChange={(e) =>
+                              handleItemChange(
+                                idx,
+                                "rejected_qty",
+                                e.target.value,
+                              )
+                            }
+                          />
+                          {errors[`item_${idx}_rejected_qty`] && (
+                            <div style={errorTextStyle}>
+                              {errors[`item_${idx}_rejected_qty`]}
+                            </div>
+                          )}
+                        </label>
+                      </div>
+
+                      <div style={formRowStyle}>
+                        <label style={labelStyle}>
+                          Batch No
+                          <input
+                            style={getInputStyle(`item_${idx}_batch_no`)}
+                            value={it.batch_no}
+                            onChange={(e) =>
+                              handleItemChange(idx, "batch_no", e.target.value)
+                            }
+                            placeholder="Letters, numbers, spaces and hyphens only"
+                          />
+                          {errors[`item_${idx}_batch_no`] && (
+                            <div style={errorTextStyle}>
+                              {errors[`item_${idx}_batch_no`]}
+                            </div>
+                          )}
+                        </label>
+                        <label style={labelStyle}>
+                          Mfg Date
+                          <input
+                            style={getInputStyle(`item_${idx}_mfg_date`)}
+                            type="date"
+                            value={it.mfg_date}
+                            onChange={(e) =>
+                              handleItemChange(idx, "mfg_date", e.target.value)
+                            }
+                            max={getTodayDate()}
+                          />
+                          {errors[`item_${idx}_mfg_date`] && (
+                            <div style={errorTextStyle}>
+                              {errors[`item_${idx}_mfg_date`]}
+                            </div>
+                          )}
+                        </label>
+                        <label style={labelStyle}>
+                          Expiry Date
+                          <input
+                            style={getInputStyle(`item_${idx}_expiry_date`)}
+                            type="date"
+                            value={it.expiry_date}
+                            onChange={(e) =>
+                              handleItemChange(idx, "expiry_date", e.target.value)
+                            }
+                            min={it.mfg_date || getTodayDate()}
+                          />
+                          {errors[`item_${idx}_expiry_date`] && (
+                            <div style={errorTextStyle}>
+                              {errors[`item_${idx}_expiry_date`]}
+                            </div>
+                          )}
+                        </label>
+                        <label style={labelStyle}>
+                          Unit Cost
+                          <input
+                            style={getInputStyle(`item_${idx}_unit_cost`)}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={it.unit_cost}
+                            onChange={(e) =>
+                              handleItemChange(idx, "unit_cost", e.target.value)
+                            }
+                          />
+                          {errors[`item_${idx}_unit_cost`] && (
+                            <div style={errorTextStyle}>
+                              {errors[`item_${idx}_unit_cost`]}
+                            </div>
+                          )}
+                        </label>
+                      </div>
+
+                      {errors[`item_${idx}_qty_sum`] && (
+                        <div
+                          style={{
+                            ...errorTextStyle,
+                            marginLeft: "8px",
+                            backgroundColor: "#fee2e2",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          ⚠️ {errors[`item_${idx}_qty_sum`]}
+                        </div>
+                      )}
+
+                      {isValidSum && accepted === received && rejected === 0 && (
+                        <div
+                          style={{
+                            marginLeft: "8px",
+                            marginTop: "4px",
+                            fontSize: "11px",
+                            color: "#10b981",
+                          }}
+                        >
+                          ✓ All quantities matched - Full receipt
+                        </div>
+                      )}
+
+                      {isValidSum && accepted < received && accepted > 0 && (
+                        <div
+                          style={{
+                            marginLeft: "8px",
+                            marginTop: "4px",
+                            fontSize: "11px",
+                            color: "#f59e0b",
+                          }}
+                        >
+                          ⚡ Partial receipt - {accepted} accepted, {rejected}{" "}
+                          rejected
+                        </div>
+                      )}
                     </div>
-
-                    <div style={formRowStyle}>
-                      <label style={labelStyle}>
-                        Batch No
-                        <input
-                          style={getInputStyle(`item_${idx}_batch_no`)}
-                          value={it.batch_no}
-                          onChange={(e) =>
-                            handleItemChange(idx, "batch_no", e.target.value)
-                          }
-                          placeholder="Letters, numbers, spaces and hyphens only"
-                        />
-                        {errors[`item_${idx}_batch_no`] && (
-                          <div style={errorTextStyle}>
-                            {errors[`item_${idx}_batch_no`]}
-                          </div>
-                        )}
-                      </label>
-                      <label style={labelStyle}>
-                        Mfg Date
-                        <input
-                          style={getInputStyle(`item_${idx}_mfg_date`)}
-                          type="date"
-                          value={it.mfg_date}
-                          onChange={(e) =>
-                            handleItemChange(idx, "mfg_date", e.target.value)
-                          }
-                          max={getTodayDate()}
-                        />
-                        {errors[`item_${idx}_mfg_date`] && (
-                          <div style={errorTextStyle}>
-                            {errors[`item_${idx}_mfg_date`]}
-                          </div>
-                        )}
-                      </label>
-                      <label style={labelStyle}>
-                        Expiry Date
-                        <input
-                          style={getInputStyle(`item_${idx}_expiry_date`)}
-                          type="date"
-                          value={it.expiry_date}
-                          onChange={(e) =>
-                            handleItemChange(idx, "expiry_date", e.target.value)
-                          }
-                          min={it.mfg_date || getTodayDate()}
-                        />
-                        {errors[`item_${idx}_expiry_date`] && (
-                          <div style={errorTextStyle}>
-                            {errors[`item_${idx}_expiry_date`]}
-                          </div>
-                        )}
-                      </label>
-                      <label style={labelStyle}>
-                        Unit Cost
-                        <input
-                          style={getInputStyle(`item_${idx}_unit_cost`)}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={it.unit_cost}
-                          onChange={(e) =>
-                            handleItemChange(idx, "unit_cost", e.target.value)
-                          }
-                        />
-                        {errors[`item_${idx}_unit_cost`] && (
-                          <div style={errorTextStyle}>
-                            {errors[`item_${idx}_unit_cost`]}
-                          </div>
-                        )}
-                      </label>
-                    </div>
-
-                    {errors[`item_${idx}_qty_sum`] && (
-                      <div
-                        style={{
-                          ...errorTextStyle,
-                          marginLeft: "8px",
-                          backgroundColor: "#fee2e2",
-                          padding: "4px 8px",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        ⚠️ {errors[`item_${idx}_qty_sum`]}
-                      </div>
-                    )}
-
-                    {isValidSum && accepted === received && rejected === 0 && (
-                      <div
-                        style={{
-                          marginLeft: "8px",
-                          marginTop: "4px",
-                          fontSize: "11px",
-                          color: "#10b981",
-                        }}
-                      >
-                        ✓ All quantities matched - Full receipt
-                      </div>
-                    )}
-
-                    {isValidSum && accepted < received && accepted > 0 && (
-                      <div
-                        style={{
-                          marginLeft: "8px",
-                          marginTop: "4px",
-                          fontSize: "11px",
-                          color: "#f59e0b",
-                        }}
-                      >
-                        ⚡ Partial receipt - {accepted} accepted, {rejected}{" "}
-                        rejected
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </>
-          )}
-
-          <div>
-            <button type="submit" style={buttonStyle} disabled={!items.length}>
-              {editingId ? "Update GRN" : "Save GRN"}
-            </button>
-            <button
-              type="button"
-              style={secondaryButtonStyle}
-              onClick={resetForm}
-            >
-              Cancel / Clear
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div style={cardStyle}>
-        <div style={{ fontSize: "14px", fontWeight: 500, marginBottom: "8px" }}>
-          Existing GRNs
-        </div>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>GRN No</th>
-              <th style={thStyle}>Date</th>
-              <th style={thStyle}>PO</th>
-              <th style={thStyle}>Vendor</th>
-              <th style={thStyle}>Location</th>
-              <th style={thStyle}>Status</th>
-              <th style={thStyle}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {grns.map((g) => (
-              <tr key={g.id}>
-                <td style={tdStyle}>{g.grn_no}</td>
-                <td style={tdStyle}>{toLocalDateString(g.grn_date)}</td>
-                <td style={tdStyle}>{g.po_no}</td>
-                <td style={tdStyle}>{g.vendor_name}</td>
-                <td style={tdStyle}>{g.location_id}</td>
-                <td style={tdStyle}>{g.status}</td>
-                <td style={tdStyle}>
-                  <button
-                    style={{
-                      ...smallBtn,
-                      backgroundColor: "#2563eb",
-                      color: "#fff",
-                    }}
-                    onClick={() => handleEdit(g)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    style={{
-                      ...smallBtn,
-                      backgroundColor: "#dc2626",
-                      color: "#fff",
-                    }}
-                    onClick={() => handleDelete(g.id)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {grns.length === 0 && (
-              <tr>
-                <td style={tdStyle} colSpan={7}>
-                  No GRNs found.
-                </td>
-              </tr>
+                  );
+                })}
+              </>
             )}
-          </tbody>
-        </table>
+
+            <div>
+              <button type="submit" style={buttonStyle} disabled={!items.length}>
+                {editingId ? "Update GRN" : "Save GRN"}
+              </button>
+              <button
+                type="button"
+                style={secondaryButtonStyle}
+                onClick={resetForm}
+              >
+                Cancel / Clear
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={{ fontSize: "14px", fontWeight: 500, marginBottom: "8px" }}>
+            Existing GRNs
+          </div>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>GRN No</th>
+                <th style={thStyle}>Date</th>
+                <th style={thStyle}>PO</th>
+                <th style={thStyle}>Vendor</th>
+                <th style={thStyle}>Location</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grns.map((g) => (
+                <tr key={g.id}>
+                  <td style={tdStyle}>{g.grn_no}</td>
+                  <td style={tdStyle}>{toLocalDateString(g.grn_date)}</td>
+                  <td style={tdStyle}>{g.po_no}</td>
+                  <td style={tdStyle}>{g.vendor_name}</td>
+                  <td style={tdStyle}>{g.location_id}</td>
+                  <td style={tdStyle}>{g.status}</td>
+                  <td style={tdStyle}>
+                    <button
+                      style={{
+                        ...smallBtn,
+                        backgroundColor: "#2563eb",
+                        color: "#fff",
+                      }}
+                      onClick={() => handleEdit(g)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      style={{
+                        ...smallBtn,
+                        backgroundColor: "#10b981",
+                        color: "#fff",
+                      }}
+                      onClick={() => handleView(g)}
+                    >
+                      View
+                    </button>
+                    <button
+                      style={{
+                        ...smallBtn,
+                        backgroundColor: "#dc2626",
+                        color: "#fff",
+                      }}
+                      onClick={() => handleDelete(g.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {grns.length === 0 && (
+                <tr>
+                  <td style={tdStyle} colSpan={7}>
+                    No GRNs found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {/* View Modal */}
+      {showViewModal && viewGRN && (
+        <div style={modalOverlayStyle} onClick={closeViewModal}>
+          <div
+            style={modalContentStyle}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>GRN Details : {viewGRN.header?.grn_no}</h3>
+            
+            <div style={{ marginBottom: "15px" }}>
+              <p><strong>GRN No:</strong> {viewGRN.header?.grn_no}</p>
+              <p><strong>GRN Date:</strong> {toLocalDateString(viewGRN.header?.grn_date)}</p>
+              <p><strong>PO:</strong> {viewGRN.header?.po_id}</p>
+              <p><strong>Vendor:</strong> {viewGRN.header?.vendor_name}</p>
+              <p><strong>Location:</strong> {viewGRN.header?.location_id}</p>
+              <p><strong>Status:</strong> {viewGRN.header?.status}</p>
+            </div>
+
+            <h4>Items</h4>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Material ID</th>
+                  <th style={thStyle}>Received Qty</th>
+                  <th style={thStyle}>Accepted Qty</th>
+                  <th style={thStyle}>Rejected Qty</th>
+                  <th style={thStyle}>Batch No</th>
+                  <th style={thStyle}>Mfg Date</th>
+                  <th style={thStyle}>Expiry Date</th>
+                  <th style={thStyle}>Unit Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(viewGRN.items || []).map((item, index) => (
+                  <tr key={index}>
+                    <td style={tdStyle}>{item.material_id}</td>
+                    <td style={tdStyle}>{item.received_qty}</td>
+                    <td style={tdStyle}>{item.accepted_qty}</td>
+                    <td style={tdStyle}>{item.rejected_qty}</td>
+                    <td style={tdStyle}>{item.batch_no || "-"}</td>
+                    <td style={tdStyle}>{item.mfg_date ? toLocalDateString(item.mfg_date) : "-"}</td>
+                    <td style={tdStyle}>{item.expiry_date ? toLocalDateString(item.expiry_date) : "-"}</td>
+                    <td style={tdStyle}>{item.unit_cost}</td>
+                  </tr>
+                ))}
+                {(viewGRN.items?.length === 0) && (
+                  <tr>
+                    <td style={tdStyle} colSpan={8}>No items found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            <button style={modalCloseBtnStyle} onClick={closeViewModal}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

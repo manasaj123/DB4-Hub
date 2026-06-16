@@ -13,6 +13,7 @@ export default function FarmerOnboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewFarmer, setViewFarmer] = useState(null); // For view modal
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -192,6 +193,7 @@ export default function FarmerOnboarding() {
     setContact(farmer.contact || "");
     setErrors({});
     setTouched({});
+    setViewFarmer(null);
   };
 
   // ✅ UPDATE FARMER
@@ -233,6 +235,7 @@ export default function FarmerOnboarding() {
       await axios.delete(`http://localhost:5001/api/farmers/${id}`);
       alert(`Farmer "${name}" deleted successfully!`);
       if (editingId === id) resetForm();
+      if (viewFarmer && viewFarmer.id === id) setViewFarmer(null);
       await fetchFarmers();
     } catch (error) {
       console.error("Delete error:", error);
@@ -534,7 +537,7 @@ export default function FarmerOnboarding() {
                   <div style={styles.detail}>🏦 A/C: {f.bank_account}</div>
                 )}
                 
-                {/* Action Buttons - Customer Style */}
+                {/* Action Buttons */}
                 <div style={{
                   display: 'flex',
                   gap: '8px',
@@ -542,6 +545,22 @@ export default function FarmerOnboarding() {
                   paddingTop: '10px',
                   borderTop: '1px solid #e9ecef'
                 }}>
+                  <button
+                    onClick={() => setViewFarmer(f)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      background: '#e8f5e9',
+                      color: '#2e7d32',
+                      border: '1px solid #c8e6c9',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    👁️ View
+                  </button>
                   <button
                     onClick={() => editFarmer(f)}
                     style={{
@@ -580,6 +599,93 @@ export default function FarmerOnboarding() {
           </ul>
         )}
       </div>
+
+      {/* VIEW MODAL */}
+      {viewFarmer && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }} onClick={() => setViewFarmer(null)}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            padding: '30px',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '22px', color: '#1a1a2e' }}>🌾 Farmer Details</h2>
+              <button onClick={() => setViewFarmer(null)} style={{
+                background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#999'
+              }}>✕</button>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{
+                width: '60px', height: '60px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #4CAF50, #2e7d32)',
+                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: '700', fontSize: '24px', marginRight: '15px', flexShrink: 0,
+              }}>
+                {(viewFarmer.name || '?')[0].toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a2e' }}>{viewFarmer.name}</div>
+                <span style={{
+                  fontSize: '12px', background: '#e8f5e9', padding: '4px 10px',
+                  borderRadius: '20px', color: '#2e7d32', fontWeight: '600',
+                }}>{viewFarmer.farmer_code || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '15px' }}>
+              {viewFarmer.village && (
+                <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                  <strong>🏘️ Village:</strong> {viewFarmer.village}
+                </div>
+              )}
+              {viewFarmer.district && (
+                <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                  <strong>🗺️ District:</strong> {viewFarmer.district}
+                </div>
+              )}
+              <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                <strong>📞 Contact:</strong> {viewFarmer.contact}
+              </div>
+              <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                <strong>🏠 Address:</strong> {viewFarmer.address}
+              </div>
+              {viewFarmer.bank_account && (
+                <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                  <strong>🏦 Bank Account:</strong> {viewFarmer.bank_account}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={() => editFarmer(viewFarmer)} style={{
+                flex: 1, padding: '10px', background: '#fff3e0', color: '#e65100',
+                border: '1px solid #ffe0b2', borderRadius: '8px', cursor: 'pointer',
+                fontSize: '14px', fontWeight: '600',
+              }}>✏️ Edit</button>
+              <button onClick={() => { setViewFarmer(null); }} style={{
+                flex: 1, padding: '10px', background: '#6c757d', color: '#fff',
+                border: 'none', borderRadius: '8px', cursor: 'pointer',
+                fontSize: '14px', fontWeight: '600',
+              }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

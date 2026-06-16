@@ -625,6 +625,7 @@ export default function PRPage() {
               <option value="LTR">LTR</option>
               <option value="PCS">PCS</option>
               <option value="BOXES">BOXES</option>
+              <option value="dozens">DOZENS</option>
             </select>
           </div>
 
@@ -752,6 +753,13 @@ export default function PRPage() {
                             : row,
                         ),
                       );
+                      if (selectedMaterial) {
+  setHeader((prev) => ({
+  ...prev,
+  uom: selectedMaterial.uom || "",
+}));
+console.log("UOM =", selectedMaterial.uom);
+}
                     }}
                   >
                     <option value="">Select Material</option>

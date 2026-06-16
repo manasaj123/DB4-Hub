@@ -99,6 +99,39 @@ const smallBtn = {
   marginRight: "4px",
 };
 
+// Modal styles
+const modalOverlayStyle = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.5)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 1000,
+};
+
+const modalContentStyle = {
+  backgroundColor: "#fff",
+  padding: "20px",
+  borderRadius: "8px",
+  width: "600px",
+  maxHeight: "80vh",
+  overflowY: "auto",
+};
+
+const modalCloseBtnStyle = {
+  marginTop: "15px",
+  padding: "8px 12px",
+  backgroundColor: "#dc2626",
+  color: "#fff",
+  border: "none",
+  borderRadius: "4px",
+  cursor: "pointer",
+};
+
 const stockTypeOptions = [
   { value: "UNRESTRICTED", label: "Unrestricted" },
   { value: "QUALITY", label: "Quality" },
@@ -140,7 +173,9 @@ export default function GoodsissuePage() {
   const [selectedPoId, setSelectedPoId] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
-  const [batchesByItem, setBatchesByItem] = useState({}); // { itemIndex: { batches: [], selectedBatchId } }
+  const [viewGI, setViewGI] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [batchesByItem, setBatchesByItem] = useState({});
 
   const [header, setHeader] = useState({
     gi_no: "",
@@ -248,7 +283,6 @@ export default function GoodsissuePage() {
       plant: poHeader.plant || h.plant,
     }));
 
-    // 1. Create items array without batch_id
     const newItems = poItems.map((it) => ({
       po_item_id: it.id,
       material_id: it.material_id,
@@ -257,10 +291,9 @@ export default function GoodsissuePage() {
       storage_location: poHeader.storage_location || "",
       stock_type: "UNRESTRICTED",
       unit_cost: it.price || 0,
-      batch_id: null, // will be set after fetching batches
+      batch_id: null,
     }));
 
-    // 2. Fetch batches and update items & batchesByItem
     const newBatchesByItem = {};
     for (let i = 0; i < newItems.length; i++) {
       const item = newItems[i];
@@ -271,17 +304,13 @@ export default function GoodsissuePage() {
       const batches = batchesRes.data || [];
       const selectedBatchId = batches.length > 0 ? batches[0].batch_id : null;
 
-      // Update the item's batch_id
       newItems[i].batch_id = selectedBatchId;
-
-      // Store batch list and selected id for UI
       newBatchesByItem[i] = {
         batches,
         selectedBatchId,
       };
     }
 
-    // 3. Set state once
     setItems(newItems);
     setBatchesByItem(newBatchesByItem);
   };
@@ -361,7 +390,6 @@ export default function GoodsissuePage() {
       if (specialCharError) newErrors.plant = specialCharError;
     }
 
-    // Item validation loop (including batch)
     let hasValidItem = false;
     items.forEach((item, idx) => {
       if (item.material_id && item.qty) {
@@ -379,7 +407,6 @@ export default function GoodsissuePage() {
             newErrors[`item_${idx}_storage_location`] = specialCharError;
         }
 
-        // Batch validation (moved inside the loop)
         if (!item.batch_id) {
           newErrors[`item_${idx}_batch`] = "Please select a batch";
         }
@@ -458,8 +485,25 @@ export default function GoodsissuePage() {
         storage_location: it.storage_location || "",
         stock_type: it.stock_type || "UNRESTRICTED",
         unit_cost: it.unit_cost || 0,
+        batch_id: it.batch_id || null,
       })),
     );
+  };
+
+  const handleView = async (gi) => {
+    try {
+      const res = await giApi.getById(gi.id);
+      setViewGI(res.data);
+      setShowViewModal(true);
+    } catch (err) {
+      console.error("Failed to load GI details", err);
+      alert("Could not load GI details");
+    }
+  };
+
+  const closeViewModal = () => {
+    setShowViewModal(false);
+    setViewGI(null);
   };
 
   const handleDelete = async (id) => {
@@ -483,337 +527,403 @@ export default function GoodsissuePage() {
   };
 
   return (
-    <div>
-      <div style={titleStyle}>Goods Issue</div>
+    <>
+      <div>
+        <div style={titleStyle}>Goods Issue</div>
 
-      <div style={cardStyle}>
-        <form onSubmit={handleSubmit}>
-          <div style={formRowStyle}>
-            <label style={labelStyle}>
-              GI No
-              <input
-                style={inputStyle}
-                value={
-                  editingId ? header.gi_no : header.gi_no || "Auto Generated"
-                }
-                disabled
-              />
-            </label>
-            <label style={labelStyle}>
-              Document Date *
-              <input
-                style={getInputStyle("doc_date")}
-                type="date"
-                name="doc_date"
-                value={header.doc_date}
-                onChange={handleHeaderChange}
-                max={getTodayDate()}
-                required
-              />
-              {errors.doc_date && (
-                <div style={errorTextStyle}>{errors.doc_date}</div>
-              )}
-            </label>
-            <label style={labelStyle}>
-              Posting Date *
-              <input
-                style={getInputStyle("posting_date")}
-                type="date"
-                name="posting_date"
-                value={header.posting_date}
-                onChange={handleHeaderChange}
-                max={getTodayDate()}
-                required
-              />
-              {errors.posting_date && (
-                <div style={errorTextStyle}>{errors.posting_date}</div>
-              )}
-            </label>
-          </div>
+        <div style={cardStyle}>
+          <form onSubmit={handleSubmit}>
+            <div style={formRowStyle}>
+              <label style={labelStyle}>
+                GI No
+                <input
+                  style={inputStyle}
+                  value={
+                    editingId ? header.gi_no : header.gi_no || "Auto Generated"
+                  }
+                  disabled
+                />
+              </label>
+              <label style={labelStyle}>
+                Document Date *
+                <input
+                  style={getInputStyle("doc_date")}
+                  type="date"
+                  name="doc_date"
+                  value={header.doc_date}
+                  onChange={handleHeaderChange}
+                  max={getTodayDate()}
+                  required
+                />
+                {errors.doc_date && (
+                  <div style={errorTextStyle}>{errors.doc_date}</div>
+                )}
+              </label>
+              <label style={labelStyle}>
+                Posting Date *
+                <input
+                  style={getInputStyle("posting_date")}
+                  type="date"
+                  name="posting_date"
+                  value={header.posting_date}
+                  onChange={handleHeaderChange}
+                  max={getTodayDate()}
+                  required
+                />
+                {errors.posting_date && (
+                  <div style={errorTextStyle}>{errors.posting_date}</div>
+                )}
+              </label>
+            </div>
 
-          <div style={formRowStyle}>
-            <label style={labelStyle}>
-              PO *
-              <select
-                style={getInputStyle("po_id")}
-                value={selectedPoId}
-                onChange={(e) => handleSelectPO(e.target.value)}
-                required
-              >
-                <option value="">Select PO</option>
-                {poList.map((po) => (
-                  <option key={po.id} value={po.id}>
-                    {po.po_no} - {po.vendor_name} (Remaining:{" "}
-                    {po.total_ordered - po.total_issued})
-                  </option>
-                ))}
-              </select>
-              {errors.po_id && <div style={errorTextStyle}>{errors.po_id}</div>}
-            </label>
-            <label style={labelStyle}>
-              Plant
-              <input
-                style={getInputStyle("plant")}
-                name="plant"
-                value={header.plant}
-                onChange={handleHeaderChange}
-                placeholder="Letters, numbers and spaces only"
-              />
-              {errors.plant && <div style={errorTextStyle}>{errors.plant}</div>}
-            </label>
-            <label style={labelStyle}>
-              Status
-              <select
-                style={inputStyle}
-                name="status"
-                value={header.status}
-                onChange={handleHeaderChange}
-              >
-                <option value="POSTED">POSTED</option>
-                <option value="CANCELLED">CANCELLED</option>
-                <option value="DRAFT">DRAFT</option>
-              </select>
-            </label>
-          </div>
+            <div style={formRowStyle}>
+              <label style={labelStyle}>
+                PO *
+                <select
+                  style={getInputStyle("po_id")}
+                  value={selectedPoId}
+                  onChange={(e) => handleSelectPO(e.target.value)}
+                  required
+                >
+                  <option value="">Select PO</option>
+                  {poList.map((po) => (
+                    <option key={po.id} value={po.id}>
+                      {po.po_no} - {po.vendor_name} (Remaining:{" "}
+                      {po.total_ordered - po.total_issued})
+                    </option>
+                  ))}
+                </select>
+                {errors.po_id && <div style={errorTextStyle}>{errors.po_id}</div>}
+              </label>
+              <label style={labelStyle}>
+                Plant
+                <input
+                  style={getInputStyle("plant")}
+                  name="plant"
+                  value={header.plant}
+                  onChange={handleHeaderChange}
+                  placeholder="Letters, numbers and spaces only"
+                />
+                {errors.plant && <div style={errorTextStyle}>{errors.plant}</div>}
+              </label>
+              <label style={labelStyle}>
+                Status
+                <select
+                  style={inputStyle}
+                  name="status"
+                  value={header.status}
+                  onChange={handleHeaderChange}
+                >
+                  <option value="POSTED">POSTED</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                  <option value="DRAFT">DRAFT</option>
+                </select>
+              </label>
+            </div>
 
-          {items.length > 0 && (
-            <>
-              <div
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  margin: "8px 0",
-                }}
-              >
-                GI Lines *
-              </div>
-              {items.map((it, idx) => (
+            {items.length > 0 && (
+              <>
                 <div
-                  key={idx}
                   style={{
-                    marginBottom: "16px",
-                    padding: "8px",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "4px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    margin: "8px 0",
                   }}
                 >
-                  <div style={formRowStyle}>
-                    <label style={labelStyle}>
-                      Material
-                      <input
-                        style={inputStyle}
-                        value={it.material_id}
-                        disabled
-                      />
-                    </label>
-                    <label style={labelStyle}>
-                      Description
-                      <input
-                        style={inputStyle}
-                        value={it.material_desc}
-                        disabled
-                      />
-                    </label>
-                    <label style={labelStyle}>
-                      Qty *
-                      <input
-                        style={getInputStyle(`item_${idx}_qty`)}
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        value={it.qty}
-                        onChange={(e) =>
-                          handleItemChange(idx, "qty", e.target.value)
-                        }
-                        placeholder="> 0"
-                      />
-                      {errors[`item_${idx}_qty`] && (
-                        <div style={errorTextStyle}>
-                          {errors[`item_${idx}_qty`]}
-                        </div>
-                      )}
-                    </label>
-                    <label style={labelStyle}>
-                      Batch
-                      <select
-                        value={batchesByItem[idx]?.selectedBatchId || ""}
-                        onChange={(e) => {
-                          const batchId = e.target.value;
-                          // Update local state for the dropdown
-                          const newBatches = { ...batchesByItem };
-                          newBatches[idx] = {
-                            ...newBatches[idx],
-                            selectedBatchId: batchId,
-                          };
-                          setBatchesByItem(newBatches);
-                          // Update the item's batch_id
-                          const newItems = [...items];
-                          newItems[idx].batch_id = batchId || null;
-                          setItems(newItems);
-                        }}
-                        style={inputStyle}
-                      >
-                        <option value="">-- Select Batch --</option>
-                        {(batchesByItem[idx]?.batches || []).map((batch) => (
-                          <option key={batch.batch_id} value={batch.batch_id}>
-                            {batch.batch_no} (Exp:{" "}
-                            {batch.expiry_date?.substring(0, 10)} | Avail:{" "}
-                            {batch.qty})
-                          </option>
-                        ))}
-                      </select>
-                      {errors[`item_${idx}_batch`] && (
-                        <div style={errorTextStyle}>
-                          {errors[`item_${idx}_batch`]}
-                        </div>
-                      )}
-                    </label>
-                  </div>
-
-                  <div style={formRowStyle}>
-                    <label style={labelStyle}>
-                      Storage Location
-                      <input
-                        style={getInputStyle(`item_${idx}_storage_location`)}
-                        value={it.storage_location}
-                        onChange={(e) =>
-                          handleItemChange(
-                            idx,
-                            "storage_location",
-                            e.target.value,
-                          )
-                        }
-                        placeholder="Letters, numbers and spaces only"
-                      />
-                      {errors[`item_${idx}_storage_location`] && (
-                        <div style={errorTextStyle}>
-                          {errors[`item_${idx}_storage_location`]}
-                        </div>
-                      )}
-                    </label>
-                    <label style={labelStyle}>
-                      Stock Type
-                      <select
-                        style={inputStyle}
-                        value={it.stock_type}
-                        onChange={(e) =>
-                          handleItemChange(idx, "stock_type", e.target.value)
-                        }
-                      >
-                        {stockTypeOptions.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
+                  GI Lines *
                 </div>
-              ))}
-            </>
-          )}
+                {items.map((it, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      marginBottom: "16px",
+                      padding: "8px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    <div style={formRowStyle}>
+                      <label style={labelStyle}>
+                        Material
+                        <input
+                          style={inputStyle}
+                          value={it.material_id}
+                          disabled
+                        />
+                      </label>
+                      <label style={labelStyle}>
+                        Description
+                        <input
+                          style={inputStyle}
+                          value={it.material_desc}
+                          disabled
+                        />
+                      </label>
+                      <label style={labelStyle}>
+                        Qty *
+                        <input
+                          style={getInputStyle(`item_${idx}_qty`)}
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={it.qty}
+                          onChange={(e) =>
+                            handleItemChange(idx, "qty", e.target.value)
+                          }
+                          placeholder="> 0"
+                        />
+                        {errors[`item_${idx}_qty`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_qty`]}
+                          </div>
+                        )}
+                      </label>
+                      <label style={labelStyle}>
+                        Batch
+                        <select
+                          value={batchesByItem[idx]?.selectedBatchId || ""}
+                          onChange={(e) => {
+                            const batchId = e.target.value;
+                            const newBatches = { ...batchesByItem };
+                            newBatches[idx] = {
+                              ...newBatches[idx],
+                              selectedBatchId: batchId,
+                            };
+                            setBatchesByItem(newBatches);
+                            const newItems = [...items];
+                            newItems[idx].batch_id = batchId || null;
+                            setItems(newItems);
+                          }}
+                          style={inputStyle}
+                        >
+                          <option value="">-- Select Batch --</option>
+                          {(batchesByItem[idx]?.batches || []).map((batch) => (
+                            <option key={batch.batch_id} value={batch.batch_id}>
+                              {batch.batch_no} (Exp:{" "}
+                              {batch.expiry_date?.substring(0, 10)} | Avail:{" "}
+                              {batch.qty})
+                            </option>
+                          ))}
+                        </select>
+                        {errors[`item_${idx}_batch`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_batch`]}
+                          </div>
+                        )}
+                      </label>
+                    </div>
 
-          {errors.general && (
-            <div style={{ ...errorTextStyle, marginBottom: "8px" }}>
-              {errors.general}
-            </div>
-          )}
+                    <div style={formRowStyle}>
+                      <label style={labelStyle}>
+                        Storage Location
+                        <input
+                          style={getInputStyle(`item_${idx}_storage_location`)}
+                          value={it.storage_location}
+                          onChange={(e) =>
+                            handleItemChange(
+                              idx,
+                              "storage_location",
+                              e.target.value,
+                            )
+                          }
+                          placeholder="Letters, numbers and spaces only"
+                        />
+                        {errors[`item_${idx}_storage_location`] && (
+                          <div style={errorTextStyle}>
+                            {errors[`item_${idx}_storage_location`]}
+                          </div>
+                        )}
+                      </label>
+                      <label style={labelStyle}>
+                        Stock Type
+                        <select
+                          style={inputStyle}
+                          value={it.stock_type}
+                          onChange={(e) =>
+                            handleItemChange(idx, "stock_type", e.target.value)
+                          }
+                        >
+                          {stockTypeOptions.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
 
-          <div>
-            <button type="submit" style={buttonStyle} disabled={!items.length}>
-              {editingId ? "Update GI" : "Save GI"}
-            </button>
-            <button
-              type="button"
-              style={secondaryButtonStyle}
-              onClick={resetForm}
-            >
-              New / Clear
-            </button>
-            {editingId && (
+            {errors.general && (
+              <div style={{ ...errorTextStyle, marginBottom: "8px" }}>
+                {errors.general}
+              </div>
+            )}
+
+            <div>
+              <button type="submit" style={buttonStyle} disabled={!items.length}>
+                {editingId ? "Update GI" : "Save GI"}
+              </button>
               <button
                 type="button"
-                style={{ ...secondaryButtonStyle, backgroundColor: "#dc2626" }}
+                style={secondaryButtonStyle}
                 onClick={resetForm}
               >
-                Cancel Edit
+                New / Clear
               </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      <div style={cardStyle}>
-        <div style={{ fontSize: "14px", fontWeight: 500, marginBottom: "8px" }}>
-          Existing Goods Issues
+              {editingId && (
+                <button
+                  type="button"
+                  style={{ ...secondaryButtonStyle, backgroundColor: "#dc2626" }}
+                  onClick={resetForm}
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </div>
+          </form>
         </div>
 
-        <input
-          style={{
-            ...inputStyle,
-            marginBottom: "8px",
-            maxWidth: "260px",
-          }}
-          placeholder="Search by GI No, PO No"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div style={cardStyle}>
+          <div style={{ fontSize: "14px", fontWeight: 500, marginBottom: "8px" }}>
+            Existing Goods Issues
+          </div>
 
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>GI No</th>
-              <th style={thStyle}>Doc Date</th>
-              <th style={thStyle}>Posting Date</th>
-              <th style={thStyle}>PO</th>
-              <th style={thStyle}>Plant</th>
-              <th style={thStyle}>Status</th>
-              <th style={thStyle}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredGIs.map((g) => (
-              <tr key={g.id}>
-                <td style={tdStyle}>{g.gi_no}</td>
-                <td style={tdStyle}>{toLocalDateString(g.doc_date)}</td>
-                <td style={tdStyle}>{toLocalDateString(g.posting_date)}</td>
-                <td style={tdStyle}>{g.po_no}</td>
-                <td style={tdStyle}>{g.plant || "-"}</td>
-                <td style={tdStyle}>{g.status}</td>
-                <td style={tdStyle}>
-                  <button
-                    style={{
-                      ...smallBtn,
-                      backgroundColor: "#2563eb",
-                      color: "#fff",
-                    }}
-                    onClick={() => handleEdit(g)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    style={{
-                      ...smallBtn,
-                      backgroundColor: "#dc2626",
-                      color: "#fff",
-                    }}
-                    onClick={() => handleDelete(g.id)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filteredGIs.length === 0 && (
+          <input
+            style={{
+              ...inputStyle,
+              marginBottom: "8px",
+              maxWidth: "260px",
+            }}
+            placeholder="Search by GI No, PO No"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          <table style={tableStyle}>
+            <thead>
               <tr>
-                <td style={tdStyle} colSpan={7}>
-                  No Goods Issues found.
-                </td>
+                <th style={thStyle}>GI No</th>
+                <th style={thStyle}>Doc Date</th>
+                <th style={thStyle}>Posting Date</th>
+                <th style={thStyle}>PO</th>
+                <th style={thStyle}>Plant</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Action</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredGIs.map((g) => (
+                <tr key={g.id}>
+                  <td style={tdStyle}>{g.gi_no}</td>
+                  <td style={tdStyle}>{toLocalDateString(g.doc_date)}</td>
+                  <td style={tdStyle}>{toLocalDateString(g.posting_date)}</td>
+                  <td style={tdStyle}>{g.po_no}</td>
+                  <td style={tdStyle}>{g.plant || "-"}</td>
+                  <td style={tdStyle}>{g.status}</td>
+                  <td style={tdStyle}>
+                    <button
+                      style={{
+                        ...smallBtn,
+                        backgroundColor: "#2563eb",
+                        color: "#fff",
+                      }}
+                      onClick={() => handleEdit(g)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      style={{
+                        ...smallBtn,
+                        backgroundColor: "#10b981",
+                        color: "#fff",
+                      }}
+                      onClick={() => handleView(g)}
+                    >
+                      View
+                    </button>
+                    <button
+                      style={{
+                        ...smallBtn,
+                        backgroundColor: "#dc2626",
+                        color: "#fff",
+                      }}
+                      onClick={() => handleDelete(g.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {filteredGIs.length === 0 && (
+                <tr>
+                  <td style={tdStyle} colSpan={7}>
+                    No Goods Issues found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {/* View Modal */}
+      {showViewModal && viewGI && (
+        <div style={modalOverlayStyle} onClick={closeViewModal}>
+          <div
+            style={modalContentStyle}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>Goods Issue Details : {viewGI.header?.gi_no}</h3>
+            
+            <div style={{ marginBottom: "15px" }}>
+              <p><strong>GI No:</strong> {viewGI.header?.gi_no}</p>
+              <p><strong>Document Date:</strong> {toLocalDateString(viewGI.header?.doc_date)}</p>
+              <p><strong>Posting Date:</strong> {toLocalDateString(viewGI.header?.posting_date)}</p>
+              <p><strong>PO:</strong> {viewGI.header?.po_id}</p>
+              <p><strong>Plant:</strong> {viewGI.header?.plant || "-"}</p>
+              <p><strong>Status:</strong> {viewGI.header?.status}</p>
+            </div>
+
+            <h4>Items</h4>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Material ID</th>
+                  <th style={thStyle}>Description</th>
+                  <th style={thStyle}>Qty</th>
+                  <th style={thStyle}>Storage Location</th>
+                  <th style={thStyle}>Stock Type</th>
+                  <th style={thStyle}>Batch ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(viewGI.items || []).map((item, index) => (
+                  <tr key={index}>
+                    <td style={tdStyle}>{item.material_id}</td>
+                    <td style={tdStyle}>{item.material_desc || "-"}</td>
+                    <td style={tdStyle}>{item.qty}</td>
+                    <td style={tdStyle}>{item.storage_location || "-"}</td>
+                    <td style={tdStyle}>{item.stock_type || "-"}</td>
+                    <td style={tdStyle}>{item.batch_id || "-"}</td>
+                  </tr>
+                ))}
+                {(viewGI.items?.length === 0) && (
+                  <tr>
+                    <td style={tdStyle} colSpan={6}>No items found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            <button style={modalCloseBtnStyle} onClick={closeViewModal}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
