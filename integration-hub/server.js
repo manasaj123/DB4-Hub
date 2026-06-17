@@ -235,6 +235,64 @@ app.post("/api/material/sync", async (req, res) => {
 });
 
 // ============================================
+// API: SYNC VENDOR/FARMER FROM MM CREATION
+// ============================================
+app.post("/api/vendor/sync", async (req, res) => {
+  const { source, vendor } = req.body;
+
+  console.log(`🏢 Syncing ${vendor.type} "${vendor.name}" from ${source}`);
+
+  try {
+    const common_key = vendor.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+    // Save or update mapping
+    await db.query(
+      `INSERT INTO vendor_mapping (common_key, name, type, mm_creation_id, contact, gst_no, address, bank_details, rating)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE 
+         mm_creation_id = VALUES(mm_creation_id),
+         name = VALUES(name),
+         contact = VALUES(contact),
+         gst_no = VALUES(gst_no),
+         address = VALUES(address),
+         bank_details = VALUES(bank_details),
+         rating = VALUES(rating)`,
+      [common_key, vendor.name, vendor.type, vendor.id, vendor.contact, vendor.gst_no, 
+       vendor.address, vendor.bank_details, vendor.rating || 0]
+    );
+
+    // Sync to MM CORE (Port 5001)
+    try {
+      const payload = {
+        name: vendor.name,
+        address: vendor.address,
+        contact: vendor.contact,
+        bank_account: vendor.bank_details
+      };
+
+      const response = await axios.post(
+        "http://localhost:5001/api/integration/vendor",
+        payload
+      );
+
+      await db.query(
+        `UPDATE vendor_mapping SET mm_core_id = ? WHERE common_key = ?`,
+        [response.data.id, common_key]
+      );
+
+      console.log(`   ✅ Synced to MM Core (ID: ${response.data.id})`);
+    } catch (err) {
+      console.log(`   ❌ MM Core failed: ${err.message}`);
+    }
+
+    res.json({ success: true, common_key });
+  } catch (error) {
+    console.error("Vendor sync failed:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // HEALTH CHECK
 // ============================================
 app.get("/health", (req, res) => {
