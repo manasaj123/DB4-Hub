@@ -14,12 +14,10 @@ export const getMaterials = async (req, res, next) => {
 
 export const createMaterial = async (req, res, next) => {
   try {
-    // 1. Create material in MM Creation (YOUR EXISTING CODE)
     const [result] = await Material.create(req.body);
     const [rows] = await Material.findById(result.insertId);
     const created = rows[0] || null;
 
-    // 2. 🆕 Send to Integration Hub (UPDATED - includes material_number)
     try {
       await axios.post(`${INTEGRATION_HUB}/api/material/sync`, {
         source: "mm_creation",
@@ -28,8 +26,9 @@ export const createMaterial = async (req, res, next) => {
           name: created.name,
           uom: created.uom,
           shelf_life_days: created.shelf_life_days,
-          material_number: created.material_number, // ← ADD THIS LINE
-          material_type: created.material_type, // ← ADD THIS LINE (optional)
+          material_number: created.material_number,
+          material_type: created.material_type,
+          material_code: created.material_number, // ← ADD THIS
         },
       });
       console.log(
@@ -37,10 +36,8 @@ export const createMaterial = async (req, res, next) => {
       );
     } catch (syncError) {
       console.error("Sync failed:", syncError.message);
-      // Don't fail the request - material still created in MM Creation
     }
 
-    // 3. Return response (YOUR EXISTING CODE)
     res.status(201).json({
       id: result.insertId,
       material_number: created?.material_number || null,
@@ -58,7 +55,6 @@ export const createMaterial = async (req, res, next) => {
 export const updateMaterial = async (req, res, next) => {
   try {
     const { id } = req.params;
-    // If the request tries to change the name, check it's not already used
     if (req.body.name) {
       const duplicate = await Material.findByNameExcludingId(req.body.name, id);
       if (duplicate.length > 0) {

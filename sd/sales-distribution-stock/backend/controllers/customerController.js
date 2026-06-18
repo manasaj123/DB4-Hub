@@ -1,6 +1,9 @@
 // backend/controllers/customerController.js
 const asyncHandler = require("../middleware/asyncHandler");
 const db = require("../models");
+const axios = require("axios"); // ← ADD THIS
+
+const INTEGRATION_HUB = "http://localhost:3000"; // ← ADD THIS
 
 //validation
 const validateCustomer = (data) => {
@@ -102,7 +105,7 @@ exports.getCustomerById = asyncHandler(async (req, res) => {
   res.json(customer);
 });
 
-// POST /api/customers
+// POST /api/customers - CREATE (UPDATED WITH WEBHOOK)
 exports.createCustomer = asyncHandler(async (req, res) => {
   try {
     req.body.customerCode = (req.body.customerCode || "").trim().toUpperCase();
@@ -117,6 +120,26 @@ exports.createCustomer = asyncHandler(async (req, res) => {
     }
 
     const customer = await db.Customer.create(req.body);
+
+    // 🆕 SEND WEBHOOK TO INTEGRATION HUB
+    try {
+      await axios.post(`${INTEGRATION_HUB}/api/customer/sync`, {
+        source: "sd_distribution",
+        customer: {
+          id: customer.id,
+          name: customer.name,
+          email: customer.email || null,
+          phone: customer.phone || null,
+          customer_code: customer.customerCode,
+          gst_number: customer.gstNumber || null,
+          address: customer.address || null,
+        },
+      });
+      console.log(`✅ Customer "${customer.name}" synced to integration hub`);
+    } catch (webhookError) {
+      console.error("Customer webhook failed:", webhookError.message);
+      // Don't fail the request - customer still created in SD Distribution
+    }
 
     res.status(201).json(customer);
   } catch (err) {
@@ -165,6 +188,7 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
     throw err;
   }
 });
+
 // DELETE /api/customers/:id  (soft delete)
 exports.softDeleteCustomer = asyncHandler(async (req, res) => {
   const customer = await db.Customer.findByPk(req.params.id);

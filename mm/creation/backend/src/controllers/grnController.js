@@ -1,6 +1,8 @@
 // backend/src/controllers/grnController.js
 import db from "../config/db.js";
 import { Invoice } from "../models/Invoice.js";
+import axios from "axios";
+const INTEGRATION_HUB = "http://localhost:3000";
 
 const toMysqlDate = (value) => {
   if (!value) return null;
@@ -228,11 +230,11 @@ export const createGRN = async (req, res, next) => {
         );
         let invNextSeq = 1;
         if (invRows.length && invRows[0].invoice_no) {
-          const parts = invRows[0].invoice_no.split('-');
+          const parts = invRows[0].invoice_no.split("-");
           const num = parseInt(parts[1], 10);
           if (!isNaN(num)) invNextSeq = num + 1;
         }
-        const invoiceNo = `INV-${String(invNextSeq).padStart(3, '0')}`;
+        const invoiceNo = `INV-${String(invNextSeq).padStart(3, "0")}`;
 
         // 3. Prepare invoice items from GRN items (accepted_qty + unit_cost)
         let totalAmount = 0;
@@ -247,7 +249,7 @@ export const createGRN = async (req, res, next) => {
             material_id: item.material_id,
             qty: accepted,
             price: unitCost,
-            tax_percent: 0,   // you can enhance to fetch tax from po_items if needed
+            tax_percent: 0, // you can enhance to fetch tax from po_items if needed
           });
         }
 
@@ -261,7 +263,7 @@ export const createGRN = async (req, res, next) => {
             total_amount: totalAmount,
             status: "PENDING",
             invoice_type: "INVOICE",
-            gr_based: 1,           // GR‑based invoice
+            gr_based: 1, // GR‑based invoice
             payment_blocked: 0,
           },
           conn,
@@ -274,11 +276,49 @@ export const createGRN = async (req, res, next) => {
         }
 
         // (Optional) You could also update PO status to 'INVOICED' if you add that status
-        await conn.query(`UPDATE purchase_orders SET status = 'INVOICED' WHERE id = ?`, [header.po_id]);
+        await conn.query(
+          `UPDATE purchase_orders SET status = 'INVOICED' WHERE id = ?`,
+          [header.po_id],
+        );
       }
     }
 
     await conn.commit();
+
+    // ============================================
+    //  STOCK SYNC AFTER GRN
+    // ============================================
+    try {
+      // Get material numbers from GRN items
+      for (const item of items || []) {
+        const [material] = await conn.query(
+          "SELECT material_number, name FROM materials WHERE id = ?",
+          [item.material_id],
+        );
+
+        if (material.length > 0 && material[0].material_number) {
+          // Get total stock from stock_ledger
+          const [stock] = await conn.query(
+            `SELECT COALESCE(SUM(qty_in) - SUM(qty_out), 0) as total 
+         FROM stock_ledger 
+         WHERE material_id = ?`,
+            [item.material_id],
+          );
+
+          await axios.post(`${INTEGRATION_HUB}/api/stock/sync`, {
+            material_code: material[0].material_number,
+            quantity: Number(stock[0].total),
+            module: "mm_creation",
+          });
+          console.log(
+            `✅ Stock sync from MM Creation GRN: ${material[0].material_number} → ${stock[0].total}`,
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Stock sync webhook failed:", err.message);
+      // Don't fail the GRN creation
+    }
     res.status(201).json({ id: grnId, grn_no: generatedGrnNo });
   } catch (err) {
     await conn.rollback();
