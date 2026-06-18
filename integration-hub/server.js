@@ -22,7 +22,7 @@ async function initDB() {
   db = await mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "Anson.0983",
+    password: "root",
     database: "integration_hub",
   });
   console.log("✅ Integration Hub DB connected");
@@ -239,10 +239,16 @@ app.post("/api/material/sync", async (req, res) => {
 // ============================================
 // API: SYNC VENDOR/FARMER FROM MM CREATION
 // ============================================
+// ============================================
+// API: SYNC VENDOR/FARMER FROM MM CREATION
+// ============================================
+// ============================================
+// API: SYNC VENDOR/FARMER FROM MM CREATION
+// ============================================
 app.post("/api/vendor/sync", async (req, res) => {
   const { source, vendor } = req.body;
 
-  console.log(`🏢 Syncing ${vendor.type} "${vendor.name}" from ${source}`);
+  console.log(`🏢 Syncing ${vendor.type || 'FARMER'} "${vendor.name}" from ${source || 'mm_creation'}`);
 
   try {
     const common_key = vendor.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
@@ -254,6 +260,7 @@ app.post("/api/vendor/sync", async (req, res) => {
        ON DUPLICATE KEY UPDATE 
          mm_creation_id = VALUES(mm_creation_id),
          name = VALUES(name),
+         type = VALUES(type),
          contact = VALUES(contact),
          gst_no = VALUES(gst_no),
          address = VALUES(address),
@@ -274,12 +281,15 @@ app.post("/api/vendor/sync", async (req, res) => {
 
     // Sync to MM CORE (Port 5001)
     try {
+      // ✅ CRITICAL: Send type to MM Core
       const payload = {
         name: vendor.name,
         address: vendor.address,
         contact: vendor.contact,
         bank_account: vendor.bank_details,
       };
+
+      console.log(`   Sending to MM Core:`, payload);
 
       const response = await axios.post(
         "http://localhost:5001/api/integration/vendor",
@@ -291,14 +301,17 @@ app.post("/api/vendor/sync", async (req, res) => {
         [response.data.id, common_key],
       );
 
-      console.log(`   ✅ Synced to MM Core (ID: ${response.data.id})`);
+      console.log(`   ✅ Synced to MM Core (ID: ${response.data.id}, Type: ${vendor.type || 'FARMER'})`);
     } catch (err) {
       console.log(`   ❌ MM Core failed: ${err.message}`);
+      if (err.response) {
+        console.log(`   Response:`, err.response.data);
+      }
     }
 
     res.json({ success: true, common_key });
   } catch (error) {
-    console.error("Vendor sync failed:", error);
+    console.error("❌ Vendor sync failed:", error);
     res.status(500).json({ error: error.message });
   }
 });

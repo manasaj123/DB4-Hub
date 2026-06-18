@@ -3,7 +3,9 @@ import db from "../config/db.js";
 
 const router = express.Router();
 
+// ============================================
 // Receive material from integration hub
+// ============================================
 router.post("/material", (req, res) => {
   const { name, unit, shelf_life } = req.body;
 
@@ -12,14 +14,17 @@ router.post("/material", (req, res) => {
 
   db.query(sql, [name, unit, shelf_life || 0], (err, result) => {
     if (err) {
-      console.error("Integration error:", err);
+      console.error("❌ Integration error:", err);
       return res.status(500).json({ error: err.message });
     }
+    console.log(`   ✅ Created material with ID: ${result.insertId}`);
     res.json({ id: result.insertId, success: true });
   });
 });
 
+// ============================================
 // Receive vendor/farmer from integration hub
+// ============================================
 router.post("/vendor", (req, res) => {
   const { name, address, contact, bank_account, type } = req.body;
 

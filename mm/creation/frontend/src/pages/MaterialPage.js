@@ -23,9 +23,9 @@ const cardStyle = {
 };
 
 const pageContainer = {
-  maxWidth: "1400px",
+  maxWidth: "1200px",
   margin: "0 auto",
-  padding: "20px"
+  padding: "10px"
 };
 
 export default function MaterialPage() {
@@ -149,7 +149,7 @@ const handleDelete = async (id) => {
         background: "#fff",
         padding: "25px",
         borderRadius: "12px",
-        width: "600px",
+        width: "500px",
         maxHeight: "80vh",
         overflowY: "auto",
       }}
