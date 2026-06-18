@@ -1,4 +1,3 @@
-// src/pages/MasterInspectionPage.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Sidebar from "../components/qc/Sidebar";
@@ -27,6 +26,7 @@ export default function MasterInspectionPage() {
   const [editingId, setEditingId] = useState(null);
   const [showRecycleBin, setShowRecycleBin] = useState(false);
   const [errors, setErrors] = useState({});
+  const [viewingItem, setViewingItem] = useState(null); // State for view modal
 
   const loadData = async () => {
     const [activeRes, binRes] = await Promise.all([
@@ -93,16 +93,16 @@ export default function MasterInspectionPage() {
     }
 
     // Numeric checks
-      // Numeric checks (no negatives)
-  const numFields = ["lowerSpecLimit", "upperSpecLimit", "targetValue"];
-  numFields.forEach(field => {
-    const value = form[field];
-    if (value !== "" && isNaN(Number(value))) {
-      newErrors[field] = "Must be a number";
-    } else if (value !== "" && Number(value) < 0) {
-      newErrors[field] = "Cannot be negative";
-    }
-  });
+    // Numeric checks (no negatives)
+    const numFields = ["lowerSpecLimit", "upperSpecLimit", "targetValue"];
+    numFields.forEach(field => {
+      const value = form[field];
+      if (value !== "" && isNaN(Number(value))) {
+        newErrors[field] = "Must be a number";
+      } else if (value !== "" && Number(value) < 0) {
+        newErrors[field] = "Cannot be negative";
+      }
+    });
 
     // Logical relationship LSL <= Target <= USL (only if all present and numeric)
     const lsl = form.lowerSpecLimit === "" ? null : Number(form.lowerSpecLimit);
@@ -165,6 +165,14 @@ export default function MasterInspectionPage() {
       upperSpecLimit: item.upperSpecLimit ?? ""
     });
     setErrors({});
+  };
+
+  const handleView = (item) => {
+    setViewingItem(item);
+  };
+
+  const handleCloseView = () => {
+    setViewingItem(null);
   };
 
   const handleSoftDelete = async id => {
@@ -366,17 +374,49 @@ export default function MasterInspectionPage() {
                     <td>{item.upperSpecLimit}</td>
                     <td>{item.targetValue}</td>
                     <td>
+                      <button
+                        className="action-view"
+                        onClick={() => handleView(item)}
+                        style={{
+                          backgroundColor: "#08d262",
+                          color: "white",
+                          border: "none",
+                          padding: "5px 10px",
+                          marginRight: "5px",
+                          borderRadius: "4px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        View
+                      </button>
                       {!showRecycleBin && (
                         <>
                           <button
                             className="action-edit"
                             onClick={() => handleEdit(item)}
+                            style={{
+                              backgroundColor: "#144cf4",
+                              color: "white",
+                              border: "none",
+                              padding: "5px 10px",
+                              marginRight: "5px",
+                              borderRadius: "4px",
+                              cursor: "pointer"
+                            }}
                           >
                             Edit
                           </button>
                           <button
                             className="action-delete"
                             onClick={() => handleSoftDelete(item.id)}
+                            style={{
+                              backgroundColor: "#dc3545",
+                              color: "white",
+                              border: "none",
+                              padding: "5px 10px",
+                              borderRadius: "4px",
+                              cursor: "pointer"
+                            }}
                           >
                             Delete
                           </button>
@@ -387,12 +427,29 @@ export default function MasterInspectionPage() {
                           <button
                             className="action-restore"
                             onClick={() => handleRestore(item.id)}
+                            style={{
+                              backgroundColor: "#28a745",
+                              color: "white",
+                              border: "none",
+                              padding: "5px 10px",
+                              marginRight: "5px",
+                              borderRadius: "4px",
+                              cursor: "pointer"
+                            }}
                           >
                             Restore
                           </button>
                           <button
                             className="action-hard-delete"
                             onClick={() => handleHardDelete(item.id)}
+                            style={{
+                              backgroundColor: "#dc3545",
+                              color: "white",
+                              border: "none",
+                              padding: "5px 10px",
+                              borderRadius: "4px",
+                              cursor: "pointer"
+                            }}
                           >
                             Delete Permanently
                           </button>
@@ -413,6 +470,195 @@ export default function MasterInspectionPage() {
           </div>
         </div>
       </div>
+
+      {/* View Modal */}
+      {viewingItem && (
+        <div className="modal-overlay" onClick={handleCloseView}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Inspection Details</h2>
+              <button className="modal-close" onClick={handleCloseView}>
+                &times;
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row">
+                <strong>ID:</strong> {viewingItem.id}
+              </div>
+              <div className="detail-row">
+                <strong>Inspection No:</strong> {formatInspectionNo(viewingItem.id)}
+              </div>
+              <div className="detail-row">
+                <strong>Inspection Code:</strong> {(viewingItem.inspectionName || "").toUpperCase()}
+              </div>
+              <div className="detail-row">
+                <strong>Plant:</strong> {viewingItem.plant}
+              </div>
+              <div className="detail-row">
+                <strong>Valid From:</strong> {viewingItem.validFrom}
+              </div>
+              <div className="detail-row">
+                <strong>Valid To:</strong> {viewingItem.validTo || "No expiry"}
+              </div>
+              <div className="detail-row">
+                <strong>Status:</strong> 
+                <span className={`status-badge status-${viewingItem.status?.toLowerCase()}`}>
+                  {viewingItem.status}
+                </span>
+              </div>
+              <div className="detail-section">
+                <h4>Specification Limits</h4>
+                <div className="spec-grid">
+                  <div className="spec-item">
+                    <strong>Lower Spec Limit (LSL):</strong> 
+                    {viewingItem.lowerSpecLimit !== null && viewingItem.lowerSpecLimit !== "" 
+                      ? viewingItem.lowerSpecLimit 
+                      : "Not set"}
+                  </div>
+                  <div className="spec-item">
+                    <strong>Target Value:</strong> 
+                    {viewingItem.targetValue !== null && viewingItem.targetValue !== "" 
+                      ? viewingItem.targetValue 
+                      : "Not set"}
+                  </div>
+                  <div className="spec-item">
+                    <strong>Upper Spec Limit (USL):</strong> 
+                    {viewingItem.upperSpecLimit !== null && viewingItem.upperSpecLimit !== "" 
+                      ? viewingItem.upperSpecLimit 
+                      : "Not set"}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-btn-close" onClick={handleCloseView}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add these styles to your CSS file */}
+      <style jsx>{`
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        }
+
+        .modal-content {
+          background: white;
+          border-radius: 8px;
+          width: 90%;
+          max-width: 600px;
+          max-height: 80vh;
+          overflow-y: auto;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+          padding: 20px;
+          border-bottom: 1px solid #e0e0e0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .modal-header h2 {
+          margin: 0;
+          font-size: 1.5rem;
+        }
+
+        .modal-close {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          cursor: pointer;
+          color: #666;
+        }
+
+        .modal-close:hover {
+          color: #000;
+        }
+
+        .modal-body {
+          padding: 20px;
+        }
+
+        .detail-row {
+          margin-bottom: 12px;
+          padding: 8px;
+          border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-section {
+          margin-top: 20px;
+        }
+
+        .detail-section h4 {
+          margin-bottom: 12px;
+          color: #333;
+        }
+
+        .spec-grid {
+          display: grid;
+          gap: 12px;
+          background: #f5f5f5;
+          padding: 15px;
+          border-radius: 6px;
+        }
+
+        .spec-item {
+          padding: 8px;
+        }
+
+        .status-badge {
+          display: inline-block;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 0.85rem;
+          font-weight: 500;
+          margin-left: 8px;
+        }
+
+        .status-released {
+          background-color: #d4edda;
+          color: #155724;
+        }
+
+        .status-complaint {
+          background-color: #f8d7da;
+          color: #721c24;
+        }
+
+        .modal-footer {
+          padding: 20px;
+          border-top: 1px solid #e0e0e0;
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .modal-btn-close {
+          background-color: #6c757d;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+
+        .modal-btn-close:hover {
+          background-color: #5a6268;
+        }
+      `}</style>
     </div>
   );
 }

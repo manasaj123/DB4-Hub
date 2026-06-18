@@ -14,6 +14,7 @@ export default function CustomerOnboarding() {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewCustomer, setViewCustomer] = useState(null); // For view modal
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -149,6 +150,7 @@ export default function CustomerOnboarding() {
     setStatus(customer.status || "Active");
     setErrors({}); 
     setTouched({});
+    setViewCustomer(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -199,6 +201,7 @@ export default function CustomerOnboarding() {
       await axios.delete(`http://localhost:5001/api/customers/${id}`);
       alert(`Customer "${name}" deleted successfully!`);
       if (editingId === id) resetForm();
+      if (viewCustomer && viewCustomer.id === id) setViewCustomer(null);
       await fetchCustomers();
     } catch (error) {
       console.error("Delete error:", error);
@@ -527,6 +530,12 @@ export default function CustomerOnboarding() {
                   {/* Action Buttons */}
                   <div style={styles.actionContainer}>
                     <button 
+                      onClick={() => setViewCustomer(c)}
+                      style={styles.viewBtn}
+                    >
+                      👁️ View
+                    </button>
+                    <button 
                       onClick={() => editCustomer(c)}
                       style={styles.editBtn}
                     >
@@ -551,6 +560,98 @@ export default function CustomerOnboarding() {
           </div>
         </div>
       </div>
+
+      {/* VIEW MODAL */}
+      {viewCustomer && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }} onClick={() => setViewCustomer(null)}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            padding: '30px',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '22px', color: '#1a1a2e' }}>👤 Customer Details</h2>
+              <button onClick={() => setViewCustomer(null)} style={{
+                background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#999'
+              }}>✕</button>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{
+                width: '60px', height: '60px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: '700', fontSize: '24px', marginRight: '15px', flexShrink: 0,
+              }}>
+                {(viewCustomer.name || '?')[0].toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a2e' }}>{viewCustomer.name}</div>
+                <span style={{
+                  fontSize: '12px', background: '#e8f0fe', padding: '4px 10px',
+                  borderRadius: '20px', color: '#1967d2', fontWeight: '600',
+                }}>{viewCustomer.customer_code || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '15px' }}>
+              {viewCustomer.email && (
+                <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                  <strong>📧 Email:</strong> {viewCustomer.email}
+                </div>
+              )}
+              <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                <strong>📞 Contact:</strong> {viewCustomer.contact}
+              </div>
+              <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                <strong>🏠 Address:</strong> {viewCustomer.address}
+              </div>
+              {viewCustomer.gst_number && (
+                <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                  <strong>🧾 GST:</strong> {viewCustomer.gst_number}
+                </div>
+              )}
+              <div style={{ fontSize: '14px', color: '#555', padding: '8px 0' }}>
+                <strong>Status:</strong>{' '}
+                <span style={{
+                  padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700',
+                  background: viewCustomer.status === 'Active' ? '#d4edda' : '#fce4ec',
+                  color: viewCustomer.status === 'Active' ? '#155724' : '#c62828',
+                }}>
+                  {viewCustomer.status === 'Active' ? '● Active' : '● Inactive'}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={() => editCustomer(viewCustomer)} style={{
+                flex: 1, padding: '10px', background: '#fff3e0', color: '#e65100',
+                border: '1px solid #ffe0b2', borderRadius: '8px', cursor: 'pointer',
+                fontSize: '14px', fontWeight: '600',
+              }}>✏️ Edit</button>
+              <button onClick={() => { setViewCustomer(null); }} style={{
+                flex: 1, padding: '10px', background: '#6c757d', color: '#fff',
+                border: 'none', borderRadius: '8px', cursor: 'pointer',
+                fontSize: '14px', fontWeight: '600',
+              }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -677,7 +778,6 @@ const styles = {
     fontSize: "16px",
   },
 
-  // Customer Card Styles
   customerCard: {
     padding: "16px 18px",
     background: "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
@@ -739,6 +839,19 @@ const styles = {
   },
 
   // Action Buttons
+  viewBtn: {
+    flex: 1,
+    padding: '8px 12px',
+    background: '#e8f5e9',
+    color: '#2e7d32',
+    border: '1px solid #c8e6c9',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '600',
+    transition: 'all 0.2s',
+  },
+
   editBtn: {
     flex: 1,
     padding: '8px 12px',

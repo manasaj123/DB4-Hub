@@ -95,11 +95,15 @@ db.CustomerGroup = sequelize.define(
 //   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 // );
 // Customer
+// ================= CUSTOMER =================
 db.Customer = sequelize.define(
   "Customer",
   {
-    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-
+    id: { 
+      type: DataTypes.INTEGER, 
+      autoIncrement: true, 
+      primaryKey: true 
+    },
     customerCode: {
       type: DataTypes.STRING(20),
       allowNull: false,
@@ -121,8 +125,32 @@ db.Customer = sequelize.define(
       type: DataTypes.STRING(3),
       allowNull: true,
     },
-    creditGroup: { type: DataTypes.STRING(10) },
-    riskCategory: { type: DataTypes.STRING(10) },
+    creditGroup: { 
+      type: DataTypes.STRING(10),
+      allowNull: true,
+    },
+    riskCategory: { 
+      type: DataTypes.STRING(10),
+      allowNull: true,
+    },
+    // ===== ADD THESE FIELDS =====
+    email: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    address: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    gstNumber: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+    // ===========================
     isDeleted: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -139,7 +167,7 @@ db.Customer = sequelize.define(
   },
   {
     tableName: "customers",
-    timestamps: true, // uses createdAt / updatedAt
+    timestamps: true,
   },
 );
 
