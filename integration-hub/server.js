@@ -41,12 +41,14 @@ app.post("/api/material/sync", async (req, res) => {
 
   const common_key = material.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
 
-  // Save or update mapping
+  // Save or update mapping - include material_code
   await db.query(
-    `INSERT INTO material_mapping (common_key, name, mm_creation_id) 
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE mm_creation_id = ?`,
-    [common_key, material.name, material.id, material.id],
+    `INSERT INTO material_mapping (common_key, name, mm_creation_id, material_code) 
+   VALUES (?, ?, ?, ?)
+   ON DUPLICATE KEY UPDATE 
+     mm_creation_id = VALUES(mm_creation_id),
+     material_code = VALUES(material_code)`,
+    [common_key, material.name, material.id, material.material_number],
   );
 
   const results = {};
@@ -264,8 +266,17 @@ app.post("/api/vendor/sync", async (req, res) => {
          address = VALUES(address),
          bank_details = VALUES(bank_details),
          rating = VALUES(rating)`,
-      [common_key, vendor.name, vendor.type || 'FARMER', vendor.id, vendor.contact, vendor.gst_no, 
-       vendor.address, vendor.bank_details, vendor.rating || 0]
+      [
+        common_key,
+        vendor.name,
+        vendor.type,
+        vendor.id,
+        vendor.contact,
+        vendor.gst_no,
+        vendor.address,
+        vendor.bank_details,
+        vendor.rating || 0,
+      ],
     );
 
     // Sync to MM CORE (Port 5001)
@@ -276,19 +287,18 @@ app.post("/api/vendor/sync", async (req, res) => {
         address: vendor.address,
         contact: vendor.contact,
         bank_account: vendor.bank_details,
-        type: vendor.type || 'FARMER'  // ← MUST include this
       };
 
       console.log(`   Sending to MM Core:`, payload);
 
       const response = await axios.post(
         "http://localhost:5001/api/integration/vendor",
-        payload
+        payload,
       );
 
       await db.query(
         `UPDATE vendor_mapping SET mm_core_id = ? WHERE common_key = ?`,
-        [response.data.id, common_key]
+        [response.data.id, common_key],
       );
 
       console.log(`   ✅ Synced to MM Core (ID: ${response.data.id}, Type: ${vendor.type || 'FARMER'})`);
@@ -302,6 +312,185 @@ app.post("/api/vendor/sync", async (req, res) => {
     res.json({ success: true, common_key });
   } catch (error) {
     console.error("❌ Vendor sync failed:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// API: SYNC CUSTOMER FROM SD DISTRIBUTION
+// ============================================
+app.post("/api/customer/sync", async (req, res) => {
+  const { source, customer } = req.body;
+
+  console.log(`👤 Syncing customer "${customer.name}" from ${source}`);
+
+  try {
+    const common_key = customer.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+    // Save or update mapping
+    await db.query(
+      `INSERT INTO customer_mapping (common_key, name, sd_distribution_id, email, phone, customer_code, gst_number, address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE 
+         sd_distribution_id = VALUES(sd_distribution_id),
+         name = VALUES(name),
+         email = VALUES(email),
+         phone = VALUES(phone),
+         customer_code = VALUES(customer_code),
+         gst_number = VALUES(gst_number),
+         address = VALUES(address)`,
+      [
+        common_key,
+        customer.name,
+        customer.id,
+        customer.email,
+        customer.phone,
+        customer.customer_code,
+        customer.gst_number,
+        customer.address,
+      ],
+    );
+
+    // 1. Sync to MM CORE (Port 5001)
+    try {
+      const payload = {
+        name: customer.name,
+        address: customer.address,
+        contact: customer.phone,
+        email: customer.email,
+        gst_number: customer.gst_number,
+        customer_code: customer.customer_code,
+      };
+
+      const response = await axios.post(
+        "http://localhost:5001/api/integration/customer",
+        payload,
+      );
+
+      await db.query(
+        `UPDATE customer_mapping SET mm_core_id = ? WHERE common_key = ?`,
+        [response.data.id, common_key],
+      );
+
+      console.log(`   ✅ Synced to MM Core (ID: ${response.data.id})`);
+    } catch (err) {
+      console.log(`   ❌ MM Core failed: ${err.message}`);
+    }
+
+    // 2. Sync to SALES FLOW (Port 5007)
+    try {
+      const defaultPassword = `Welcome@${customer.customer_code || "123"}`;
+
+      const response = await axios.post(
+        "http://localhost:5007/api/integration/user",
+        {
+          name: customer.name,
+          email:
+            customer.email ||
+            `${customer.name.toLowerCase().replace(/ /g, ".")}@company.com`,
+          password: defaultPassword,
+          role: "viewer", // Default role for customers
+        },
+      );
+
+      await db.query(
+        `UPDATE customer_mapping SET sales_flow_user_id = ? WHERE common_key = ?`,
+        [response.data.id, common_key],
+      );
+
+      console.log(`   ✅ Synced to Sales Flow (User ID: ${response.data.id})`);
+    } catch (err) {
+      console.log(`   ❌ Sales Flow failed: ${err.message}`);
+    }
+
+    res.json({ success: true, common_key });
+  } catch (error) {
+    console.error("Customer sync failed:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// API: STOCK SYNC (FIXED VERSION)
+// ============================================
+app.post("/api/stock/sync", async (req, res) => {
+  const { material_code, quantity, module } = req.body;
+
+  console.log(`📊 Stock sync: ${material_code} → ${quantity} (from ${module})`);
+
+  try {
+    // Get material mapping - using rows[0] approach
+    const [rows] = await db.query(
+      "SELECT * FROM material_mapping WHERE material_code = ?",
+      [material_code],
+    );
+
+    const mapping = rows[0];
+
+    console.log(`   🔍 Mapping found:`, mapping);
+
+    if (!mapping) {
+      console.log(`   ❌ Material not found: ${material_code}`);
+      return res.status(404).json({ error: "Material not found in mapping" });
+    }
+
+    console.log(`   🔍 mm_core_id: ${mapping.mm_core_id}`);
+    console.log(`   🔍 sd_distribution_id: ${mapping.sd_distribution_id}`);
+    console.log(`   🔍 warehouse_id: ${mapping.warehouse_id}`);
+
+    const results = {};
+
+    // 1. Sync to MM CORE (Port 5001)
+    if (mapping.mm_core_id) {
+      try {
+        await axios.post("http://localhost:5001/api/integration/stock", {
+          material_id: mapping.mm_core_id,
+          quantity: quantity,
+        });
+        results.mm_core = "✅";
+        console.log(`   ✅ MM Core (ID: ${mapping.mm_core_id})`);
+      } catch (err) {
+        results.mm_core = "❌";
+        console.log(`   ❌ MM Core: ${err.message}`);
+      }
+    }
+
+    // 2. Sync to SD DISTRIBUTION (Port 5011)
+    if (mapping.sd_distribution_id) {
+      try {
+        await axios.post("http://localhost:5011/api/integration/stock", {
+          material_id: mapping.sd_distribution_id,
+          quantity: quantity,
+        });
+        results.sd_distribution = "✅";
+        console.log(
+          `   ✅ SD Distribution (ID: ${mapping.sd_distribution_id})`,
+        );
+      } catch (err) {
+        results.sd_distribution = "❌";
+        console.log(`   ❌ SD Distribution: ${err.message}`);
+      }
+    }
+
+    // 3. Sync to WAREHOUSE (Port 5005)
+    if (mapping.warehouse_id) {
+      try {
+        await axios.post("http://localhost:5005/api/integration/stock", {
+          item_id: mapping.warehouse_id,
+          quantity: quantity,
+        });
+        results.warehouse = "✅";
+        console.log(`   ✅ Warehouse (ID: ${mapping.warehouse_id})`);
+      } catch (err) {
+        results.warehouse = "❌";
+        console.log(`   ❌ Warehouse: ${err.message}`);
+      }
+    }
+
+    console.log(`\n📊 Stock Sync Results:`, results);
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error("Stock sync failed:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -446,6 +635,12 @@ app.listen(PORT, () => {
   console.log("🚀 INTEGRATION HUB RUNNING");
   console.log(`📡 Port: ${PORT}`);
   console.log("=".repeat(50));
+  console.log("\n📋 API Endpoints:");
+  console.log("   POST /api/material/sync");
+  console.log("   POST /api/vendor/sync");
+  console.log("   POST /api/customer/sync");
+  console.log("   POST /api/stock/sync");
+  console.log("   GET  /health");
   console.log("\n📋 Syncing to:");
   console.log("   ✅ MM Core (Port 5001)");
   console.log("   ✅ Warehouse (Port 5005)");

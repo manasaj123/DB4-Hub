@@ -8,12 +8,10 @@ const router = express.Router();
 // ============================================
 router.post("/material", (req, res) => {
   const { name, unit, shelf_life } = req.body;
-  
-  console.log(`📦 MM Core receiving material: ${name}`);
-  console.log(`   Unit: ${unit}, Shelf Life: ${shelf_life || 0} days`);
 
-  const sql = "INSERT INTO materials (name, unit, shelf_life, qty) VALUES (?, ?, ?, 0)";
-  
+  const sql =
+    "INSERT INTO materials (name, unit, shelf_life, qty) VALUES (?, ?, ?, 0)";
+
   db.query(sql, [name, unit, shelf_life || 0], (err, result) => {
     if (err) {
       console.error("❌ Integration error:", err);
@@ -30,15 +28,8 @@ router.post("/material", (req, res) => {
 router.post("/vendor", (req, res) => {
   const { name, address, contact, bank_account, type } = req.body;
 
-  // Normalize type
-  const normalizedType = (type && type.toUpperCase() === 'VENDOR') ? 'VENDOR' : 'FARMER';
+  console.log(`🏢 MM Core receiving ${type || "FARMER"}: ${name}`);
 
-  console.log(`🏢 MM Core receiving ${normalizedType}: ${name}`);
-  console.log(`   Address: ${address || 'Not provided'}`);
-  console.log(`   Contact: ${contact || 'Not provided'}`);
-  console.log(`   Type: ${normalizedType}`);
-
-  // Generate farmer_code
   const farmerCode = `FARM-${Date.now()}`;
 
   const sql = `
@@ -47,55 +38,56 @@ router.post("/vendor", (req, res) => {
   `;
 
   db.query(
-    sql, 
-    [
-      name, 
-      address, 
-      contact, 
-      farmerCode, 
-      bank_account, 
-      normalizedType
-    ], 
+    sql,
+    [name, address, contact, farmerCode, bank_account, type || "FARMER"],
     (err, result) => {
       if (err) {
-        console.error("❌ Integration vendor error:", err);
+        console.error("Integration vendor error:", err);
         return res.status(500).json({ error: err.message });
       }
-      
-      console.log(`   ✅ Created ${normalizedType} with ID: ${result.insertId}, Code: ${farmerCode}`);
-      
-      res.json({ 
-        id: result.insertId, 
-        farmer_code: farmerCode,
-        type: normalizedType,
-        success: true 
-      });
-    }
+      res.json({ id: result.insertId, success: true });
+    },
   );
 });
 
-// ============================================
-// Update stock
-// ============================================
+// Receive customer from integration hub
+router.post("/customer", (req, res) => {
+  const { name, address, contact, email, gst_number, customer_code } = req.body;
+
+  console.log(`👤 MM Core receiving customer: ${name}`);
+
+  const sql = `
+    INSERT INTO customers (name, address, contact, customer_code, email, gst_number, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'Active')
+  `;
+
+  db.query(
+    sql,
+    [name, address, contact, customer_code, email, gst_number],
+    (err, result) => {
+      if (err) {
+        console.error("Integration customer error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ id: result.insertId, success: true });
+    },
+  );
+});
+
+//  Update stock from integration hub
 router.post("/stock", (req, res) => {
   const { material_id, quantity } = req.body;
-  
-  console.log(`📊 MM Core updating stock for material ID: ${material_id}`);
-  console.log(`   New Quantity: ${quantity}`);
-  
-  db.query("UPDATE materials SET qty = ? WHERE id = ?", [quantity, material_id], (err, result) => {
-    if (err) {
-      console.error("❌ Integration stock error:", err);
-      return res.status(500).json({ error: err.message });
-    }
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Material not found" });
-    }
-    
-    console.log(`   ✅ Stock updated successfully`);
-    res.json({ success: true });
-  });
+  db.query(
+    "UPDATE materials SET qty = ? WHERE id = ?",
+    [quantity, material_id],
+    (err) => {
+      if (err) {
+        console.error("Integration stock error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ success: true });
+    },
+  );
 });
 
 export default router;
