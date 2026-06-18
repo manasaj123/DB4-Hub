@@ -22,25 +22,25 @@ export default function FarmerOnboarding() {
     fetchFarmers();
   }, []);
 
-  const fetchFarmers = async () => {
-    try {
-      const res = await axios.get("http://localhost:5001/api/farmers");
-      const validFarmers = res.data.filter(f => {
-        return f.name && f.name.length >= 3 && /^[A-Za-z]/.test(f.name);
-      });
-      setFarmers(validFarmers);
-      
-      if (!editingId) {
-        const nextCode = generateNextCode(validFarmers);
-        setFarmerCode(nextCode);
-      }
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setFarmers([]);
-      if (!editingId) setFarmerCode('FARM-00001');
-    }
-  };
+  // ✅ UPDATE THIS FUNCTION - Only fetch FARMER type
+// src/components/FarmerOnboarding.jsx
 
+const fetchFarmers = async () => {
+  try {
+    // ✅ ONLY fetch FARMER type
+    const res = await axios.get("http://localhost:5001/api/farmers?type=FARMER");
+    setFarmers(res.data);
+    
+    if (!editingId) {
+      const nextCode = generateNextCode(res.data);
+      setFarmerCode(nextCode);
+    }
+  } catch (err) {
+    console.error("Fetch error:", err);
+    setFarmers([]);
+    if (!editingId) setFarmerCode('FARM-00001');
+  }
+};
   const generateNextCode = (existingFarmers) => {
     if (!existingFarmers || existingFarmers.length === 0) {
       return 'FARM-00001';

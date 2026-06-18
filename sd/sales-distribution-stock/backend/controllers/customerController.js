@@ -11,6 +11,9 @@ const validateCustomer = (data) => {
   const countryRegex = /^[A-Za-z\s]+$/;
   const customerCodeRegex = /^[A-Za-z0-9]+$/;
   const creditGroupRegex = /^[A-Za-z0-9\s]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^[0-9+\-\s()]+$/;
+  const gstRegex = /^[0-9A-Z]{15}$/;
 
   const requiredFields = [
     "customerCode",
@@ -18,6 +21,7 @@ const validateCustomer = (data) => {
     "city",
     "country",
     "riskCategory",
+    "accountGroup"
   ];
 
   // 1. Required fields check
@@ -26,6 +30,11 @@ const validateCustomer = (data) => {
       errors[field] = `${field} is required`;
     }
   });
+
+  // Account Group validation - max 4 characters
+  if (data.accountGroup && data.accountGroup.length > 4) {
+    errors.accountGroup = "Account Group cannot exceed 4 characters";
+  }
 
   // 2. Customer Code rules
   if (data.customerCode) {
@@ -39,6 +48,7 @@ const validateCustomer = (data) => {
     }
   }
 
+  // 3. Credit Group validation
   if (data.creditGroup) {
     if (!creditGroupRegex.test(data.creditGroup)) {
       errors.creditGroup =
@@ -46,7 +56,7 @@ const validateCustomer = (data) => {
     }
   }
 
-  // 2. Name rules
+  // 4. Name rules
   if (data.name) {
     if (!nameRegex.test(data.name)) {
       errors.name = "Name must contain only letters and spaces";
@@ -56,12 +66,12 @@ const validateCustomer = (data) => {
     }
   }
 
-  // 3. City rules
+  // 5. City rules
   if (data.city && !cityRegex.test(data.city)) {
     errors.city = "City must contain only letters";
   }
 
-  // 4. Country rules
+  // 6. Country rules
   if (data.country) {
     if (!countryRegex.test(data.country)) {
       errors.country = "Country must contain only letters";
@@ -71,6 +81,39 @@ const validateCustomer = (data) => {
     }
   }
 
+  // 7. Email validation (optional but validate if provided)
+  if (data.email && data.email.trim() !== '') {
+    if (!emailRegex.test(data.email)) {
+      errors.email = "Please enter a valid email address";
+    }
+    if (data.email.length > 100) {
+      errors.email = "Email cannot exceed 100 characters";
+    }
+  }
+
+  // 8. Phone validation (optional but validate if provided)
+  if (data.phone && data.phone.trim() !== '') {
+    if (!phoneRegex.test(data.phone)) {
+      errors.phone = "Phone number contains invalid characters";
+    }
+    if (data.phone.length > 20) {
+      errors.phone = "Phone number cannot exceed 20 characters";
+    }
+  }
+
+  // 9. GST Number validation (optional but validate if provided)
+  if (data.gstNumber && data.gstNumber.trim() !== '') {
+    const cleanGST = data.gstNumber.trim().toUpperCase();
+    if (!gstRegex.test(cleanGST)) {
+      errors.gstNumber = "GST Number must be 15 characters alphanumeric (e.g., 22AAAAA0000A1Z5)";
+    }
+  }
+
+  // 10. Address validation (optional, max length check)
+  if (data.address && data.address.length > 500) {
+    errors.address = "Address cannot exceed 500 characters";
+  }
+
   return errors;
 };
 
@@ -78,7 +121,7 @@ const validateCustomer = (data) => {
 exports.getCustomers = asyncHandler(async (req, res) => {
   const list = await db.Customer.findAll({
     where: { isDeleted: false },
-    order: [["id", "ASC"]],
+    order: [["id", "ASC"]]
   });
   res.json(list);
 });
@@ -87,7 +130,7 @@ exports.getCustomers = asyncHandler(async (req, res) => {
 exports.getDeletedCustomers = asyncHandler(async (req, res) => {
   const list = await db.Customer.findAll({
     where: { isDeleted: true },
-    order: [["id", "ASC"]],
+    order: [["id", "ASC"]]
   });
   res.json(list);
 });
@@ -105,21 +148,37 @@ exports.getCustomerById = asyncHandler(async (req, res) => {
 // POST /api/customers
 exports.createCustomer = asyncHandler(async (req, res) => {
   try {
-    req.body.customerCode = (req.body.customerCode || "").trim().toUpperCase();
-    req.body.name = (req.body.name || "").trim();
-    req.body.city = (req.body.city || "").trim();
-    req.body.country = (req.body.country || "").trim().toUpperCase();
-    req.body.creditGroup = (req.body.creditGroup || "").trim();
+    console.log('=== CREATE CUSTOMER ===');
+    console.log('Raw incoming data:', req.body);
 
-    const errors = validateCustomer(req.body);
+    const customerData = {
+      customerCode: (req.body.customerCode || "").trim().toUpperCase(),
+      name: (req.body.name || "").trim(),
+      accountGroup: (req.body.accountGroup || "").trim().toUpperCase(),
+      city: (req.body.city || "").trim(),
+      country: (req.body.country || "").trim().toUpperCase(),
+      creditGroup: (req.body.creditGroup || "").trim() || null,
+      riskCategory: req.body.riskCategory || null,
+      email: (req.body.email || "").trim() || null,
+      phone: (req.body.phone || "").trim() || null,
+      address: (req.body.address || "").trim() || null,
+      gstNumber: (req.body.gstNumber || "").trim().toUpperCase() || null,
+    };
+
+    console.log('Cleaned customer data:', customerData);
+
+    const errors = validateCustomer(customerData);
     if (Object.keys(errors).length > 0) {
+      console.log('Validation errors:', errors);
       return res.status(400).json({ errors });
     }
 
-    const customer = await db.Customer.create(req.body);
+    const customer = await db.Customer.create(customerData);
+    console.log('Customer created successfully:', customer.toJSON());
 
     res.status(201).json(customer);
   } catch (err) {
+    console.error('Error creating customer:', err);
     if (err.name === "SequelizeUniqueConstraintError") {
       return res.status(400).json({
         errors: {
@@ -127,7 +186,10 @@ exports.createCustomer = asyncHandler(async (req, res) => {
         },
       });
     }
-    throw err;
+    res.status(500).json({ 
+      message: "Error creating customer", 
+      error: err.message 
+    });
   }
 });
 
@@ -140,21 +202,37 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
   }
 
   try {
-    req.body.customerCode = (req.body.customerCode || "").trim().toUpperCase();
-    req.body.name = (req.body.name || "").trim();
-    req.body.city = (req.body.city || "").trim();
-    req.body.country = (req.body.country || "").trim().toUpperCase();
-    req.body.creditGroup = (req.body.creditGroup || "").trim();
+    console.log('=== UPDATE CUSTOMER ===');
+    console.log('Update data:', req.body);
 
-    const errors = validateCustomer(req.body);
+    const updateData = {
+      customerCode: (req.body.customerCode || "").trim().toUpperCase(),
+      name: (req.body.name || "").trim(),
+      accountGroup: (req.body.accountGroup || "").trim().toUpperCase(),
+      city: (req.body.city || "").trim(),
+      country: (req.body.country || "").trim().toUpperCase(),
+      creditGroup: (req.body.creditGroup || "").trim() || null,
+      riskCategory: req.body.riskCategory || null,
+      email: (req.body.email || "").trim() || null,
+      phone: (req.body.phone || "").trim() || null,
+      address: (req.body.address || "").trim() || null,
+      gstNumber: (req.body.gstNumber || "").trim().toUpperCase() || null,
+    };
+
+    console.log('Cleaned update data:', updateData);
+
+    const errors = validateCustomer(updateData);
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({ errors });
     }
 
-    await customer.update(req.body);
+    await customer.update(updateData);
 
-    res.json(customer);
+    const updatedCustomer = await db.Customer.findByPk(customer.id);
+    console.log('Updated customer:', updatedCustomer.toJSON());
+    res.json(updatedCustomer);
   } catch (err) {
+    console.error('Error updating customer:', err);
     if (err.name === "SequelizeUniqueConstraintError") {
       return res.status(400).json({
         errors: {
@@ -162,10 +240,14 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
         },
       });
     }
-    throw err;
+    res.status(500).json({ 
+      message: "Error updating customer", 
+      error: err.message 
+    });
   }
 });
-// DELETE /api/customers/:id  (soft delete)
+
+// DELETE /api/customers/:id (soft delete)
 exports.softDeleteCustomer = asyncHandler(async (req, res) => {
   const customer = await db.Customer.findByPk(req.params.id);
   if (!customer) {
