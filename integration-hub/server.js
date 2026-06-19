@@ -22,7 +22,7 @@ async function initDB() {
   db = await mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "root",
+    password: "Anson.0983",
     database: "integration_hub",
   });
   console.log("✅ Integration Hub DB connected");
@@ -248,7 +248,9 @@ app.post("/api/material/sync", async (req, res) => {
 app.post("/api/vendor/sync", async (req, res) => {
   const { source, vendor } = req.body;
 
-  console.log(`🏢 Syncing ${vendor.type || 'FARMER'} "${vendor.name}" from ${source || 'mm_creation'}`);
+  console.log(
+    `🏢 Syncing ${vendor.type || "FARMER"} "${vendor.name}" from ${source || "mm_creation"}`,
+  );
 
   try {
     const common_key = vendor.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
@@ -287,6 +289,7 @@ app.post("/api/vendor/sync", async (req, res) => {
         address: vendor.address,
         contact: vendor.contact,
         bank_account: vendor.bank_details,
+        type: vendor.type,
       };
 
       console.log(`   Sending to MM Core:`, payload);
@@ -301,7 +304,9 @@ app.post("/api/vendor/sync", async (req, res) => {
         [response.data.id, common_key],
       );
 
-      console.log(`   ✅ Synced to MM Core (ID: ${response.data.id}, Type: ${vendor.type || 'FARMER'})`);
+      console.log(
+        `   ✅ Synced to MM Core (ID: ${response.data.id}, Type: ${vendor.type || "FARMER"})`,
+      );
     } catch (err) {
       console.log(`   ❌ MM Core failed: ${err.message}`);
       if (err.response) {
