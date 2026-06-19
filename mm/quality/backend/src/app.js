@@ -4,19 +4,27 @@ import qcLotRoutes from "./routes/qcLotRoutes.js";
 import qcMasterRoutes from "./routes/qcMasterRoutes.js";
 import capaRoutes from "./routes/capaRoutes.js";
 import qcSummaryRoutes from "./routes/qcSummaryRoutes.js";
-import integrationRoutes from "./routes/integrationRoutes.js"; // ← ADD THIS
+import integrationRoutes from "./routes/integrationRoutes.js";
+
+// 🆕 NEW ROUTES
+import qcResultRoutes from "./routes/qcResultRoutes.js";
+import qcDefectRoutes from "./routes/qcDefectRoutes.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// QC routes
+// ✅ Existing routes
 app.use("/api/qc/lots", qcLotRoutes);
 app.use("/api/qc/master", qcMasterRoutes);
 app.use("/api/qc/capa", capaRoutes);
 app.use("/api/qc", qcSummaryRoutes);
-app.use("/api/integration", integrationRoutes); // ← ADD THIS
+app.use("/api/integration", integrationRoutes);
+
+// 🆕 NEW routes
+app.use("/api/qc/results", qcResultRoutes);
+app.use("/api/qc/defects", qcDefectRoutes);
 
 app.get("/health", (req, res) => {
   res.json({ ok: true });
