@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import grnApi from "../api/grnApi";
 import poApi from "../api/poApi";
+import axios from "axios";
 import vendorApi from "../api/vendorApi";
 
 const titleStyle = {
@@ -160,6 +161,7 @@ export default function GRNPage() {
   const [vendors, setVendors] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [locations, setLocations] = useState([]);
   const [viewGRN, setViewGRN] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
 
@@ -168,7 +170,8 @@ export default function GRNPage() {
     grn_date: "",
     vendor_id: "",
     po_id: "",
-    location_id: 1,
+    location_name: "",
+    state_name: "",
     status: "POSTED",
   });
 
@@ -206,10 +209,18 @@ export default function GRNPage() {
     }
   };
 
+  const loadLocations = async () => {
+  try {
+    const res = await axios.get("/api/locations");
+    setLocations(res.data || []);
+  } catch (e) { console.error(e); }
+};
+
   useEffect(() => {
     loadPOs();
     loadVendors();
     loadGRNs();
+    loadLocations();
   }, []);
 
   const resetForm = () => {
@@ -220,7 +231,8 @@ export default function GRNPage() {
       grn_date: "",
       vendor_id: "",
       po_id: "",
-      location_id: 1,
+      location_name: "",
+      state_name: "",
       status: "POSTED",
     });
     setItems([]);
@@ -308,11 +320,32 @@ export default function GRNPage() {
     }
   };
 
+  const handleLocationChange = (value) => {
+  const loc = locations.find(l => l.name.toLowerCase() === value.toLowerCase());
+  setHeader(h => ({ ...h, location_name: value, state_name: loc?.state || "" }));
+};
+
   const handleItemChange = (index, field, value) => {
     let processedValue = value;
 
     if (field === "batch_no") {
       processedValue = value.replace(/[^A-Za-z0-9\s-]/g, "");
+    }
+
+    // Auto-calculate rejected when received qty changes
+    if (field === "received_qty") {
+      const received = Number(value) || 0;
+      const accepted = Number(items[index]?.accepted_qty) || 0;
+      const rejected = received - accepted;
+
+      setItems((prev) =>
+        prev.map((it, i) =>
+          i === index
+            ? { ...it, received_qty: value, rejected_qty: rejected >= 0 ? rejected : 0 }
+            : it
+        )
+      );
+      return;
     }
 
     // Auto-calculate rejected quantity when accepted changes
@@ -523,7 +556,8 @@ export default function GRNPage() {
       grn_date: toLocalDateString(h.grn_date),
       vendor_id: h.vendor_id,
       po_id: h.po_id,
-      location_id: h.location_id,
+      location_name: h.location_name || "",
+      state_name: h.state_name || "",
       status: h.status || "POSTED",
     });
     setSelectedPoId(String(h.po_id || ""));
@@ -603,14 +637,28 @@ export default function GRNPage() {
                 )}
               </label>
               <label style={labelStyle}>
-                Location Id
+                  Location
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    value={header.location_name}
+                    onChange={(e) => handleLocationChange(e.target.value)}
+                    placeholder="Type location name"
+                    list="location-list"
+                  />
+                  <datalist id="location-list">
+                    {locations.map(loc => (
+                      <option key={loc.id} value={loc.name} />
+                    ))}
+                  </datalist>
+                </label>
+                <label style={labelStyle}>
+                State
                 <input
-                  style={inputStyle}
-                  type="number"
-                  name="location_id"
-                  value={header.location_id}
-                  onChange={handleHeaderChange}
-                  min="1"
+                  style={{ ...inputStyle, backgroundColor: "#f0f0f0" }}
+                  value={header.state_name}
+                  readOnly
+                  placeholder="Auto-filled"
                 />
               </label>
             </div>
@@ -711,7 +759,7 @@ export default function GRNPage() {
                             step="0.01"
                             min="0"
                             value={it.received_qty}
-                            disabled
+                            onChange={(e) => handleItemChange(idx, "received_qty", e.target.value)}
                           />
                           {errors[`item_${idx}_received_qty`] && (
                             <div style={errorTextStyle}>
@@ -882,6 +930,18 @@ export default function GRNPage() {
               </>
             )}
 
+                        {/* 🆕 Stock Summary Box */}
+            {items.length > 0 && (
+              <div style={{ marginTop: "16px", padding: "12px", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "14px" }}>📊 Stock Summary</h4>
+                <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
+                  <div>📦 <strong>Total Received:</strong> {items.reduce((s, i) => s + (Number(i.received_qty) || 0), 0)}</div>
+                  <div>✅ <strong>Accepted (Store):</strong> {items.reduce((s, i) => s + (Number(i.accepted_qty) || 0), 0)}</div>
+                  <div>❌ <strong>Rejected (Return):</strong> {items.reduce((s, i) => s + (Number(i.rejected_qty) || 0), 0)}</div>
+                </div>
+              </div>
+            )}
+
             <div>
               <button type="submit" style={buttonStyle} disabled={!items.length}>
                 {editingId ? "Update GRN" : "Save GRN"}
@@ -909,6 +969,7 @@ export default function GRNPage() {
                 <th style={thStyle}>PO</th>
                 <th style={thStyle}>Vendor</th>
                 <th style={thStyle}>Location</th>
+                <th style={thStyle}>State</th>
                 <th style={thStyle}>Status</th>
                 <th style={thStyle}>Action</th>
               </tr>
@@ -920,7 +981,8 @@ export default function GRNPage() {
                   <td style={tdStyle}>{toLocalDateString(g.grn_date)}</td>
                   <td style={tdStyle}>{g.po_no}</td>
                   <td style={tdStyle}>{g.vendor_name}</td>
-                  <td style={tdStyle}>{g.location_id}</td>
+                  <td style={tdStyle}>{g.location_name || g.location_id}</td>
+                  <td style={tdStyle}>{g.state_name || "-"}</td>
                   <td style={tdStyle}>{g.status}</td>
                   <td style={tdStyle}>
                     <button
@@ -958,7 +1020,7 @@ export default function GRNPage() {
               ))}
               {grns.length === 0 && (
                 <tr>
-                  <td style={tdStyle} colSpan={7}>
+                  <td style={tdStyle} colSpan={8}>
                     No GRNs found.
                   </td>
                 </tr>
@@ -982,7 +1044,8 @@ export default function GRNPage() {
               <p><strong>GRN Date:</strong> {toLocalDateString(viewGRN.header?.grn_date)}</p>
               <p><strong>PO:</strong> {viewGRN.header?.po_id}</p>
               <p><strong>Vendor:</strong> {viewGRN.header?.vendor_name}</p>
-              <p><strong>Location:</strong> {viewGRN.header?.location_id}</p>
+              <p><strong>Location:</strong> {viewGRN.header?.location_name || viewGRN.header?.location_id}</p>
+              <p><strong>State:</strong> {viewGRN.header?.state_name || "-"}</p>
               <p><strong>Status:</strong> {viewGRN.header?.status}</p>
             </div>
 
