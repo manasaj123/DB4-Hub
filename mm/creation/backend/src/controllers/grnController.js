@@ -46,6 +46,16 @@ export const getGRNById = async (req, res, next) => {
   }
 };
 
+// 🆕 GET locations for state auto-fill
+export const getLocations = async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT id, name, state FROM locations WHERE status = 'active' ORDER BY name");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const createGRN = async (req, res, next) => {
   const conn = await db.getConnection();
   try {
@@ -66,19 +76,21 @@ export const createGRN = async (req, res, next) => {
     const generatedGrnNo = `GRN-${String(nextSeq).padStart(3, "0")}`;
 
     // Insert GRN header
-    const [hRes] = await conn.query(
-      `INSERT INTO grn_headers
-       (grn_no, grn_date, po_id, vendor_id, location_id, status)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        generatedGrnNo,
-        toMysqlDate(header.grn_date),
-        header.po_id,
-        header.vendor_id,
-        header.location_id,
-        header.status || "POSTED",
-      ],
-    );
+   const [hRes] = await conn.query(
+  `INSERT INTO grn_headers
+   (grn_no, grn_date, po_id, vendor_id, location_id, location_name, state_name, status)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  [
+    generatedGrnNo,
+    toMysqlDate(header.grn_date),
+    header.po_id,
+    header.vendor_id,
+    header.location_id,
+    header.location_name || null,
+    header.state_name || null,
+    header.status || "POSTED",
+  ],
+);
     const grnId = hRes.insertId;
 
     // Process each GRN item
@@ -337,18 +349,21 @@ export const updateGRN = async (req, res, next) => {
     await conn.beginTransaction();
 
     await conn.query(
-      `UPDATE grn_headers
-       SET grn_date = ?, po_id = ?, vendor_id = ?, location_id = ?, status = ?
-       WHERE id = ?`,
-      [
-        toMysqlDate(header.grn_date),
-        header.po_id,
-        header.vendor_id,
-        header.location_id,
-        header.status || "POSTED",
-        id,
-      ],
-    );
+  `UPDATE grn_headers
+   SET grn_date = ?, po_id = ?, vendor_id = ?, location_id = ?, 
+       location_name = ?, state_name = ?, status = ?
+   WHERE id = ?`,
+  [
+    toMysqlDate(header.grn_date),
+    header.po_id,
+    header.vendor_id,
+    header.location_id,
+    header.location_name || null,
+    header.state_name || null,
+    header.status || "POSTED",
+    id,
+  ],
+);
 
     // delete old items + batches + ledger
     const [oldItems] = await conn.query(
