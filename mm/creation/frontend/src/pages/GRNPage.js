@@ -211,7 +211,7 @@ export default function GRNPage() {
 
   const loadLocations = async () => {
   try {
-    const res = await axios.get("/api/locations");
+    const res = await axios.get("/api/grn/locations");
     setLocations(res.data || []);
   } catch (e) { console.error(e); }
 };
@@ -321,7 +321,9 @@ export default function GRNPage() {
   };
 
   const handleLocationChange = (value) => {
+  console.log("📍 Available locations:", locations);  // 🆕 Add this
   const loc = locations.find(l => l.name.toLowerCase() === value.toLowerCase());
+  console.log("📍 Typed:", value, "Found:", loc);  // 🆕 Add this
   setHeader(h => ({ ...h, location_name: value, state_name: loc?.state || "" }));
 };
 
