@@ -76,21 +76,33 @@ export const createGRN = async (req, res, next) => {
     const generatedGrnNo = `GRN-${String(nextSeq).padStart(3, "0")}`;
 
     // Insert GRN header
-   const [hRes] = await conn.query(
-  `INSERT INTO grn_headers
-   (grn_no, grn_date, po_id, vendor_id, location_id, location_name, state_name, status)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  [
-    generatedGrnNo,
-    toMysqlDate(header.grn_date),
-    header.po_id,
-    header.vendor_id,
-    header.location_id,
-    header.location_name || null,
-    header.state_name || null,
-    header.status || "POSTED",
-  ],
-);
+   // Find location_id from location_name
+      let locationId = null;
+      if (header.location_name) {
+        const [locRows] = await conn.query(
+          "SELECT id FROM locations WHERE name = ?",
+          [header.location_name]
+        );
+        if (locRows.length > 0) {
+          locationId = locRows[0].id;
+        }
+      }
+
+      const [hRes] = await conn.query(
+        `INSERT INTO grn_headers
+        (grn_no, grn_date, po_id, vendor_id, location_id, location_name, state_name, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          generatedGrnNo,
+          toMysqlDate(header.grn_date),
+          header.po_id,
+          header.vendor_id,
+          locationId,                        // ← found from DB
+          header.location_name || null,
+          header.state_name || null,
+          header.status || "POSTED",
+        ],
+      );
     const grnId = hRes.insertId;
 
     // Process each GRN item
@@ -348,22 +360,34 @@ export const updateGRN = async (req, res, next) => {
     const { header, items } = req.body;
     await conn.beginTransaction();
 
-    await conn.query(
-  `UPDATE grn_headers
-   SET grn_date = ?, po_id = ?, vendor_id = ?, location_id = ?, 
-       location_name = ?, state_name = ?, status = ?
-   WHERE id = ?`,
-  [
-    toMysqlDate(header.grn_date),
-    header.po_id,
-    header.vendor_id,
-    header.location_id,
-    header.location_name || null,
-    header.state_name || null,
-    header.status || "POSTED",
-    id,
-  ],
-);
+    // Find location_id from location_name
+      let locationId = null;
+      if (header.location_name) {
+        const [locRows] = await conn.query(
+          "SELECT id FROM locations WHERE name = ?",
+          [header.location_name]
+        );
+        if (locRows.length > 0) {
+          locationId = locRows[0].id;
+        }
+      }
+
+      await conn.query(
+        `UPDATE grn_headers
+        SET grn_date = ?, po_id = ?, vendor_id = ?, location_id = ?, 
+            location_name = ?, state_name = ?, status = ?
+        WHERE id = ?`,
+        [
+          toMysqlDate(header.grn_date),
+          header.po_id,
+          header.vendor_id,
+          locationId,                        // ← found from DB
+          header.location_name || null,
+          header.state_name || null,
+          header.status || "POSTED",
+          id,
+        ],
+      );
 
     // delete old items + batches + ledger
     const [oldItems] = await conn.query(
