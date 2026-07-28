@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import stockApi from "../api/stockApi";
 import materialApi from "../api/materialApi";
+import axios from "axios";
 
 const titleStyle = {
   fontSize: "18px",
@@ -123,6 +124,7 @@ export default function StockPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showZeroNegative, setShowZeroNegative] = useState(false);
   const [showExpired, setShowExpired] = useState(false);
+  const [storeStock, setStoreStock] = useState([]);
 
   const load = async () => {
     try {
@@ -140,8 +142,16 @@ export default function StockPage() {
     }
   };
 
+  const loadStoreStock = async () => {
+  try {
+    const res = await axios.get("/api/store-stock");
+    setStoreStock(res.data || []);
+  } catch (e) { console.error(e); }
+};
+
   useEffect(() => {
     load();
+    loadStoreStock();
   }, []);
 
   const getMaterialName = (materialId) => {
@@ -524,6 +534,55 @@ export default function StockPage() {
                 </tr>
               </tfoot>
             </table>
+
+                        {/* 🆕 Store Stock (Location-wise) */}
+            <div style={{ ...sectionHeaderStyle, marginTop: "20px" }}>
+              📦 Store Stock (Location-wise)
+            </div>
+            {storeStock.length === 0 ? (
+              <div style={{ fontSize: "13px", color: "#6b7280", padding: "8px" }}>
+                No store stock records yet. Create a GRN to see stock here.
+              </div>
+            ) : (
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Location</th>
+                    <th style={thStyle}>State</th>
+                    <th style={thStyle}>Material</th>
+                    <th style={thStyle}>Batch</th>
+                    <th style={thStyle}>Quantity</th>
+                    <th style={thStyle}>Unit Cost</th>
+                    <th style={thStyle}>Expiry Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {storeStock.map((item) => (
+                    <tr key={item.id}>
+                      <td style={tdStyle}><strong>{item.location_name}</strong></td>
+                      <td style={tdStyle}>{item.state_name || "-"}</td>
+                      <td style={tdStyle}>{item.material_name || "-"}</td>
+                      <td style={tdStyle}>{item.batch_no || "-"}</td>
+                      <td style={tdStyle}>
+                        <span style={parseFloat(item.qty) < lowStockThreshold ? lowStockStyle : normalStockStyle}>
+                          {parseFloat(item.qty).toFixed(2)}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>{item.unit_cost || "-"}</td>
+                      <td style={tdStyle}>{item.expiry_date ? formatDate(item.expiry_date) : "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={totalRowStyle}>
+                    <td colSpan="4" style={tdStyle}><strong>Total Store Stock</strong></td>
+                    <td colSpan="3" style={tdStyle}>
+                      <strong>{storeStock.reduce((sum, item) => sum + (parseFloat(item.qty) || 0), 0).toFixed(2)} units</strong>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            )}
 
             {/* Legend (unchanged) */}
             <div

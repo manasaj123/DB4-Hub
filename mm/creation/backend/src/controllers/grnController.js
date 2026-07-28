@@ -125,11 +125,12 @@ export const createGRN = async (req, res, next) => {
       const newAccepted = Number(item.accepted_qty);
 
       if (alreadyReceived + newAccepted > orderedQty) {
-        await conn.rollback();
-        return res.status(400).json({
-          error: `Cannot accept ${newAccepted}. Already received ${alreadyReceived} of ${orderedQty}.`,
-        });
-      }
+  console.log("❌ QTY CHECK FAILED:", { alreadyReceived, newAccepted, orderedQty });
+  await conn.rollback();
+  return res.status(400).json({
+    error: `Cannot accept ${newAccepted}. Already received ${alreadyReceived} of ${orderedQty}.`,
+  });
+}
 
       // 2. Create batch
       const [bRes] = await conn.query(
@@ -309,6 +310,70 @@ export const createGRN = async (req, res, next) => {
 
     await conn.commit();
 
+        // ============================================
+    // 🆕 UPDATE STORE STOCK AFTER GRN
+    // ============================================
+    for (const item of items || []) {
+      const acceptedQty = Number(item.accepted_qty) || 0;
+      
+      if (acceptedQty > 0 && header.location_name) {
+        // Get material name
+        const [[mat]] = await conn.query(
+          "SELECT name FROM materials WHERE id = ?",
+          [item.material_id]
+        );
+
+        // Check if store stock exists for this location + material + batch
+        const [existingStock] = await conn.query(
+          `SELECT id, qty FROM store_stock 
+           WHERE location_name = ? AND material_id = ? AND batch_no = ?`,
+          [header.location_name, item.material_id, item.batch_no]
+        );
+
+        if (existingStock.length > 0) {
+          // Update existing stock
+          await conn.query(
+            `UPDATE store_stock SET qty = qty + ?, updated_at = NOW() WHERE id = ?`,
+            [acceptedQty, existingStock[0].id]
+          );
+        } else {
+          // Insert new store stock record
+          await conn.query(
+            `INSERT INTO store_stock 
+             (location_name, state_name, material_id, material_name, batch_no, qty, unit_cost, expiry_date, grn_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              header.location_name,
+              header.state_name || null,
+              item.material_id,
+              mat?.name || null,
+              item.batch_no,
+              acceptedQty,
+              item.unit_cost || 0,
+              item.expiry_date || null,
+              grnId,
+            ]
+          );
+        }
+
+        // Insert into store stock ledger (history)
+        await conn.query(
+          `INSERT INTO store_stock_ledger 
+           (location_name, material_id, batch_no, txn_type, qty_in, grn_id, txn_date)
+           VALUES (?, ?, ?, 'GRN_IN', ?, ?, ?)`,
+          [
+            header.location_name,
+            item.material_id,
+            item.batch_no,
+            acceptedQty,
+            grnId,
+            toMysqlDate(header.grn_date),
+          ]
+        );
+      }
+    }
+
+
     // ============================================
     //  STOCK SYNC AFTER GRN
     // ============================================
@@ -458,7 +523,46 @@ export const updateGRN = async (req, res, next) => {
           toMysqlDate(header.grn_date),
         ],
       );
+
+            // 🆕 Update store stock for accepted items
+      if (Number(item.accepted_qty) > 0 && header.location_name) {
+        const [[mat]] = await conn.query(
+          "SELECT name FROM materials WHERE id = ?",
+          [item.material_id]
+        );
+
+        const [existingStock] = await conn.query(
+          `SELECT id, qty FROM store_stock 
+           WHERE location_name = ? AND material_id = ? AND batch_no = ?`,
+          [header.location_name, item.material_id, item.batch_no]
+        );
+
+        if (existingStock.length > 0) {
+          await conn.query(
+            `UPDATE store_stock SET qty = qty + ?, updated_at = NOW() WHERE id = ?`,
+            [Number(item.accepted_qty), existingStock[0].id]
+          );
+        } else {
+          await conn.query(
+            `INSERT INTO store_stock 
+             (location_name, state_name, material_id, material_name, batch_no, qty, unit_cost, expiry_date, grn_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              header.location_name,
+              header.state_name || null,
+              item.material_id,
+              mat?.name || null,
+              item.batch_no,
+              Number(item.accepted_qty),
+              item.unit_cost || 0,
+              item.expiry_date || null,
+              id,
+            ]
+          );
+        }
+      }
     }
+    
 
     await conn.commit();
     res.json({ message: "GRN updated" });
@@ -470,12 +574,36 @@ export const updateGRN = async (req, res, next) => {
   }
 };
 
+
 // DELETE GRN
 export const deleteGRN = async (req, res, next) => {
   const conn = await db.getConnection();
   try {
     const id = req.params.id;
     await conn.beginTransaction();
+
+    // 🆕 Reverse store stock before deleting
+    const [grnItems] = await conn.query(
+      `SELECT gi.*, gh.location_name FROM grn_items gi 
+       JOIN grn_headers gh ON gi.grn_id = gh.id 
+       WHERE gi.grn_id = ?`,
+      [id]
+    );
+
+    for (const item of grnItems) {
+      if (Number(item.accepted_qty) > 0 && item.location_name) {
+        await conn.query(
+          `UPDATE store_stock SET qty = qty - ? WHERE location_name = ? AND material_id = ? AND batch_no = ?`,
+          [Number(item.accepted_qty), item.location_name, item.material_id, item.batch_no]
+        );
+
+        await conn.query(
+          `INSERT INTO store_stock_ledger (location_name, material_id, batch_no, txn_type, qty_out, grn_id, txn_date, remarks)
+           VALUES (?, ?, ?, 'ADJUSTMENT', ?, ?, NOW(), 'GRN Deleted')`,
+          [item.location_name, item.material_id, item.batch_no, Number(item.accepted_qty), id]
+        );
+      }
+    }
 
     const [items] = await conn.query(
       `SELECT batch_id FROM grn_items WHERE grn_id = ?`,
@@ -491,16 +619,12 @@ export const deleteGRN = async (req, res, next) => {
 
     if (batchIds.length) {
       await conn.query(
-        `DELETE FROM batches WHERE id IN (${batchIds
-          .map(() => "?")
-          .join(",")})`,
+        `DELETE FROM batches WHERE id IN (${batchIds.map(() => "?").join(",")})`,
         batchIds,
       );
     }
 
-    const [result] = await conn.query(`DELETE FROM grn_headers WHERE id = ?`, [
-      id,
-    ]);
+    const [result] = await conn.query(`DELETE FROM grn_headers WHERE id = ?`, [id]);
     await conn.commit();
 
     if (result.affectedRows === 0) {
